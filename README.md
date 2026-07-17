@@ -12,15 +12,15 @@ Le schéma SQL est fourni dans:
 sql/001_create_schema.sql
 ```
 
-Tu l'exécutes une seule fois sur une base PostgreSQL vide. Ensuite l'application utilise uniquement les tables existantes: elle lit les données pour les tableaux de bord et injecte les données après soumission des formulaires.
+Tu l'exécutes une seule fois sur une base MySQL vide, par exemple depuis phpMyAdmin. La base recommandée s'appelle `mulcv_geoarchives`. Ensuite l'application utilise uniquement les tables existantes: elle lit les données pour les tableaux de bord et injecte les données après soumission des formulaires.
 
 ## Démarrage
 
 ```bash
 npm install
 copy .env.example .env.local
-# renseigner DATABASE_URL dans .env.local
-# exécuter sql/001_create_schema.sql une seule fois dans PostgreSQL
+# renseigner DATABASE_URL dans .env.local, ex: mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives
+# exécuter sql/001_create_schema.sql une seule fois dans MySQL/phpMyAdmin
 npm run dev
 ```
 

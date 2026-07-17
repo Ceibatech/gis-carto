@@ -1,6 +1,6 @@
 ﻿# Base de données MULCV GeoArchives
 
-L'application utilise PostgreSQL via `DATABASE_URL`.
+L'application utilise MySQL via `DATABASE_URL`.
 
 Point important: l'application ne crée pas les tables au démarrage. Le schéma est fourni en SQL et doit être exécuté une seule fois par toi ou par l'administrateur base de données.
 
@@ -10,7 +10,7 @@ Point important: l'application ne crée pas les tables au démarrage. Le schéma
 sql/001_create_schema.sql
 ```
 
-Ce fichier contient les `CREATE TYPE`, `CREATE TABLE`, clés étrangères et index nécessaires.
+Ce fichier contient les `CREATE TABLE`, `ENUM`, clés étrangères et index nécessaires.
 
 Après exécution du SQL, l'application utilise les tables existantes:
 
@@ -35,10 +35,10 @@ Après exécution du SQL, l'application utilise les tables existantes:
 
 ## Mise en route normale
 
-1. Créer une base PostgreSQL vide.
+1. Créer une base MySQL vide, idéalement `mulcv_geoarchives`.
 2. Exécuter `sql/001_create_schema.sql` une seule fois.
 3. Créer `.env.local` à partir de `.env.example`.
-4. Renseigner `DATABASE_URL`.
+4. Renseigner `DATABASE_URL`, par exemple `mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives`.
 5. Lancer l'application.
 
 ```bash

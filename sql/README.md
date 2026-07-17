@@ -1,6 +1,6 @@
 ﻿# SQL MULCV GeoArchives
 
-`001_create_schema.sql` est le schéma initial PostgreSQL de l'application.
+`001_create_schema.sql` est le schéma initial MySQL de l'application.
 
 Important:
 
@@ -12,9 +12,9 @@ Important:
 Ordre normal:
 
 ```bash
-# 1. Créer la base PostgreSQL
-# 2. Exécuter sql/001_create_schema.sql dans la base
-# 3. Renseigner DATABASE_URL dans .env.local
+# 1. Créer la base MySQL mulcv_geoarchives
+# 2. Exécuter sql/001_create_schema.sql dans la base via phpMyAdmin ou MySQL
+# 3. Renseigner DATABASE_URL dans .env.local, ex: mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives
 # 4. Lancer l'application
 npm run dev
 ```

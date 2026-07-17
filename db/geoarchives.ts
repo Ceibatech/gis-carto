@@ -1,5 +1,5 @@
 ﻿import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import type { RowDataPacket } from "mysql2/promise";
 import type {
   CaptureSiteInput,
   DashboardSite,
@@ -8,16 +8,7 @@ import type {
   MissionPlanItem,
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
-import { getDb, isDatabaseConfigured } from "./index";
-import {
-  archiveSites,
-  auditLogs,
-  evidenceDocuments,
-  missions,
-  organizations,
-  siteContacts,
-  teams,
-} from "./schema";
+import { getPool, isDatabaseConfigured } from "./index";
 
 const statusLabels: Record<string, SiteStatusLabel> = {
   not_evaluated: "Non évalué",
@@ -95,86 +86,129 @@ const documentLabels: Record<string, string> = {
   acceptance_certificate: "Certificats de réception",
 };
 
+type SiteRow = RowDataPacket & {
+  id: string;
+  code: string;
+  name: string;
+  organization: string | null;
+  region: string;
+  district: string;
+  department: string;
+  city: string;
+  site_type: string;
+  status: string;
+  risk_score: number;
+  priority_score: number;
+  linear_meters: string | number;
+  estimated_boxes: number;
+  estimated_pages: number;
+  progress_percent: number;
+  confidentiality: string;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  map_x: number;
+  map_y: number;
+  lead: string | null;
+  phone: string | null;
+  next_action: string | null;
+};
+
+type MissionRow = RowDataPacket & {
+  id: string;
+  code: string;
+  region_scope: string;
+  start_date: string | Date;
+  end_date: string | Date;
+  team: string | null;
+  objective: string;
+  status: string;
+};
+
+type DocumentRow = RowDataPacket & {
+  type: string;
+  count: number | string;
+  latest: string | Date | null;
+};
+
+type AuditRow = RowDataPacket & {
+  id: string;
+  actor_name: string;
+  description: string;
+  created_at: string | Date;
+};
+
+type IdRow = RowDataPacket & { id: string };
+
 export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
   if (!isDatabaseConfigured()) {
     return emptyDashboard(
       false,
       false,
-      "DATABASE_URL est manquant. Ajoute .env.local, exécute sql/001_create_schema.sql une seule fois dans PostgreSQL, puis lance npm run db:seed si tu veux les données initiales.",
+      "DATABASE_URL est manquant. Ajoute .env.local avec une URL MySQL, exécute sql/001_create_schema.sql une seule fois, puis lance npm run db:seed si tu veux les données initiales.",
     );
   }
 
   try {
-    const db = getDb();
-    const [siteRows, missionRows, documentRows, auditRows] = await Promise.all([
-      db
-        .select({
-          id: archiveSites.id,
-          code: archiveSites.code,
-          name: archiveSites.name,
-          organization: organizations.name,
-          region: archiveSites.region,
-          district: archiveSites.district,
-          department: archiveSites.department,
-          city: archiveSites.city,
-          siteType: archiveSites.siteType,
-          status: archiveSites.status,
-          risk: archiveSites.riskScore,
-          priority: archiveSites.priorityScore,
-          meters: archiveSites.linearMeters,
-          boxes: archiveSites.estimatedBoxes,
-          pages: archiveSites.estimatedPages,
-          progress: archiveSites.progressPercent,
-          confidentiality: archiveSites.confidentiality,
-          latitude: archiveSites.latitude,
-          longitude: archiveSites.longitude,
-          mapX: archiveSites.mapX,
-          mapY: archiveSites.mapY,
-          lead: siteContacts.fullName,
-          phone: siteContacts.phone,
-          nextAction: archiveSites.nextAction,
-        })
-        .from(archiveSites)
-        .leftJoin(organizations, eq(archiveSites.organizationId, organizations.id))
-        .leftJoin(
-          siteContacts,
-          and(eq(siteContacts.siteId, archiveSites.id), eq(siteContacts.isPrimary, true)),
-        )
-        .orderBy(desc(archiveSites.priorityScore), desc(archiveSites.riskScore)),
-      db
-        .select({
-          id: missions.id,
-          wave: missions.code,
-          title: missions.title,
-          region: missions.regionScope,
-          startDate: missions.startDate,
-          endDate: missions.endDate,
-          team: teams.name,
-          focus: missions.objective,
-          status: missions.status,
-        })
-        .from(missions)
-        .leftJoin(teams, eq(missions.leadTeamId, teams.id))
-        .orderBy(missions.startDate),
-      db
-        .select({
-          type: evidenceDocuments.type,
-          count: sql<number>`count(*)::int`,
-          latest: sql<string | null>`max(${evidenceDocuments.uploadedAt})::text`,
-        })
-        .from(evidenceDocuments)
-        .groupBy(evidenceDocuments.type),
-      db
-        .select({
-          id: auditLogs.id,
-          actorName: auditLogs.actorName,
-          description: auditLogs.description,
-          createdAt: auditLogs.createdAt,
-        })
-        .from(auditLogs)
-        .orderBy(desc(auditLogs.createdAt))
-        .limit(6),
-    ]);
+    const pool = getPool();
+    const [siteRows] = await pool.query<SiteRow[]>(`
+      select
+        s.id,
+        s.code,
+        s.name,
+        o.name as organization,
+        s.region,
+        s.district,
+        s.department,
+        s.city,
+        s.site_type,
+        s.status,
+        s.risk_score,
+        s.priority_score,
+        s.linear_meters,
+        s.estimated_boxes,
+        s.estimated_pages,
+        s.progress_percent,
+        s.confidentiality,
+        s.latitude,
+        s.longitude,
+        s.map_x,
+        s.map_y,
+        c.full_name as lead,
+        c.phone,
+        s.next_action
+      from archive_sites s
+      left join organizations o on o.id = s.organization_id
+      left join site_contacts c on c.site_id = s.id and c.is_primary = 1
+      order by s.priority_score desc, s.risk_score desc
+    `);
+
+    const [missionRows] = await pool.query<MissionRow[]>(`
+      select
+        m.id,
+        m.code,
+        m.region_scope,
+        m.start_date,
+        m.end_date,
+        t.name as team,
+        m.objective,
+        m.status
+      from missions m
+      left join teams t on t.id = m.lead_team_id
+      order by m.start_date asc
+    `);
+
+    const [documentRows] = await pool.query<DocumentRow[]>(`
+      select type, count(*) as count, max(uploaded_at) as latest
+      from evidence_documents
+      group by type
+    `);
+
+    const [auditRows] = await pool.query<AuditRow[]>(`
+      select id, actor_name, description, created_at
+      from audit_logs
+      order by created_at desc
+      limit 6
+    `);
 
     return {
       databaseReady: true,
@@ -191,30 +225,30 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         district: site.district,
         department: site.department,
         city: site.city,
-        type: siteTypeLabels[site.siteType] ?? site.siteType,
+        type: siteTypeLabels[site.site_type] ?? site.site_type,
         status: statusLabels[site.status] ?? "Non évalué",
-        risk: site.risk,
-        priority: site.priority,
-        meters: Number(site.meters),
-        boxes: site.boxes,
-        pages: site.pages,
-        progress: site.progress,
+        risk: Number(site.risk_score),
+        priority: Number(site.priority_score),
+        meters: Number(site.linear_meters),
+        boxes: Number(site.estimated_boxes),
+        pages: Number(site.estimated_pages),
+        progress: Number(site.progress_percent),
         confidentiality: confidentialityLabels[site.confidentiality] ?? "Interne",
         latitude: site.latitude === null ? null : Number(site.latitude),
         longitude: site.longitude === null ? null : Number(site.longitude),
-        x: site.mapX,
-        y: site.mapY,
+        x: Number(site.map_x),
+        y: Number(site.map_y),
         lead: site.lead ?? "Point focal à désigner",
         phone: site.phone ?? "Non renseigné",
-        nextStep: site.nextAction ?? "Planifier la prochaine action",
+        nextStep: site.next_action ?? "Planifier la prochaine action",
       })),
       missions: missionRows.map((mission): MissionPlanItem => ({
         id: mission.id,
-        wave: mission.wave,
-        region: mission.region,
-        dates: formatDateRange(mission.startDate, mission.endDate),
+        wave: mission.code,
+        region: mission.region_scope,
+        dates: formatDateRange(mission.start_date, mission.end_date),
         team: mission.team ?? "Équipe à affecter",
-        focus: mission.focus,
+        focus: mission.objective,
         status: mission.status,
       })),
       documents: documentRows.map((document): DocumentStat => ({
@@ -225,8 +259,8 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
       auditEntries: auditRows.map((entry) => ({
         id: entry.id,
         description: entry.description,
-        actor: entry.actorName,
-        createdAt: new Date(entry.createdAt).toISOString(),
+        actor: entry.actor_name,
+        createdAt: new Date(entry.created_at).toISOString(),
       })),
     };
   } catch (error) {
@@ -234,7 +268,7 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
     return emptyDashboard(
       true,
       false,
-      `Base connectée mais schéma indisponible: ${message}. Exécute sql/001_create_schema.sql une seule fois sur une base vide.`,
+      `Base connectée mais schéma indisponible: ${message}. Exécute sql/001_create_schema.sql une seule fois dans MySQL/phpMyAdmin.`,
     );
   }
 }
@@ -244,113 +278,117 @@ export async function createCapturedSite(input: CaptureSiteInput) {
     throw new Error("DATABASE_URL est requis pour enregistrer une fiche de site.");
   }
 
-  const db = getDb();
+  const pool = getPool();
+  const connection = await pool.getConnection();
   const organizationCode = makeCode("ORG", input.organization);
-  const [organization] = await db
-    .insert(organizations)
-    .values({
-      id: randomUUID(),
-      code: organizationCode,
-      name: input.organization.trim(),
-      ministry: "MULCV",
-      organizationType: "structure",
-    })
-    .onConflictDoUpdate({
-      target: organizations.code,
-      set: { name: input.organization.trim(), updatedAt: new Date() },
-    })
-    .returning({ id: organizations.id });
-
+  const siteCode = input.code.trim().toUpperCase();
   const mapPoint = coordinatesToMap(input.latitude ?? null, input.longitude ?? null);
-  const [site] = await db
-    .insert(archiveSites)
-    .values({
-      id: randomUUID(),
-      code: input.code.trim().toUpperCase(),
-      name: input.name.trim(),
-      organizationId: organization.id,
-      siteType: (siteTypeValues[input.type] ?? "archive_depot") as never,
-      status: (statusValues[input.status] ?? "evaluation_scheduled") as never,
-      district: input.district.trim(),
-      region: input.region.trim(),
-      department: input.department.trim(),
-      city: input.city.trim(),
-      latitude: input.latitude === undefined || input.latitude === null ? null : String(input.latitude),
-      longitude: input.longitude === undefined || input.longitude === null ? null : String(input.longitude),
-      mapX: mapPoint.x,
-      mapY: mapPoint.y,
-      linearMeters: String(input.meters),
-      estimatedBoxes: input.boxes,
-      estimatedPages: input.pages,
-      confidentiality: confidentialityValues[input.confidentiality] as never,
-      riskScore: input.risk,
-      priorityScore: input.priority,
-      progressPercent: input.progress,
-      nextAction: input.nextStep.trim(),
-    })
-    .onConflictDoUpdate({
-      target: archiveSites.code,
-      set: {
-        name: input.name.trim(),
-        organizationId: organization.id,
-        siteType: (siteTypeValues[input.type] ?? "archive_depot") as never,
-        status: (statusValues[input.status] ?? "evaluation_scheduled") as never,
-        district: input.district.trim(),
-        region: input.region.trim(),
-        department: input.department.trim(),
-        city: input.city.trim(),
-        latitude: input.latitude === undefined || input.latitude === null ? null : String(input.latitude),
-        longitude: input.longitude === undefined || input.longitude === null ? null : String(input.longitude),
-        mapX: mapPoint.x,
-        mapY: mapPoint.y,
-        linearMeters: String(input.meters),
-        estimatedBoxes: input.boxes,
-        estimatedPages: input.pages,
-        confidentiality: confidentialityValues[input.confidentiality] as never,
-        riskScore: input.risk,
-        priorityScore: input.priority,
-        progressPercent: input.progress,
-        nextAction: input.nextStep.trim(),
-        updatedAt: new Date(),
-      },
-    })
-    .returning({ id: archiveSites.id, code: archiveSites.code });
 
-  const [primaryContact] = await db
-    .select({ id: siteContacts.id })
-    .from(siteContacts)
-    .where(and(eq(siteContacts.siteId, site.id), eq(siteContacts.isPrimary, true)))
-    .limit(1);
+  try {
+    await connection.beginTransaction();
 
-  if (primaryContact) {
-    await db
-      .update(siteContacts)
-      .set({ fullName: input.lead.trim(), phone: input.phone.trim(), role: "Point focal" })
-      .where(eq(siteContacts.id, primaryContact.id));
-  } else {
-    await db.insert(siteContacts).values({
-      id: randomUUID(),
-      siteId: site.id,
-      fullName: input.lead.trim(),
-      role: "Point focal",
-      phone: input.phone.trim(),
-      canValidate: true,
-      isPrimary: true,
-    });
+    const [existingOrganizations] = await connection.query<IdRow[]>(
+      "select id from organizations where code = ? limit 1",
+      [organizationCode],
+    );
+    const organizationId = existingOrganizations[0]?.id ?? randomUUID();
+
+    if (existingOrganizations.length) {
+      await connection.execute(
+        "update organizations set name = ?, organization_type = ?, updated_at = current_timestamp where id = ?",
+        [input.organization.trim(), "structure", organizationId],
+      );
+    } else {
+      await connection.execute(
+        "insert into organizations (id, code, name, ministry, organization_type) values (?, ?, ?, 'MULCV', ?)",
+        [organizationId, organizationCode, input.organization.trim(), "structure"],
+      );
+    }
+
+    const [existingSites] = await connection.query<IdRow[]>(
+      "select id from archive_sites where code = ? limit 1",
+      [siteCode],
+    );
+    const siteId = existingSites[0]?.id ?? randomUUID();
+    const siteValues = [
+      input.name.trim(),
+      organizationId,
+      siteTypeValues[input.type] ?? "archive_depot",
+      statusValues[input.status] ?? "evaluation_scheduled",
+      input.district.trim(),
+      input.region.trim(),
+      input.department.trim(),
+      input.city.trim(),
+      input.latitude ?? null,
+      input.longitude ?? null,
+      mapPoint.x,
+      mapPoint.y,
+      input.meters,
+      input.boxes,
+      input.pages,
+      confidentialityValues[input.confidentiality] ?? "internal",
+      input.risk,
+      input.priority,
+      input.progress,
+      input.nextStep.trim(),
+    ];
+
+    if (existingSites.length) {
+      await connection.execute(
+        `update archive_sites set
+          name = ?, organization_id = ?, site_type = ?, status = ?, district = ?, region = ?, department = ?, city = ?,
+          latitude = ?, longitude = ?, map_x = ?, map_y = ?, linear_meters = ?, estimated_boxes = ?, estimated_pages = ?,
+          confidentiality = ?, risk_score = ?, priority_score = ?, progress_percent = ?, next_action = ?, updated_at = current_timestamp
+        where id = ?`,
+        [...siteValues, siteId],
+      );
+    } else {
+      await connection.execute(
+        `insert into archive_sites (
+          id, code, name, organization_id, site_type, status, district, region, department, city,
+          latitude, longitude, map_x, map_y, linear_meters, estimated_boxes, estimated_pages,
+          confidentiality, risk_score, priority_score, progress_percent, next_action
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [siteId, siteCode, ...siteValues],
+      );
+    }
+
+    const [existingContacts] = await connection.query<IdRow[]>(
+      "select id from site_contacts where site_id = ? and is_primary = 1 limit 1",
+      [siteId],
+    );
+
+    if (existingContacts.length) {
+      await connection.execute(
+        "update site_contacts set full_name = ?, role = 'Point focal', phone = ?, can_validate = 1 where id = ?",
+        [input.lead.trim(), input.phone.trim(), existingContacts[0].id],
+      );
+    } else {
+      await connection.execute(
+        "insert into site_contacts (id, site_id, full_name, role, phone, can_validate, is_primary) values (?, ?, ?, 'Point focal', ?, 1, 1)",
+        [randomUUID(), siteId, input.lead.trim(), input.phone.trim()],
+      );
+    }
+
+    await connection.execute(
+      `insert into audit_logs (id, actor_name, actor_role, action, entity_type, entity_id, description, metadata)
+       values (?, 'PMO MULCV', 'Administrateur', 'site_capture_saved', 'archive_site', ?, ?, ?)`,
+      [
+        randomUUID(),
+        siteId,
+        `Fiche ${siteCode} enregistrée depuis l'interface de capture`,
+        JSON.stringify({ source: "web_capture" }),
+      ],
+    );
+
+    await connection.commit();
+    return { id: siteId, code: siteCode };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  await db.insert(auditLogs).values({
-    id: randomUUID(),
-    actorName: "PMO MULCV",
-    actorRole: "Administrateur",
-    action: "site_capture_saved",
-    entityType: "archive_site",
-    entityId: site.id,
-    description: `Fiche ${site.code} enregistrée depuis l'interface de capture`,
-    metadata: { source: "web_capture" },
-  });
-
-  return site;
 }
 
 function emptyDashboard(databaseReady: boolean, schemaReady: boolean, message: string): GeoArchivesDashboard {
@@ -399,4 +437,3 @@ function coordinatesToMap(latitude: number | null, longitude: number | null) {
     y: Math.min(90, Math.max(8, y)),
   };
 }
-

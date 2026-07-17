@@ -257,8 +257,8 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
         </nav>
         <div className="sidebar-panel">
           <p className="panel-label">Source de vérité</p>
-          <strong>{databaseUsable ? "PostgreSQL connecté" : "Base à initialiser"}</strong>
-          <span>{databaseUsable ? "Les indicateurs viennent des tables métier." : "Ajoute DATABASE_URL puis lance migrations et seed."}</span>
+          <strong>{databaseUsable ? "MySQL connecté" : "Base à initialiser"}</strong>
+          <span>{databaseUsable ? "Les indicateurs viennent des tables métier." : "Ajoute DATABASE_URL, exécute le SQL une seule fois, puis lance le seed si besoin."}</span>
         </div>
       </aside>
 
@@ -351,7 +351,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
 }
 
 function SetupPanel({ message }: { message: string }) {
-  return <section className="setup-panel"><strong>Base de données</strong><p>{message}</p><code>Executer sql/001_create_schema.sql une seule fois, puis DATABASE_URL=... npm run dev</code></section>;
+  return <section className="setup-panel"><strong>Base de données</strong><p>{message}</p><code>Exécuter sql/001_create_schema.sql une seule fois dans MySQL, puis DATABASE_URL=... npm run dev</code></section>;
 }
 
 function CapturePanel({ capture, databaseUsable, formMessage, isSaving, onChange, onSubmit }: { capture: CaptureFormState; databaseUsable: boolean; formMessage: string | null; isSaving: boolean; onChange: (next: CaptureFormState) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
@@ -426,4 +426,3 @@ function toNumber(value: string) {
   const parsed = Number(String(value).replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
 }
-

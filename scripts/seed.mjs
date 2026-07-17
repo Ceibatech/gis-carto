@@ -1,13 +1,13 @@
-﻿import { neon } from "@neondatabase/serverless";
+﻿import mysql from "mysql2/promise";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL ?? process.env.MYSQL_URL;
 
 if (!databaseUrl) {
-  console.error("DATABASE_URL est manquant. Crée .env.local ou exporte DATABASE_URL avant npm run db:seed.");
+  console.error("DATABASE_URL est manquant. Exemple: mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives");
   process.exit(1);
 }
 
-const sql = neon(databaseUrl);
+const pool = mysql.createPool(databaseUrl);
 
 const organizations = [
   ["11111111-1111-4111-8111-111111111111", "ORG-SDA", "Direction des archives et de la documentation", "MULCV", "direction_centrale"],
@@ -74,7 +74,7 @@ const sites = [
     department: "Bouaké",
     city: "Bouaké",
     latitude: 7.6906,
-    longitude: -5.0300,
+    longitude: -5.03,
     mapX: 50,
     mapY: 44,
     meters: 680,
@@ -139,7 +139,7 @@ const sites = [
     region: "Poro",
     department: "Korhogo",
     city: "Korhogo",
-    latitude: 9.4580,
+    latitude: 9.458,
     longitude: -5.6296,
     mapX: 47,
     mapY: 17,
@@ -250,95 +250,149 @@ const missions = [
 ];
 
 const documents = [
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc1", sites[0].id, missions[0][0], "visit_report", "Rapport de visite Abidjan", "rapport-visite-abj-001.pdf", "s3://mulcv/abj/rapport-visite.pdf", "application/pdf", 482000, "PMO MULCV", "2026-07-12T09:10:00Z"],
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc2", sites[1].id, missions[0][0], "risk_report", "Rapport de risque Gbêkê", "rapport-risque-gbeke.pdf", "s3://mulcv/gbk/rapport-risque.pdf", "application/pdf", 618000, "SDA", "2026-07-13T11:35:00Z"],
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc3", sites[1].id, missions[0][0], "photo", "Photos humidité magasin B", "gbeke-magasin-b.zip", "s3://mulcv/gbk/photos-magasin-b.zip", "application/zip", 9240000, "SDA", "2026-07-13T12:20:00Z"],
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc4", sites[2].id, missions[1][0], "inventory", "Inventaire provisoire San-Pédro", "inventaire-san-pedro.xlsx", "s3://mulcv/sas/inventaire.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 308000, "CEIBA", "2026-07-14T08:40:00Z"],
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc5", sites[5].id, missions[1][0], "quality_report", "Contrôle qualité Aboisso", "qc-aboisso.pdf", "s3://mulcv/com/qc-aboisso.pdf", "application/pdf", 215000, "CEIBA", "2026-07-15T16:15:00Z"],
-  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc6", sites[0].id, missions[0][0], "signed_form", "PV validation Abidjan", "pv-validation-abj.pdf", "s3://mulcv/abj/pv-validation.pdf", "application/pdf", 180000, "Cabinet MULCV", "2026-07-16T10:00:00Z"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc1", sites[0].id, missions[0][0], "visit_report", "Rapport de visite Abidjan", "rapport-visite-abj-001.pdf", "s3://mulcv/abj/rapport-visite.pdf", "application/pdf", 482000, "PMO MULCV", "2026-07-12 09:10:00"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc2", sites[1].id, missions[0][0], "risk_report", "Rapport de risque Gbêkê", "rapport-risque-gbeke.pdf", "s3://mulcv/gbk/rapport-risque.pdf", "application/pdf", 618000, "SDA", "2026-07-13 11:35:00"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc3", sites[1].id, missions[0][0], "photo", "Photos humidité magasin B", "gbeke-magasin-b.zip", "s3://mulcv/gbk/photos-magasin-b.zip", "application/zip", 9240000, "SDA", "2026-07-13 12:20:00"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc4", sites[2].id, missions[1][0], "inventory", "Inventaire provisoire San-Pédro", "inventaire-san-pedro.xlsx", "s3://mulcv/sas/inventaire.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 308000, "CEIBA", "2026-07-14 08:40:00"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc5", sites[5].id, missions[1][0], "quality_report", "Contrôle qualité Aboisso", "qc-aboisso.pdf", "s3://mulcv/com/qc-aboisso.pdf", "application/pdf", 215000, "CEIBA", "2026-07-15 16:15:00"],
+  ["cccccccc-cccc-4ccc-8ccc-ccccccccccc6", sites[0].id, missions[0][0], "signed_form", "PV validation Abidjan", "pv-validation-abj.pdf", "s3://mulcv/abj/pv-validation.pdf", "application/pdf", 180000, "Cabinet MULCV", "2026-07-16 10:00:00"],
 ];
 
 const audit = [
-  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd1", "SDA", "Archiviste", "evaluation_validated", "archive_site", sites[1].id, "SDA a validé l'évaluation MULCV-GBK-014", "2026-07-16T13:20:00Z"],
-  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd2", "CEIBA", "Numérisation", "evidence_uploaded", "evidence_document", sites[2].id, "CEIBA a importé l'inventaire provisoire San-Pédro", "2026-07-16T11:10:00Z"],
-  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd3", "PMO MULCV", "Pilotage", "mission_prioritized", "mission", missions[0][0], "PMO a priorisé la vague Gbêkê - Abidjan", "2026-07-15T17:25:00Z"],
-  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd4", "Auditeur", "Audit", "evidence_reviewed", "archive_site", sites[0].id, "Auditeur a consulté les pièces du site Abidjan", "2026-07-15T09:45:00Z"],
+  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd1", "SDA", "Archiviste", "evaluation_validated", "archive_site", sites[1].id, "SDA a validé l'évaluation MULCV-GBK-014", "2026-07-16 13:20:00"],
+  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd2", "CEIBA", "Numérisation", "evidence_uploaded", "evidence_document", sites[2].id, "CEIBA a importé l'inventaire provisoire San-Pédro", "2026-07-16 11:10:00"],
+  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd3", "PMO MULCV", "Pilotage", "mission_prioritized", "mission", missions[0][0], "PMO a priorisé la vague Gbêkê - Abidjan", "2026-07-15 17:25:00"],
+  ["dddddddd-dddd-4ddd-8ddd-ddddddddddd4", "Auditeur", "Audit", "evidence_reviewed", "archive_site", sites[0].id, "Auditeur a consulté les pièces du site Abidjan", "2026-07-15 09:45:00"],
 ];
 
 async function main() {
   for (const org of organizations) {
-    await sql`insert into organizations (id, code, name, ministry, organization_type)
-      values (${org[0]}, ${org[1]}, ${org[2]}, ${org[3]}, ${org[4]})
-      on conflict (code) do update set name = excluded.name, ministry = excluded.ministry, organization_type = excluded.organization_type, updated_at = now()`;
+    await pool.execute(
+      `insert into organizations (id, code, name, ministry, organization_type)
+       values (?, ?, ?, ?, ?)
+       on duplicate key update name = values(name), ministry = values(ministry), organization_type = values(organization_type), updated_at = current_timestamp`,
+      org,
+    );
   }
 
   for (const territory of territories) {
-    await sql`insert into administrative_territories (id, code, name, type)
-      values (${territory[0]}, ${territory[1]}, ${territory[2]}, ${territory[3]})
-      on conflict (code) do update set name = excluded.name, type = excluded.type`;
+    await pool.execute(
+      `insert into administrative_territories (id, code, name, type)
+       values (?, ?, ?, ?)
+       on duplicate key update name = values(name), type = values(type)`,
+      territory,
+    );
   }
 
   for (const site of sites) {
-    await sql`insert into archive_sites (
-      id, code, name, organization_id, territory_id, site_type, status, district, region, department, city,
-      latitude, longitude, map_x, map_y, linear_meters, estimated_boxes, estimated_pages, document_categories,
-      date_range_start, date_range_end, confidentiality, has_inventory, has_electricity, has_internet,
-      has_access_control, has_fire_detection, risk_score, priority_score, progress_percent, next_action
-    ) values (
-      ${site.id}, ${site.code}, ${site.name}, ${site.organizationId}, ${site.territoryId}, ${site.siteType}, ${site.status},
-      ${site.district}, ${site.region}, ${site.department}, ${site.city}, ${site.latitude}, ${site.longitude}, ${site.mapX}, ${site.mapY},
-      ${site.meters}, ${site.boxes}, ${site.pages}, ${JSON.stringify(site.categories)}::jsonb, ${site.start}, ${site.end},
-      ${site.confidentiality}, ${site.inventory}, ${site.electricity}, ${site.internet}, ${site.accessControl}, ${site.fireDetection},
-      ${site.risk}, ${site.priority}, ${site.progress}, ${site.nextAction}
-    ) on conflict (code) do update set
-      name = excluded.name, organization_id = excluded.organization_id, territory_id = excluded.territory_id,
-      site_type = excluded.site_type, status = excluded.status, district = excluded.district, region = excluded.region,
-      department = excluded.department, city = excluded.city, latitude = excluded.latitude, longitude = excluded.longitude,
-      map_x = excluded.map_x, map_y = excluded.map_y, linear_meters = excluded.linear_meters,
-      estimated_boxes = excluded.estimated_boxes, estimated_pages = excluded.estimated_pages,
-      document_categories = excluded.document_categories, date_range_start = excluded.date_range_start,
-      date_range_end = excluded.date_range_end, confidentiality = excluded.confidentiality,
-      has_inventory = excluded.has_inventory, has_electricity = excluded.has_electricity,
-      has_internet = excluded.has_internet, has_access_control = excluded.has_access_control,
-      has_fire_detection = excluded.has_fire_detection, risk_score = excluded.risk_score,
-      priority_score = excluded.priority_score, progress_percent = excluded.progress_percent,
-      next_action = excluded.next_action, updated_at = now()`;
+    await pool.execute(
+      `insert into archive_sites (
+        id, code, name, organization_id, territory_id, site_type, status, district, region, department, city,
+        latitude, longitude, map_x, map_y, linear_meters, estimated_boxes, estimated_pages, document_categories,
+        date_range_start, date_range_end, confidentiality, has_inventory, has_electricity, has_internet,
+        has_access_control, has_fire_detection, risk_score, priority_score, progress_percent, next_action
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      on duplicate key update
+        name = values(name), organization_id = values(organization_id), territory_id = values(territory_id),
+        site_type = values(site_type), status = values(status), district = values(district), region = values(region),
+        department = values(department), city = values(city), latitude = values(latitude), longitude = values(longitude),
+        map_x = values(map_x), map_y = values(map_y), linear_meters = values(linear_meters),
+        estimated_boxes = values(estimated_boxes), estimated_pages = values(estimated_pages),
+        document_categories = values(document_categories), date_range_start = values(date_range_start),
+        date_range_end = values(date_range_end), confidentiality = values(confidentiality),
+        has_inventory = values(has_inventory), has_electricity = values(has_electricity), has_internet = values(has_internet),
+        has_access_control = values(has_access_control), has_fire_detection = values(has_fire_detection),
+        risk_score = values(risk_score), priority_score = values(priority_score), progress_percent = values(progress_percent),
+        next_action = values(next_action), updated_at = current_timestamp`,
+      [
+        site.id,
+        site.code,
+        site.name,
+        site.organizationId,
+        site.territoryId,
+        site.siteType,
+        site.status,
+        site.district,
+        site.region,
+        site.department,
+        site.city,
+        site.latitude,
+        site.longitude,
+        site.mapX,
+        site.mapY,
+        site.meters,
+        site.boxes,
+        site.pages,
+        JSON.stringify(site.categories),
+        site.start,
+        site.end,
+        site.confidentiality,
+        site.inventory,
+        site.electricity,
+        site.internet,
+        site.accessControl,
+        site.fireDetection,
+        site.risk,
+        site.priority,
+        site.progress,
+        site.nextAction,
+      ],
+    );
   }
 
   for (const contact of contacts) {
-    await sql`insert into site_contacts (id, site_id, full_name, role, phone, email, can_validate, is_primary)
-      values (${contact[0]}, ${contact[1]}, ${contact[2]}, ${contact[3]}, ${contact[4]}, ${contact[5]}, ${contact[6]}, true)
-      on conflict (id) do update set full_name = excluded.full_name, role = excluded.role, phone = excluded.phone, email = excluded.email, can_validate = excluded.can_validate, is_primary = excluded.is_primary`;
+    await pool.execute(
+      `insert into site_contacts (id, site_id, full_name, role, phone, email, can_validate, is_primary)
+       values (?, ?, ?, ?, ?, ?, ?, true)
+       on duplicate key update full_name = values(full_name), role = values(role), phone = values(phone), email = values(email), can_validate = values(can_validate), is_primary = values(is_primary)`,
+      contact,
+    );
   }
 
   for (const team of teams) {
-    await sql`insert into teams (id, code, name, specialty, home_base)
-      values (${team[0]}, ${team[1]}, ${team[2]}, ${team[3]}, ${team[4]})
-      on conflict (id) do update set code = excluded.code, name = excluded.name, specialty = excluded.specialty, home_base = excluded.home_base`;
+    await pool.execute(
+      `insert into teams (id, code, name, specialty, home_base)
+       values (?, ?, ?, ?, ?)
+       on duplicate key update code = values(code), name = values(name), specialty = values(specialty), home_base = values(home_base)`,
+      team,
+    );
   }
 
   for (const mission of missions) {
-    await sql`insert into missions (id, code, title, status, region_scope, start_date, end_date, lead_team_id, objective, vehicle_needs, scanner_needs)
-      values (${mission[0]}, ${mission[1]}, ${mission[2]}, ${mission[3]}, ${mission[4]}, ${mission[5]}, ${mission[6]}, ${mission[7]}, ${mission[8]}, ${mission[9]}, ${mission[10]})
-      on conflict (code) do update set title = excluded.title, status = excluded.status, region_scope = excluded.region_scope, start_date = excluded.start_date, end_date = excluded.end_date, lead_team_id = excluded.lead_team_id, objective = excluded.objective, vehicle_needs = excluded.vehicle_needs, scanner_needs = excluded.scanner_needs`;
+    await pool.execute(
+      `insert into missions (id, code, title, status, region_scope, start_date, end_date, lead_team_id, objective, vehicle_needs, scanner_needs)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       on duplicate key update title = values(title), status = values(status), region_scope = values(region_scope), start_date = values(start_date), end_date = values(end_date), lead_team_id = values(lead_team_id), objective = values(objective), vehicle_needs = values(vehicle_needs), scanner_needs = values(scanner_needs)`,
+      mission,
+    );
   }
 
   for (const document of documents) {
-    await sql`insert into evidence_documents (id, site_id, mission_id, type, title, file_name, storage_key, mime_type, size_bytes, uploaded_by, uploaded_at)
-      values (${document[0]}, ${document[1]}, ${document[2]}, ${document[3]}, ${document[4]}, ${document[5]}, ${document[6]}, ${document[7]}, ${document[8]}, ${document[9]}, ${document[10]})
-      on conflict (id) do update set title = excluded.title, file_name = excluded.file_name, storage_key = excluded.storage_key, mime_type = excluded.mime_type, size_bytes = excluded.size_bytes, uploaded_by = excluded.uploaded_by, uploaded_at = excluded.uploaded_at`;
+    await pool.execute(
+      `insert into evidence_documents (id, site_id, mission_id, type, title, file_name, storage_key, mime_type, size_bytes, uploaded_by, uploaded_at)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       on duplicate key update title = values(title), file_name = values(file_name), storage_key = values(storage_key), mime_type = values(mime_type), size_bytes = values(size_bytes), uploaded_by = values(uploaded_by), uploaded_at = values(uploaded_at)`,
+      document,
+    );
   }
 
   for (const entry of audit) {
-    await sql`insert into audit_logs (id, actor_name, actor_role, action, entity_type, entity_id, description, created_at)
-      values (${entry[0]}, ${entry[1]}, ${entry[2]}, ${entry[3]}, ${entry[4]}, ${entry[5]}, ${entry[6]}, ${entry[7]})
-      on conflict (id) do update set actor_name = excluded.actor_name, actor_role = excluded.actor_role, action = excluded.action, entity_type = excluded.entity_type, entity_id = excluded.entity_id, description = excluded.description, created_at = excluded.created_at`;
+    await pool.execute(
+      `insert into audit_logs (id, actor_name, actor_role, action, entity_type, entity_id, description, created_at)
+       values (?, ?, ?, ?, ?, ?, ?, ?)
+       on duplicate key update actor_name = values(actor_name), actor_role = values(actor_role), action = values(action), entity_type = values(entity_type), entity_id = values(entity_id), description = values(description), created_at = values(created_at)`,
+      entry,
+    );
   }
 
   console.log(`Seed terminé: ${sites.length} sites, ${missions.length} missions, ${documents.length} pièces.`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await pool.end();
+  });

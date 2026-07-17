@@ -1,31 +1,29 @@
-﻿import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
+﻿import mysql from "mysql2/promise";
 
-type GeoArchivesDb = ReturnType<typeof drizzle<typeof schema>>;
+type MySqlPool = mysql.Pool;
 
-let cachedDb: GeoArchivesDb | null = null;
+let cachedPool: MySqlPool | null = null;
 
 export function getDatabaseUrl() {
-  return process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
+  return process.env.DATABASE_URL ?? process.env.MYSQL_URL ?? "";
 }
 
 export function isDatabaseConfigured() {
   return getDatabaseUrl().trim().length > 0;
 }
 
-export function getDb() {
+export function getPool() {
   const databaseUrl = getDatabaseUrl();
 
   if (!databaseUrl) {
     throw new Error(
-      "DATABASE_URL est manquant. Crée un fichier .env.local à partir de .env.example ou exporte DATABASE_URL avant de lancer l'app.",
+      "DATABASE_URL est manquant. Crée un fichier .env.local avec une URL MySQL avant de lancer l'app.",
     );
   }
 
-  if (!cachedDb) {
-    cachedDb = drizzle(neon(databaseUrl), { schema });
+  if (!cachedPool) {
+    cachedPool = mysql.createPool(databaseUrl);
   }
 
-  return cachedDb;
+  return cachedPool;
 }
