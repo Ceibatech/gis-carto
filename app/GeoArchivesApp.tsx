@@ -1,42 +1,13 @@
 ﻿"use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useMemo, useState } from "react";
-
-type Status =
-  | "Évaluation planifiée"
-  | "Évaluation réalisée"
-  | "Mobilisation en cours"
-  | "Traitement en cours"
-  | "Numérisation en cours"
-  | "Contrôle qualité"
-  | "Traitement terminé"
-  | "Risque élevé"
-  | "Inaccessible";
-
-type Site = {
-  code: string;
-  name: string;
-  organization: string;
-  region: string;
-  district: string;
-  department: string;
-  city: string;
-  type: string;
-  status: Status;
-  risk: number;
-  priority: number;
-  meters: number;
-  boxes: number;
-  pages: number;
-  progress: number;
-  confidentiality: "Faible" | "Interne" | "Confidentiel" | "Critique";
-  x: number;
-  y: number;
-  lead: string;
-  phone: string;
-  nextStep: string;
-};
+import type {
+  CaptureSiteInput,
+  DashboardSite,
+  GeoArchivesDashboard,
+  SiteStatusLabel,
+} from "../lib/geoarchives-types";
 
 type Assessment = {
   physical: number;
@@ -49,217 +20,22 @@ type Assessment = {
 
 type AssessmentKey = keyof Assessment;
 
-const sites: Site[] = [
-  {
-    code: "MULCV-ABJ-001",
-    name: "Archives Direction centrale",
-    organization: "Direction des archives et de la documentation",
-    region: "Abidjan",
-    district: "District autonome d'Abidjan",
-    department: "Abidjan",
-    city: "Plateau",
-    type: "Direction centrale",
-    status: "Numérisation en cours",
-    risk: 72,
-    priority: 88,
-    meters: 420,
-    boxes: 1840,
-    pages: 1240000,
-    progress: 54,
-    confidentiality: "Critique",
-    x: 42,
-    y: 82,
-    lead: "Koffi Yao",
-    phone: "+225 07 00 00 11 24",
-    nextStep: "Contrôle qualité sur les lots fonciers prioritaires",
-  },
-  {
-    code: "MULCV-GBK-014",
-    name: "Dépôt régional de Gbêkê",
-    organization: "Direction régionale du Centre",
-    region: "Gbêkê",
-    district: "Vallée du Bandama",
-    department: "Bouaké",
-    city: "Bouaké",
-    type: "Dépôt d'archives",
-    status: "Risque élevé",
-    risk: 91,
-    priority: 93,
-    meters: 680,
-    boxes: 2620,
-    pages: 1820000,
-    progress: 18,
-    confidentiality: "Confidentiel",
-    x: 50,
-    y: 44,
-    lead: "Aminata Coulibaly",
-    phone: "+225 05 00 00 48 16",
-    nextStep: "Sauvegarde urgente et reconditionnement avant transfert",
-  },
-  {
-    code: "MULCV-SAS-022",
-    name: "Centre temporaire de San-Pédro",
-    organization: "Antenne de traitement CEIBA",
-    region: "San-Pédro",
-    district: "Bas-Sassandra",
-    department: "San-Pédro",
-    city: "San-Pédro",
-    type: "Centre temporaire",
-    status: "Mobilisation en cours",
-    risk: 58,
-    priority: 71,
-    meters: 310,
-    boxes: 1170,
-    pages: 810000,
-    progress: 33,
-    confidentiality: "Interne",
-    x: 25,
-    y: 76,
-    lead: "Serge Dago",
-    phone: "+225 01 00 00 39 92",
-    nextStep: "Installer deux scanners et valider la zone de préparation",
-  },
-  {
-    code: "MULCV-POR-006",
-    name: "Direction régionale du Poro",
-    organization: "Direction régionale Nord",
-    region: "Poro",
-    district: "Savanes",
-    department: "Korhogo",
-    city: "Korhogo",
-    type: "Direction régionale",
-    status: "Évaluation réalisée",
-    risk: 44,
-    priority: 62,
-    meters: 180,
-    boxes: 690,
-    pages: 412000,
-    progress: 22,
-    confidentiality: "Interne",
-    x: 47,
-    y: 17,
-    lead: "Mamadou Soro",
-    phone: "+225 07 00 00 27 43",
-    nextStep: "Planifier la mission de numérisation sur site",
-  },
-  {
-    code: "MULCV-TON-031",
-    name: "Agence départementale de Tonkpi",
-    organization: "Service départemental Ouest",
-    region: "Tonkpi",
-    district: "Montagnes",
-    department: "Man",
-    city: "Man",
-    type: "Agence rattachée",
-    status: "Évaluation planifiée",
-    risk: 63,
-    priority: 67,
-    meters: 260,
-    boxes: 940,
-    pages: 590000,
-    progress: 8,
-    confidentiality: "Confidentiel",
-    x: 19,
-    y: 47,
-    lead: "Nadine Guei",
-    phone: "+225 05 00 00 15 68",
-    nextStep: "Visite terrain et capture GPS confirmée",
-  },
-  {
-    code: "MULCV-COM-019",
-    name: "Local d'archives communal",
-    organization: "Direction départementale du Sud-Comoé",
-    region: "Sud-Comoé",
-    district: "Comoé",
-    department: "Aboisso",
-    city: "Aboisso",
-    type: "Local d'archives",
-    status: "Contrôle qualité",
-    risk: 35,
-    priority: 58,
-    meters: 145,
-    boxes: 510,
-    pages: 260000,
-    progress: 77,
-    confidentiality: "Faible",
-    x: 62,
-    y: 83,
-    lead: "Jean Kouadio",
-    phone: "+225 01 00 00 22 08",
-    nextStep: "Clôturer les reprises de lots rejetés",
-  },
-  {
-    code: "MULCV-GOH-010",
-    name: "Dépôt de Gôh",
-    organization: "Direction régionale Centre-Ouest",
-    region: "Gôh",
-    district: "Gôh-Djiboua",
-    department: "Gagnoa",
-    city: "Gagnoa",
-    type: "Dépôt d'archives",
-    status: "Traitement en cours",
-    risk: 66,
-    priority: 76,
-    meters: 390,
-    boxes: 1390,
-    pages: 930000,
-    progress: 41,
-    confidentiality: "Confidentiel",
-    x: 34,
-    y: 63,
-    lead: "Florence Bédi",
-    phone: "+225 07 00 00 63 41",
-    nextStep: "Finaliser le tri des dossiers sans référence",
-  },
-  {
-    code: "MULCV-ZAN-027",
-    name: "Unité mobile Est",
-    organization: "Équipe mobile de numérisation",
-    region: "Zanzan",
-    district: "Zanzan",
-    department: "Bondoukou",
-    city: "Bondoukou",
-    type: "Unité mobile",
-    status: "Traitement terminé",
-    risk: 29,
-    priority: 45,
-    meters: 95,
-    boxes: 320,
-    pages: 180000,
-    progress: 100,
-    confidentiality: "Interne",
-    x: 77,
-    y: 37,
-    lead: "Issa Koné",
-    phone: "+225 05 00 00 74 19",
-    nextStep: "Transférer les originaux vers le stockage sécurisé",
-  },
-  {
-    code: "MULCV-KAB-044",
-    name: "Local inaccessible de Kabadougou",
-    organization: "Direction départementale Nord-Ouest",
-    region: "Kabadougou",
-    district: "Denguélé",
-    department: "Odienné",
-    city: "Odienné",
-    type: "Local d'archives",
-    status: "Inaccessible",
-    risk: 84,
-    priority: 81,
-    meters: 230,
-    boxes: 850,
-    pages: 470000,
-    progress: 0,
-    confidentiality: "Confidentiel",
-    x: 22,
-    y: 20,
-    lead: "Fatou Traoré",
-    phone: "+225 01 00 00 51 77",
-    nextStep: "Lever la contrainte d'accès avec la logistique",
-  },
-];
+type CaptureFormState = Omit<
+  CaptureSiteInput,
+  "meters" | "boxes" | "pages" | "risk" | "priority" | "progress" | "latitude" | "longitude"
+> & {
+  meters: string;
+  boxes: string;
+  pages: string;
+  risk: string;
+  priority: string;
+  progress: string;
+  latitude: string;
+  longitude: string;
+};
 
-const statuses: Status[] = [
+const statuses: SiteStatusLabel[] = [
+  "Non évalué",
   "Évaluation planifiée",
   "Évaluation réalisée",
   "Mobilisation en cours",
@@ -271,6 +47,25 @@ const statuses: Status[] = [
   "Inaccessible",
 ];
 
+const siteTypes = [
+  "Direction centrale",
+  "Direction régionale",
+  "Direction départementale",
+  "Agence rattachée",
+  "Dépôt d'archives",
+  "Local d'archives",
+  "Centre temporaire",
+  "Site CEIBA",
+  "Unité mobile",
+];
+
+const confidentialityLevels: DashboardSite["confidentiality"][] = [
+  "Faible",
+  "Interne",
+  "Confidentiel",
+  "Critique",
+];
+
 const assessmentFields: { key: AssessmentKey; label: string }[] = [
   { key: "physical", label: "État physique des documents" },
   { key: "humidity", label: "Humidité, moisissures et inondation" },
@@ -280,38 +75,29 @@ const assessmentFields: { key: AssessmentKey; label: string }[] = [
   { key: "access", label: "Difficulté d'accès et logistique" },
 ];
 
-const missionPlan = [
-  {
-    wave: "Vague 1",
-    region: "Gbêkê, Abidjan",
-    dates: "22 juil. - 02 août",
-    team: "2 équipes SDA, 1 équipe CEIBA",
-    focus: "Sites critiques, volumes supérieurs à 400 ml",
-  },
-  {
-    wave: "Vague 2",
-    region: "Gôh, San-Pédro",
-    dates: "05 août - 16 août",
-    team: "Archivage, numérisation, logistique",
-    focus: "Préparation et transfert vers centre temporaire",
-  },
-  {
-    wave: "Vague 3",
-    region: "Poro, Zanzan",
-    dates: "19 août - 30 août",
-    team: "Unités mobiles et support IT/SIG",
-    focus: "Numérisation sur site et validation documentaire",
-  },
-];
-
-const documents = [
-  { label: "Rapports de visite", count: 18, trend: "+6 cette semaine" },
-  { label: "Photographies géolocalisées", count: 426, trend: "+84 cette semaine" },
-  { label: "Inventaires importés", count: 31, trend: "+5 validés" },
-  { label: "Procès-verbaux signés", count: 12, trend: "4 en attente" },
-];
-
-const regions = Array.from(new Set(sites.map((site) => site.region))).sort();
+const defaultCapture: CaptureFormState = {
+  code: "",
+  name: "",
+  organization: "",
+  region: "",
+  district: "",
+  department: "",
+  city: "",
+  type: "Dépôt d'archives",
+  status: "Évaluation planifiée",
+  meters: "0",
+  boxes: "0",
+  pages: "0",
+  risk: "50",
+  priority: "50",
+  progress: "0",
+  confidentiality: "Interne",
+  latitude: "",
+  longitude: "",
+  lead: "",
+  phone: "",
+  nextStep: "Évaluation archivistique à planifier",
+};
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value);
@@ -324,20 +110,24 @@ function riskLabel(value: number) {
   return "Maîtrisé";
 }
 
-function statusClass(status: Status) {
+function statusClass(status: SiteStatusLabel) {
   if (status === "Risque élevé" || status === "Inaccessible") return "status-risk";
   if (status === "Traitement terminé") return "status-complete";
-  if (status === "Évaluation planifiée") return "status-planned";
+  if (status === "Évaluation planifiée" || status === "Non évalué") return "status-planned";
   return "status-active";
 }
 
-export default function GeoArchivesApp() {
+export default function GeoArchivesApp({ initialData }: { initialData: GeoArchivesDashboard }) {
+  const [data, setData] = useState(initialData);
   const [activeView, setActiveView] = useState("Carte nationale");
   const [region, setRegion] = useState("Toutes");
   const [status, setStatus] = useState("Tous");
   const [risk, setRisk] = useState("Tous");
   const [query, setQuery] = useState("");
-  const [selectedCode, setSelectedCode] = useState(sites[0].code);
+  const [selectedCode, setSelectedCode] = useState(initialData.sites[0]?.code ?? "");
+  const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [capture, setCapture] = useState<CaptureFormState>(defaultCapture);
   const [assessment, setAssessment] = useState<Assessment>({
     physical: 4,
     humidity: 5,
@@ -346,6 +136,10 @@ export default function GeoArchivesApp() {
     sensitivity: 5,
     access: 2,
   });
+
+  const sites = data.sites;
+  const databaseUsable = data.databaseReady && data.schemaReady;
+  const regions = useMemo(() => Array.from(new Set(sites.map((site) => site.region))).sort(), [sites]);
 
   const filteredSites = useMemo(() => {
     return sites.filter((site) => {
@@ -360,24 +154,26 @@ export default function GeoArchivesApp() {
       const haystack = `${site.code} ${site.name} ${site.organization} ${site.city} ${site.region}`.toLowerCase();
       return matchesRegion && matchesStatus && matchesRisk && haystack.includes(query.toLowerCase());
     });
-  }, [query, region, risk, status]);
+  }, [query, region, risk, sites, status]);
 
-  const selectedSite = sites.find((site) => site.code === selectedCode) ?? filteredSites[0] ?? sites[0];
+  const selectedSite = sites.find((site) => site.code === selectedCode) ?? filteredSites[0] ?? sites[0] ?? null;
 
   const totals = useMemo(() => {
     const source = filteredSites.length ? filteredSites : sites;
     const meters = source.reduce((sum, site) => sum + site.meters, 0);
     const pages = source.reduce((sum, site) => sum + site.pages, 0);
-    const progress = Math.round(source.reduce((sum, site) => sum + site.progress, 0) / source.length);
+    const progress = source.length
+      ? Math.round(source.reduce((sum, site) => sum + site.progress, 0) / source.length)
+      : 0;
     return {
       sites: source.length,
       meters,
       pages,
       progress,
-      evaluated: source.filter((site) => site.status !== "Évaluation planifiée").length,
+      evaluated: source.filter((site) => site.status !== "Évaluation planifiée" && site.status !== "Non évalué").length,
       critical: source.filter((site) => site.risk >= 80).length,
     };
-  }, [filteredSites]);
+  }, [filteredSites, sites]);
 
   const computedRisk = Math.min(
     100,
@@ -390,7 +186,10 @@ export default function GeoArchivesApp() {
         assessment.access * 5,
     ),
   );
-  const computedPriority = Math.min(100, Math.round(computedRisk * 0.58 + assessment.sensitivity * 7 + assessment.inventory * 5));
+  const computedPriority = Math.min(
+    100,
+    Math.round(computedRisk * 0.58 + assessment.sensitivity * 7 + assessment.inventory * 5),
+  );
 
   const regionalVolumes = regions
     .map((item) => ({
@@ -399,6 +198,44 @@ export default function GeoArchivesApp() {
     }))
     .sort((a, b) => b.meters - a.meters)
     .slice(0, 6);
+
+  async function submitCapture(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setFormMessage(null);
+
+    const payload: CaptureSiteInput = {
+      ...capture,
+      meters: toNumber(capture.meters),
+      boxes: toNumber(capture.boxes),
+      pages: toNumber(capture.pages),
+      risk: toNumber(capture.risk),
+      priority: toNumber(capture.priority),
+      progress: toNumber(capture.progress),
+      latitude: capture.latitude.trim() ? toNumber(capture.latitude) : null,
+      longitude: capture.longitude.trim() ? toNumber(capture.longitude) : null,
+    };
+
+    try {
+      const response = await fetch("/api/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const next = await response.json();
+      if (!response.ok) {
+        throw new Error(next.message ?? "Enregistrement impossible");
+      }
+      setData(next as GeoArchivesDashboard);
+      setSelectedCode(payload.code.toUpperCase());
+      setCapture(defaultCapture);
+      setFormMessage("Fiche enregistrée dans la base et tableau de bord actualisé.");
+    } catch (error) {
+      setFormMessage(error instanceof Error ? error.message : "Enregistrement impossible");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -419,9 +256,9 @@ export default function GeoArchivesApp() {
           ))}
         </nav>
         <div className="sidebar-panel">
-          <p className="panel-label">Profil actif</p>
-          <strong>PMO MULCV</strong>
-          <span>Suivi national, planification et arbitrage des priorités.</span>
+          <p className="panel-label">Source de vérité</p>
+          <strong>{databaseUsable ? "PostgreSQL connecté" : "Base à initialiser"}</strong>
+          <span>{databaseUsable ? "Les indicateurs viennent des tables métier." : "Ajoute DATABASE_URL puis lance migrations et seed."}</span>
         </div>
       </aside>
 
@@ -432,11 +269,11 @@ export default function GeoArchivesApp() {
             <h2>{activeView}</h2>
           </div>
           <div className="topbar-actions">
-            <span className="sync-pill">Mode hors connexion prêt</span>
-            <button className="icon-button" title="Exporter les données" type="button">XLS</button>
-            <button className="icon-button" title="Générer un rapport PDF" type="button">PDF</button>
+            <span className={databaseUsable ? "sync-pill" : "sync-pill warning"}>{databaseUsable ? "Données DB actives" : "Configuration requise"}</span>
           </div>
         </header>
+
+        {data.message && <SetupPanel message={data.message} />}
 
         <section className="filters" aria-label="Filtres de recherche">
           <label>Région<select value={region} onChange={(event) => setRegion(event.target.value)}><option>Toutes</option>{regions.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -465,18 +302,22 @@ export default function GeoArchivesApp() {
                 {filteredSites.map((site) => (
                   <button aria-label={`${site.name}, risque ${site.risk}`} className={`map-marker ${site.risk >= 80 ? "marker-risk" : site.progress === 100 ? "marker-complete" : "marker-active"}`} key={site.code} onClick={() => setSelectedCode(site.code)} style={{ left: `${site.x}%`, top: `${site.y}%` }} title={site.name} type="button"><span>{site.risk}</span></button>
                 ))}
+                {!filteredSites.length && <div className="map-empty">Aucun site ne correspond aux filtres actifs.</div>}
               </div>
             </div>
-            <SiteDetail site={selectedSite} />
-            <div className="chart-panel"><p className="panel-label">Volumes par région</p><h3>Charge de traitement</h3><div className="bar-list">{regionalVolumes.map((item) => <div className="bar-row" key={item.region}><span>{item.region}</span><div className="bar-track"><div style={{ width: `${Math.max(12, (item.meters / regionalVolumes[0].meters) * 100)}%` }} /></div><strong>{item.meters} ml</strong></div>)}</div></div>
-            <div className="chart-panel"><p className="panel-label">Risque et priorité</p><h3>Sites à traiter en premier</h3><div className="priority-list">{[...sites].sort((a, b) => b.priority - a.priority).slice(0, 5).map((site, index) => <button className="priority-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button"><span>{index + 1}</span><div><strong>{site.region}</strong><small>{site.name}</small></div><b>{site.priority}</b></button>)}</div></div>
+            {selectedSite ? <SiteDetail site={selectedSite} /> : <EmptyCard title="Aucun site" text="Crée une première fiche dans le registre ou lance le seed initial." />}
+            <div className="chart-panel"><p className="panel-label">Volumes par région</p><h3>Charge de traitement</h3>{regionalVolumes.length ? <div className="bar-list">{regionalVolumes.map((item) => <div className="bar-row" key={item.region}><span>{item.region}</span><div className="bar-track"><div style={{ width: `${Math.max(12, (item.meters / regionalVolumes[0].meters) * 100)}%` }} /></div><strong>{item.meters} ml</strong></div>)}</div> : <p className="empty-text">Aucun volume à afficher.</p>}</div>
+            <div className="chart-panel"><p className="panel-label">Risque et priorité</p><h3>Sites à traiter en premier</h3>{sites.length ? <div className="priority-list">{[...sites].sort((a, b) => b.priority - a.priority).slice(0, 5).map((site, index) => <button className="priority-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button"><span>{index + 1}</span><div><strong>{site.region}</strong><small>{site.name}</small></div><b>{site.priority}</b></button>)}</div> : <p className="empty-text">Aucun score disponible.</p>}</div>
           </section>
         )}
 
         {activeView === "Registre des sites" && (
-          <section className="registry-panel">
-            <div className="section-head"><div><p className="panel-label">Registre national unique</p><h3>Fiches structurées des sites</h3></div><button className="primary-button" type="button">Nouveau site</button></div>
-            <div className="table-wrap"><table><thead><tr><th>Code</th><th>Site</th><th>Localisation</th><th>Type</th><th>Risque</th><th>Priorité</th><th>Avancement</th></tr></thead><tbody>{filteredSites.map((site) => <tr key={site.code} onClick={() => setSelectedCode(site.code)}><td>{site.code}</td><td><strong>{site.name}</strong><span>{site.organization}</span></td><td>{site.city}, {site.region}</td><td>{site.type}</td><td><RiskBadge value={site.risk} /></td><td>{site.priority}/100</td><td><div className="mini-progress"><div style={{ width: `${site.progress}%` }} /></div></td></tr>)}</tbody></table></div>
+          <section className="registry-layout">
+            <div className="registry-panel">
+              <div className="section-head"><div><p className="panel-label">Registre national unique</p><h3>Fiches structurées des sites</h3></div></div>
+              <div className="table-wrap"><table><thead><tr><th>Code</th><th>Site</th><th>Localisation</th><th>Type</th><th>Risque</th><th>Priorité</th><th>Avancement</th></tr></thead><tbody>{filteredSites.map((site) => <tr key={site.code} onClick={() => setSelectedCode(site.code)}><td>{site.code}</td><td><strong>{site.name}</strong><span>{site.organization}</span></td><td>{site.city}, {site.region}</td><td>{site.type}</td><td><RiskBadge value={site.risk} /></td><td>{site.priority}/100</td><td><div className="mini-progress"><div style={{ width: `${site.progress}%` }} /></div></td></tr>)}</tbody></table>{!filteredSites.length && <p className="empty-text">Aucune fiche enregistrée pour ces filtres.</p>}</div>
+            </div>
+            <CapturePanel capture={capture} databaseUsable={databaseUsable} formMessage={formMessage} isSaving={isSaving} onChange={setCapture} onSubmit={submitCapture} />
           </section>
         )}
 
@@ -489,17 +330,19 @@ export default function GeoArchivesApp() {
 
         {activeView === "Mobilisation" && (
           <section className="operations-grid">
-            <div className="section-head full"><div><p className="panel-label">Planification opérationnelle</p><h3>Vagues nationales de déploiement</h3></div><button className="primary-button" type="button">Créer une mission</button></div>
-            {missionPlan.map((mission) => <article className="mission-card" key={mission.wave}><div><p className="panel-label">{mission.wave}</p><h4>{mission.region}</h4></div><span>{mission.dates}</span><p>{mission.team}</p><strong>{mission.focus}</strong></article>)}
-            <div className="timeline-panel"><p className="panel-label">Chronologie du site sélectionné</p><h3>{selectedSite.name}</h3>{["Capture GPS et fiche initiale", "Évaluation archivistique validée", "Plan de mobilisation généré", selectedSite.nextStep].map((item, index) => <div className="timeline-item" key={item}><span>{index + 1}</span><p>{item}</p></div>)}</div>
+            <div className="section-head full"><div><p className="panel-label">Planification opérationnelle</p><h3>Vagues nationales de déploiement</h3></div></div>
+            {data.missions.map((mission) => <article className="mission-card" key={mission.id}><div><p className="panel-label">{mission.wave}</p><h4>{mission.region}</h4></div><span>{mission.dates}</span><p>{mission.team}</p><strong>{mission.focus}</strong></article>)}
+            {!data.missions.length && <EmptyCard title="Aucune mission" text="Les missions apparaîtront ici après seed ou création en base." />}
+            {selectedSite && <div className="timeline-panel"><p className="panel-label">Chronologie du site sélectionné</p><h3>{selectedSite.name}</h3>{["Capture GPS et fiche initiale", "Évaluation archivistique", "Plan de mobilisation", selectedSite.nextStep].map((item, index) => <div className="timeline-item" key={item}><span>{index + 1}</span><p>{item}</p></div>)}</div>}
           </section>
         )}
 
         {activeView === "Documents" && (
           <section className="documents-grid">
-            <div className="section-head full"><div><p className="panel-label">Pièces justificatives</p><h3>Espace documentaire sécurisé</h3></div><button className="primary-button" type="button">Joindre un fichier</button></div>
-            {documents.map((document) => <article className="document-card" key={document.label}><span className="document-icon" aria-hidden="true">{document.label.slice(0, 2)}</span><div><strong>{document.label}</strong><p>{document.trend}</p></div><b>{document.count}</b></article>)}
-            <div className="audit-panel"><p className="panel-label">Journal d'audit</p><h3>Traçabilité récente</h3>{["SDA a validé l'évaluation MULCV-GBK-014", "CEIBA a importé 84 photographies géolocalisées", "PMO a priorisé la vague Gbêkê - Abidjan", "Auditeur a consulté les pièces du site Abidjan"].map((entry) => <p key={entry}>{entry}</p>)}</div>
+            <div className="section-head full"><div><p className="panel-label">Pièces justificatives</p><h3>Espace documentaire sécurisé</h3></div></div>
+            {data.documents.map((document) => <article className="document-card" key={document.label}><span className="document-icon" aria-hidden="true">{document.label.slice(0, 2)}</span><div><strong>{document.label}</strong><p>{document.trend}</p></div><b>{document.count}</b></article>)}
+            {!data.documents.length && <EmptyCard title="Aucune pièce" text="Les rapports, photos et inventaires apparaîtront après dépôt en base." />}
+            <div className="audit-panel"><p className="panel-label">Journal d'audit</p><h3>Traçabilité récente</h3>{data.auditEntries.map((entry) => <p key={entry.id}>{entry.description}<small>{entry.actor}</small></p>)}{!data.auditEntries.length && <p>Aucune action auditée pour le moment.</p>}</div>
           </section>
         )}
       </section>
@@ -507,15 +350,60 @@ export default function GeoArchivesApp() {
   );
 }
 
+function SetupPanel({ message }: { message: string }) {
+  return <section className="setup-panel"><strong>Base de données</strong><p>{message}</p><code>DATABASE_URL=... npm run db:migrate && npm run db:seed && npm run dev</code></section>;
+}
+
+function CapturePanel({ capture, databaseUsable, formMessage, isSaving, onChange, onSubmit }: { capture: CaptureFormState; databaseUsable: boolean; formMessage: string | null; isSaving: boolean; onChange: (next: CaptureFormState) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  function update<K extends keyof CaptureFormState>(key: K, value: CaptureFormState[K]) {
+    onChange({ ...capture, [key]: value });
+  }
+
+  return (
+    <form className="capture-panel" onSubmit={onSubmit}>
+      <div><p className="panel-label">Capture terrain</p><h3>Nouvelle fiche site</h3></div>
+      <div className="form-grid">
+        <label>Code site<input required value={capture.code} onChange={(event) => update("code", event.target.value)} placeholder="MULCV-REG-001" /></label>
+        <label>Nom du site<input required value={capture.name} onChange={(event) => update("name", event.target.value)} /></label>
+        <label>Organisation<input required value={capture.organization} onChange={(event) => update("organization", event.target.value)} /></label>
+        <label>Type<select value={capture.type} onChange={(event) => update("type", event.target.value)}>{siteTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>District<input required value={capture.district} onChange={(event) => update("district", event.target.value)} /></label>
+        <label>Région<input required value={capture.region} onChange={(event) => update("region", event.target.value)} /></label>
+        <label>Département<input required value={capture.department} onChange={(event) => update("department", event.target.value)} /></label>
+        <label>Ville<input required value={capture.city} onChange={(event) => update("city", event.target.value)} /></label>
+        <label>Latitude<input value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} inputMode="decimal" /></label>
+        <label>Longitude<input value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} inputMode="decimal" /></label>
+        <label>Mètres linéaires<input value={capture.meters} onChange={(event) => update("meters", event.target.value)} inputMode="decimal" /></label>
+        <label>Boîtes<input value={capture.boxes} onChange={(event) => update("boxes", event.target.value)} inputMode="numeric" /></label>
+        <label>Pages<input value={capture.pages} onChange={(event) => update("pages", event.target.value)} inputMode="numeric" /></label>
+        <label>Risque<input min="0" max="100" value={capture.risk} onChange={(event) => update("risk", event.target.value)} type="number" /></label>
+        <label>Priorité<input min="0" max="100" value={capture.priority} onChange={(event) => update("priority", event.target.value)} type="number" /></label>
+        <label>Avancement<input min="0" max="100" value={capture.progress} onChange={(event) => update("progress", event.target.value)} type="number" /></label>
+        <label>Confidentialité<select value={capture.confidentiality} onChange={(event) => update("confidentiality", event.target.value as DashboardSite["confidentiality"])}>{confidentialityLevels.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>Statut<select value={capture.status} onChange={(event) => update("status", event.target.value as SiteStatusLabel)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>Point focal<input required value={capture.lead} onChange={(event) => update("lead", event.target.value)} /></label>
+        <label>Téléphone<input value={capture.phone} onChange={(event) => update("phone", event.target.value)} /></label>
+        <label className="wide">Prochaine action<input value={capture.nextStep} onChange={(event) => update("nextStep", event.target.value)} /></label>
+      </div>
+      {formMessage && <p className="form-message">{formMessage}</p>}
+      <button className="primary-button" disabled={!databaseUsable || isSaving} type="submit">{isSaving ? "Enregistrement..." : "Enregistrer dans les tables"}</button>
+    </form>
+  );
+}
+
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return <article className="metric-card"><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
+}
+
+function EmptyCard({ title, text }: { title: string; text: string }) {
+  return <article className="chart-panel"><p className="panel-label">Données</p><h3>{title}</h3><p className="empty-text">{text}</p></article>;
 }
 
 function RiskBadge({ value }: { value: number }) {
   return <span className={`risk-badge ${value >= 80 ? "risk-critical" : value >= 60 ? "risk-high" : value >= 40 ? "risk-medium" : "risk-low"}`}>{riskLabel(value)} {value}</span>;
 }
 
-function SiteDetail({ site }: { site: Site }) {
+function SiteDetail({ site }: { site: DashboardSite }) {
   return (
     <aside className="detail-panel">
       <div className="detail-head"><div><p className="panel-label">{site.code}</p><h3>{site.name}</h3></div><RiskBadge value={site.risk} /></div>
@@ -523,6 +411,7 @@ function SiteDetail({ site }: { site: Site }) {
       <dl className="detail-list">
         <div><dt>Organisation</dt><dd>{site.organization}</dd></div>
         <div><dt>Localisation</dt><dd>{site.city}, {site.department} - {site.region}</dd></div>
+        <div><dt>GPS</dt><dd>{site.latitude && site.longitude ? `${site.latitude}, ${site.longitude}` : "Coordonnées à capturer"}</dd></div>
         <div><dt>Responsable</dt><dd>{site.lead} · {site.phone}</dd></div>
         <div><dt>Volume</dt><dd>{site.meters} ml · {formatNumber(site.boxes)} boîtes · {formatNumber(site.pages)} pages</dd></div>
         <div><dt>Confidentialité</dt><dd>{site.confidentiality}</dd></div>
@@ -531,4 +420,9 @@ function SiteDetail({ site }: { site: Site }) {
       <div className="next-step"><span>Prochaine action</span><p>{site.nextStep}</p></div>
     </aside>
   );
+}
+
+function toNumber(value: string) {
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
 }

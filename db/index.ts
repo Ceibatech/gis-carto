@@ -1,13 +1,31 @@
-import { env } from "cloudflare:workers";
-import { drizzle } from "drizzle-orm/d1";
+﻿import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
+type GeoArchivesDb = ReturnType<typeof drizzle<typeof schema>>;
+
+let cachedDb: GeoArchivesDb | null = null;
+
+export function getDatabaseUrl() {
+  return process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
+}
+
+export function isDatabaseConfigured() {
+  return getDatabaseUrl().trim().length > 0;
+}
+
 export function getDb() {
-  if (!env.DB) {
+  const databaseUrl = getDatabaseUrl();
+
+  if (!databaseUrl) {
     throw new Error(
-      "Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database."
+      "DATABASE_URL est manquant. Crée un fichier .env.local à partir de .env.example ou exporte DATABASE_URL avant de lancer l'app.",
     );
   }
 
-  return drizzle(env.DB, { schema });
+  if (!cachedDb) {
+    cachedDb = drizzle(neon(databaseUrl), { schema });
+  }
+
+  return cachedDb;
 }
