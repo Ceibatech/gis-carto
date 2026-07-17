@@ -1,6 +1,22 @@
 ﻿# Base de données MULCV GeoArchives
 
-L'application utilise PostgreSQL via `DATABASE_URL` et Drizzle. Le schéma est dans `db/schema.ts`; les données métier initiales sont dans `scripts/seed.mjs`.
+L'application utilise PostgreSQL via `DATABASE_URL`.
+
+Point important: l'application ne crée pas les tables au démarrage. Le schéma est fourni en SQL et doit être exécuté une seule fois par toi ou par l'administrateur base de données.
+
+## Fichier SQL à lancer
+
+```text
+sql/001_create_schema.sql
+```
+
+Ce fichier contient les `CREATE TYPE`, `CREATE TABLE`, clés étrangères et index nécessaires.
+
+Après exécution du SQL, l'application utilise les tables existantes:
+
+- lecture pour le tableau de bord et la carte;
+- insertion/mise à jour après soumission des formulaires;
+- journalisation dans `audit_logs`.
 
 ## Tables principales
 
@@ -17,21 +33,25 @@ L'application utilise PostgreSQL via `DATABASE_URL` et Drizzle. Le schéma est d
 - `evidence_documents`: rapports, photos, inventaires, PV et certificats.
 - `audit_logs`: journal d'audit et traçabilité.
 
-## Mise en route
+## Mise en route normale
 
-1. Créer `.env.local` à partir de `.env.example`.
-2. Renseigner `DATABASE_URL`.
-3. Générer la migration si le schéma change.
-4. Appliquer les migrations.
-5. Charger le seed initial.
-6. Lancer l'application.
+1. Créer une base PostgreSQL vide.
+2. Exécuter `sql/001_create_schema.sql` une seule fois.
+3. Créer `.env.local` à partir de `.env.example`.
+4. Renseigner `DATABASE_URL`.
+5. Lancer l'application.
 
 ```bash
 copy .env.example .env.local
-npm run db:generate
-npm run db:migrate
-npm run db:seed
 npm run dev
+```
+
+## Seed optionnel
+
+Le seed est optionnel. Il ne crée pas les tables, il insère seulement des données de départ dans les tables existantes.
+
+```bash
+npm run db:seed
 ```
 
 ## Capture de données

@@ -100,7 +100,7 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
     return emptyDashboard(
       false,
       false,
-      "DATABASE_URL est manquant. Ajoute .env.local puis lance npm run db:generate, npm run db:migrate et npm run db:seed.",
+      "DATABASE_URL est manquant. Ajoute .env.local, exécute sql/001_create_schema.sql une seule fois dans PostgreSQL, puis lance npm run db:seed si tu veux les données initiales.",
     );
   }
 
@@ -234,7 +234,7 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
     return emptyDashboard(
       true,
       false,
-      `Base connectée mais schéma indisponible: ${message}. Lance npm run db:generate puis npm run db:migrate.`,
+      `Base connectée mais schéma indisponible: ${message}. Exécute sql/001_create_schema.sql une seule fois sur une base vide.`,
     );
   }
 }
@@ -399,3 +399,4 @@ function coordinatesToMap(latitude: number | null, longitude: number | null) {
     y: Math.min(90, Math.max(8, y)),
   };
 }
+
