@@ -22,7 +22,7 @@ export function getPool() {
   }
 
   if (!cachedPool) {
-    cachedPool = mysql.createPool(databaseUrl);
+    cachedPool = mysql.createPool({ uri: databaseUrl, disableEval: true });
   }
 
   return cachedPool;
