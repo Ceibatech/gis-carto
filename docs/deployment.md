@@ -67,6 +67,8 @@ GEOARCHIVES_EXECUTIVE_NAME=Pilotage national
 GEOARCHIVES_AGENT_ACCOUNTS='[{"login":"agent-abidjan","password":"<mot-de-passe-agent-abidjan>","name":"Agent Abidjan"},{"login":"agent-yamoussoukro","password":"<mot-de-passe-agent-yamoussoukro>","name":"Agent Yamoussoukro"}]'
 ```
 
+Guide detaille root + SSL: `docs/contabo-ssl-root.md`.
+
 Lancer en service système avec `deploy/contabo/geoarchives-api.service`, puis exposer HTTPS avec `deploy/contabo/nginx.conf.example`.
 
 ## Vérifications après déploiement
