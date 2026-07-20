@@ -1,5 +1,8 @@
 ﻿import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import { getInitialGeoArchivesDashboard } from "../lib/geoarchives-dashboard-source";
+import { geoArchivesAuthCookieName, verifyAuthSession } from "../lib/geoarchives-auth";
 import GeoArchivesApp from "./GeoArchivesApp";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const dashboard = await getInitialGeoArchivesDashboard();
-  return <GeoArchivesApp initialData={dashboard} />;
+  const cookieStore = await cookies();
+  const session = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
+  const dashboard = session ? await getInitialGeoArchivesDashboard() : emptyGeoArchivesDashboard();
+  return <GeoArchivesApp initialData={dashboard} initialSession={session} />;
 }

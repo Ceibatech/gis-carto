@@ -10,6 +10,8 @@ import type {
   MissionPlanItem,
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
+import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
+import type { AuthRole, AuthSession, LoginResponse } from "../lib/geoarchives-auth-types";
 import { geoArchivesApiUrl } from "../lib/api-url";
 import { rgphDistricts } from "../lib/rgph-territories";
 
@@ -169,6 +171,23 @@ const viewIconMap: Record<string, string> = {
   Mobilisation: "◈",
   Documents: "▤",
 };
+
+const roleViewAccess: Record<AuthRole, string[]> = {
+  agent: ["Registre des sites"],
+  executive: navigationItems.flatMap((group) => group.items.map((item) => item.view)),
+};
+
+function landingViewForSession(session: AuthSession | null) {
+  return session?.landingView ?? "Vue executive";
+}
+
+function allowedViewsForSession(session: AuthSession | null) {
+  return new Set(session ? roleViewAccess[session.role] : []);
+}
+
+function roleLabel(role: AuthRole) {
+  return role === "agent" ? "Agent registre" : "Pilotage exécutif";
+}
 
 const InteractiveNationalMap = dynamic(() => import("./SiteOperationsMap"), {
   loading: () => <div className="map-fallback">Chargement de la carte interactive...</div>,
@@ -401,9 +420,10 @@ function readStoredCaptureQueue() {
   }
 }
 
-export default function GeoArchivesApp({ initialData }: { initialData: GeoArchivesDashboard }) {
+export default function GeoArchivesApp({ initialData, initialSession }: { initialData: GeoArchivesDashboard; initialSession: AuthSession | null }) {
   const [data, setData] = useState(initialData);
-  const [activeView, setActiveView] = useState("Vue executive");
+  const [session, setSession] = useState<AuthSession | null>(initialSession);
+  const [activeView, setActiveView] = useState(() => landingViewForSession(initialSession));
   const [compactMode, setCompactMode] = useState(() => {
     if (typeof window === "undefined") return false;
 
@@ -557,7 +577,14 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
     () => Array.from(new Set(missionSnapshots.map((mission) => mission.label))).sort(),
     [missionSnapshots],
   );
-  const navigationTabItems = useMemo(() => navigationItems.flatMap((group) => group.items), []);
+  const allowedViewSet = useMemo(() => allowedViewsForSession(session), [session]);
+  const visibleNavigationItems = useMemo(
+    () => navigationItems
+      .map((group) => ({ ...group, items: group.items.filter((item) => allowedViewSet.has(item.view)) }))
+      .filter((group) => group.items.length),
+    [allowedViewSet],
+  );
+  const navigationTabItems = useMemo(() => visibleNavigationItems.flatMap((group) => group.items), [visibleNavigationItems]);
   const viewBadgeMap = useMemo<Record<string, string>>(
     () => ({
       "Vue executive": `${formatNumber(totals.critical)} critiques`,
@@ -570,44 +597,55 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
     [activeMissionCount, computedRisk, data.documents.length, filteredSites.length, geolocatedFilteredSites.length, totals.critical],
   );
   const contextualShortcuts = useMemo(() => {
+    let shortcuts: { label: string; target: string }[];
+
     switch (activeView) {
       case "Vue executive":
-        return [
+        shortcuts = [
           { label: "Ouvrir la carte live", target: "Carte nationale" },
           { label: "Lancer une nouvelle fiche", target: "Registre des sites" },
         ];
+        break;
       case "Carte nationale":
-        return [
+        shortcuts = [
           { label: "Examiner le registre", target: "Registre des sites" },
           { label: "Voir les vagues de mobilisation", target: "Mobilisation" },
         ];
+        break;
       case "Registre des sites":
-        return [
+        shortcuts = [
           { label: "Retour vue executive", target: "Vue executive" },
-          { label: "Préparer l'evaluation", target: "Evaluation" },
+          { label: "Préparer l'évaluation", target: "Evaluation" },
         ];
+        break;
       case "Evaluation":
-        return [
+        shortcuts = [
           { label: "Passer en mobilisation", target: "Mobilisation" },
           { label: "Revenir au registre", target: "Registre des sites" },
         ];
+        break;
       case "Mobilisation":
-        return [
+        shortcuts = [
           { label: "Suivre la carte live", target: "Carte nationale" },
           { label: "Consulter les documents", target: "Documents" },
         ];
+        break;
       case "Documents":
-        return [
+        shortcuts = [
           { label: "Retour vue executive", target: "Vue executive" },
           { label: "Revenir à la mobilisation", target: "Mobilisation" },
         ];
+        break;
       default:
-        return [
+        shortcuts = [
           { label: "Nouvelle fiche terrain", target: "Registre des sites" },
           { label: "Carte nationale", target: "Carte nationale" },
         ];
+        break;
     }
-  }, [activeView]);
+
+    return shortcuts.filter((shortcut) => allowedViewSet.has(shortcut.target));
+  }, [activeView, allowedViewSet]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -624,6 +662,40 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
     window.localStorage.setItem(compactModeStorageKey, compactMode ? "1" : "0");
   }, [compactMode]);
 
+  async function handleLogin(login: string, password: string) {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ login, password }),
+    });
+    const result = (await response.json()) as LoginResponse;
+
+    if (!response.ok || !("session" in result)) {
+      throw new Error("message" in result ? result.message : "Connexion impossible");
+    }
+
+    const dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
+      headers: { accept: "application/json" },
+    });
+
+    if (!dashboardResponse.ok) {
+      throw new Error("Connexion acceptée, mais les données nationales sont indisponibles.");
+    }
+
+    const nextDashboard = (await dashboardResponse.json()) as GeoArchivesDashboard;
+    setData(nextDashboard);
+    setSession(result.session);
+    setSelectedCode(nextDashboard.sites[0]?.code ?? "");
+    setActiveView(result.session.landingView);
+  }
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    setSession(null);
+    setData(emptyGeoArchivesDashboard());
+    setSelectedCode("");
+    setActiveView("Vue executive");
+  }
   async function submitCapture(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
@@ -752,6 +824,10 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
     };
   }, [databaseUsable, flushPendingCaptures, isSaving, pendingCaptures]);
 
+  if (!session) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <main className={`app-shell ${viewThemeClass(activeView)} ${compactMode ? "compact-mode" : ""}`}>
       <aside className="sidebar" aria-label="Navigation principale">
@@ -763,7 +839,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
           </div>
         </div>
         <div className="nav-stack" aria-label="Modules">
-          {navigationItems.map((group) => (
+          {visibleNavigationItems.map((group) => (
             <div className="nav-group" key={group.section}>
               <p className="nav-section-title">{group.section}</p>
               <nav className="nav-list" aria-label={group.section}>
@@ -800,9 +876,11 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
           <div>
             <p className="eyebrow">Plateforme nationale de gouvernance archivistique</p>
             <h2>{activeView}</h2>
-            <p className="view-description">{viewNarratives[activeView]}</p>
+            <p className="view-description">{viewNarratives[activeView] ?? "Espace de travail GeoArchives."}</p>
           </div>
           <div className="topbar-actions">
+            <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
+            <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
             <button
               aria-pressed={compactMode}
               className={compactMode ? "secondary-button compact-toggle active" : "secondary-button compact-toggle"}
@@ -873,7 +951,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
           <section className="dashboard-grid">
             <div className="map-panel">
               <div className="map-head">
-                <div><p className="panel-label">Carte SIG nationale</p><h3>Sites d'archives en Côte d'Ivoire</h3></div>
+                <div><p className="panel-label">Carte SIG nationale</p><h3>Sites d&apos;archives en Côte d&apos;Ivoire</h3></div>
                 <div className="legend"><span><i className="legend-risk" />Risque élevé</span><span><i className="legend-active" />En cours</span><span><i className="legend-complete" />Terminé</span></div>
               </div>
               <div className="map-live-grid">
@@ -919,7 +997,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
           </section>
         )}
 
-        {activeView === "Évaluation" && (
+        {activeView === "Evaluation" && (
           <section className="assessment-grid">
             <div className="assessment-panel"><p className="panel-label">Questionnaire archivistique</p><h3>Diagnostic rapide d&apos;un site</h3>{assessmentFields.map(({ key, label }) => <label className="range-field" key={key}><span>{label}</span><input max="5" min="1" onChange={(event) => setAssessment((current) => ({ ...current, [key]: Number(event.target.value) }))} type="range" value={assessment[key]} /><b>{assessment[key]}/5</b></label>)}</div>
             <div className="score-panel"><p className="panel-label">Calcul automatique</p><div className="score-dial" style={{ "--score": computedRisk } as CSSProperties}><span>{computedRisk}</span><small>Score de risque</small></div><div className="score-stack"><Metric label="Priorité de numérisation" value={`${computedPriority}/100`} detail="Risque, sensibilité, état et urgence" /><Metric label="Charge indicative" value={`${assessment.inventory + assessment.physical} équipes`} detail="Tri, préparation, numérisation" /></div><div className="decision-box"><strong>Décision recommandée</strong><p>{computedRisk >= 80 ? "Sauvegarde urgente, transfert sécurisé et traitement préalable avant numérisation." : computedRisk >= 60 ? "Traitement archivistique prioritaire avec numérisation centralisée." : "Numérisation sur site possible après contrôle documentaire."}</p></div></div>
@@ -940,7 +1018,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
             <div className="section-head full"><div><p className="panel-label">Pièces justificatives</p><h3>Espace documentaire sécurisé</h3></div></div>
             {data.documents.map((document) => <article className="document-card" key={document.label}><span className="document-icon" aria-hidden="true">{document.label.slice(0, 2)}</span><div><strong>{document.label}</strong><p>{document.trend}</p></div><b>{document.count}</b></article>)}
             {!data.documents.length && <EmptyCard title="Aucune pièce" text="Les rapports, photos et inventaires apparaîtront après les premiers versements." />}
-            <div className="audit-panel"><p className="panel-label">Journal d'audit</p><h3>Traçabilité récente</h3>{data.auditEntries.map((entry) => <p key={entry.id}>{entry.description}<small>{entry.actor}</small></p>)}{!data.auditEntries.length && <p>Aucune action auditée pour le moment.</p>}</div>
+            <div className="audit-panel"><p className="panel-label">Journal d&apos;audit</p><h3>Traçabilité récente</h3>{data.auditEntries.map((entry) => <p key={entry.id}>{entry.description}<small>{entry.actor}</small></p>)}{!data.auditEntries.length && <p>Aucune action auditée pour le moment.</p>}</div>
           </section>
         )}
       </section>
@@ -1236,6 +1314,46 @@ function ExecutiveMetric({ label, value, detail }: { label: string; value: strin
   return <article className="executive-metric"><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
 }
 
+function LoginScreen({ onLogin }: { onLogin: (login: string, password: string) => Promise<void> }) {
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await onLogin(login, password);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Connexion impossible");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-hero" aria-label="Connexion GeoArchives">
+        <div className="login-brand"><span>GA</span><div><p className="eyebrow">MULCV GeoArchives</p><h1>Connexion sécurisée</h1></div></div>
+        <p>Accès réservé aux équipes habilitées pour le pilotage national et la collecte terrain.</p>
+        <div className="login-routes" aria-label="Profils disponibles">
+          <article><strong>Pilotage exécutif</strong><span>Tableau de bord national, arbitrages, cartographie et suivi.</span></article>
+          <article><strong>Accès agent registre</strong><span>Identifiant personnel pour ouvrir directement le Registre des sites et renseigner les fiches terrain.</span></article>
+        </div>
+      </section>
+      <form className="login-panel" onSubmit={submit}>
+        <div><p className="panel-label">Accès plateforme</p><h2>Se connecter</h2></div>
+        <label>Identifiant<input autoComplete="username" required value={login} onChange={(event) => setLogin(event.target.value)} /></label>
+        <label>Mot de passe<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        {message && <p className="form-message">{message}</p>}
+        <button className="primary-button" disabled={isSubmitting} type="submit">{isSubmitting ? "Vérification..." : "Entrer"}</button>
+      </form>
+    </main>
+  );
+}
 function CapturePanel({
   capture,
   databaseUsable,
