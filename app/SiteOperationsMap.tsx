@@ -99,12 +99,18 @@ function MapViewport({ selectedCode, sites }: { selectedCode: string; sites: Das
     }
 
     const selectedSite = sites.find((site) => site.code === selectedCode);
-    if (selectedSite?.latitude !== null && selectedSite?.longitude !== null) {
+    if (selectedSite?.latitude !== null && selectedSite?.latitude !== undefined && selectedSite.longitude !== null && selectedSite.longitude !== undefined) {
       map.flyTo([selectedSite.latitude, selectedSite.longitude], 8.5, { duration: 0.8 });
       return;
     }
 
-    const bounds = sites.map((site) => [site.latitude ?? 0, site.longitude ?? 0] as [number, number]);
+    const geolocatedSites = sites.filter((site) => site.latitude !== null && site.longitude !== null);
+    if (!geolocatedSites.length) {
+      map.setView(ivoryCoastCenter, 6.6);
+      return;
+    }
+
+    const bounds = geolocatedSites.map((site) => [site.latitude ?? ivoryCoastCenter[0], site.longitude ?? ivoryCoastCenter[1]] as [number, number]);
     map.fitBounds(bounds, { padding: [28, 28], maxZoom: 7.6 });
   }, [map, selectedCode, sites]);
 

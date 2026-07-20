@@ -1,5 +1,5 @@
 ﻿import type { Metadata } from "next";
-import { getGeoArchivesDashboard } from "../db/geoarchives";
+import { getInitialGeoArchivesDashboard } from "../lib/geoarchives-dashboard-source";
 import GeoArchivesApp from "./GeoArchivesApp";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const dashboard = await getGeoArchivesDashboard();
+  const dashboard = await getInitialGeoArchivesDashboard();
   return <GeoArchivesApp initialData={dashboard} />;
 }

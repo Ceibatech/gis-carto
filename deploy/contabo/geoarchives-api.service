@@ -1,0 +1,16 @@
+[Unit]
+Description=MULCV GeoArchives API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/gis-carto
+EnvironmentFile=/etc/geoarchives-api.env
+ExecStart=/usr/bin/npm run start:contabo
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

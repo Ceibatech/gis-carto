@@ -1,8 +1,12 @@
-﻿import { NextResponse } from "next/server";
-import type { CaptureSiteInput } from "../../../lib/geoarchives-types";
+﻿import type { CaptureSiteInput } from "../../../lib/geoarchives-types";
 import { createCapturedSite, getGeoArchivesDashboard } from "../../../db/geoarchives";
+import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
+
+export function OPTIONS(request: Request) {
+  return corsPreflight(request);
+}
 
 export async function POST(request: Request) {
   try {
@@ -10,10 +14,10 @@ export async function POST(request: Request) {
     validateSiteInput(input);
     await createCapturedSite(input);
     const dashboard = await getGeoArchivesDashboard();
-    return NextResponse.json(dashboard, { status: 201 });
+    return corsJson(request, dashboard, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Impossible d'enregistrer la fiche";
-    return NextResponse.json({ message }, { status: 400 });
+    return corsJson(request, { message }, { status: 400 });
   }
 }
 

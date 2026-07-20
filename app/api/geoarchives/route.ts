@@ -1,9 +1,13 @@
-﻿import { NextResponse } from "next/server";
 import { getGeoArchivesDashboard } from "../../../db/geoarchives";
+import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export function OPTIONS(request: Request) {
+  return corsPreflight(request);
+}
+
+export async function GET(request: Request) {
   const dashboard = await getGeoArchivesDashboard();
-  return NextResponse.json(dashboard);
+  return corsJson(request, dashboard);
 }

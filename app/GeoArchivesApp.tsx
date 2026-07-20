@@ -10,6 +10,7 @@ import type {
   MissionPlanItem,
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
+import { geoArchivesApiUrl } from "../lib/api-url";
 import { rgphDistricts } from "../lib/rgph-territories";
 
 type Assessment = {
@@ -39,6 +40,7 @@ type CaptureFormState = Omit<
   | "archiveRoomsCount"
   | "dateRangeStart"
   | "dateRangeEnd"
+  | "documentCategories"
   | "travelTimeMinutes"
   | "photoReferences"
   | "gpsAccuracyMeters"
@@ -125,7 +127,13 @@ const confidentialityLevels: DashboardSite["confidentiality"][] = [
   "Critique",
 ];
 
-const navigationItems = [
+type NavigationItem = {
+  view: string;
+  label: string;
+  helper: string;
+};
+
+const navigationItems: { section: string; items: NavigationItem[] }[] = [
   {
     section: "Pilotage national",
     items: [
@@ -142,7 +150,7 @@ const navigationItems = [
       { view: "Documents", label: "Documents", helper: "Pièces et audit" },
     ],
   },
-] as const;
+];
 
 const viewNarratives: Record<string, string> = {
   "Vue executive": "Synthèse nationale pour arbitrer les priorités de conservation et de numérisation.",
@@ -550,7 +558,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
     [missionSnapshots],
   );
   const navigationTabItems = useMemo(() => navigationItems.flatMap((group) => group.items), []);
-  const viewBadgeMap = useMemo(
+  const viewBadgeMap = useMemo<Record<string, string>>(
     () => ({
       "Vue executive": `${formatNumber(totals.critical)} critiques`,
       "Carte nationale": `${formatNumber(geolocatedFilteredSites.length)} GPS`,
@@ -684,7 +692,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
   }
 
   const publishCapture = useCallback(async (payload: CaptureSiteInput) => {
-    const response = await fetch("/api/sites", {
+    const response = await fetch(geoArchivesApiUrl("/api/sites", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -844,6 +852,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
           <ExecutiveView
             databaseUsable={databaseUsable}
             missions={missions}
+            onSelectSite={setSelectedCode}
             regions={regions}
             selectedSite={selectedSite}
             sites={sites}
@@ -939,7 +948,7 @@ export default function GeoArchivesApp({ initialData }: { initialData: GeoArchiv
   );
 }
 
-function ExecutiveView({ databaseUsable, missions, regions, selectedSite, sites, totals }: { databaseUsable: boolean; missions: MissionPlanItem[]; regions: string[]; selectedSite: DashboardSite | null; sites: DashboardSite[]; totals: { sites: number; meters: number; pages: number; progress: number; evaluated: number; critical: number } }) {
+function ExecutiveView({ databaseUsable, missions, onSelectSite, regions, selectedSite, sites, totals }: { databaseUsable: boolean; missions: MissionPlanItem[]; onSelectSite: (code: string) => void; regions: string[]; selectedSite: DashboardSite | null; sites: DashboardSite[]; totals: { sites: number; meters: number; pages: number; progress: number; evaluated: number; critical: number } }) {
   const gpsCaptured = sites.filter((site) => site.latitude !== null && site.longitude !== null).length;
   const gpsCoverage = sites.length ? Math.round((gpsCaptured / sites.length) * 100) : 0;
   const highRisk = sites.filter((site) => site.risk >= 60).length;
@@ -1167,7 +1176,7 @@ function ExecutiveView({ databaseUsable, missions, regions, selectedSite, sites,
           {topPrioritySites.length ? (
             topPrioritySites.map((site, index) => (
               (() => { const assignedMission = missionSnapshots.find((mission) => mission.assignedSiteCodes.includes(site.code)); return (
-              <button className="today-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button">
+              <button className="today-row" key={site.code} onClick={() => onSelectSite(site.code)} type="button">
                 <span>{index + 1}</span>
                 <div>
                   <strong>{site.name}</strong>

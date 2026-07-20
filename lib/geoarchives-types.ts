@@ -64,9 +64,8 @@ export type DashboardSite = {
   securityRiskLevel?: string;
   seasonalConstraints?: string;
   surveyNotes?: string;
-};
-
-export type MissionPlanItem = {
+  gpsAccuracyMeters?: number | null;
+  gpsCapturedAt?: string | null;
   checklistVehicleAccess?: boolean;
   checklistLoadingArea?: boolean;
   checklistSiteSignage?: boolean;
@@ -77,6 +76,9 @@ export type MissionPlanItem = {
   checklistFireExtinguisher?: boolean;
   checklistBackupPower?: boolean;
   checklistImmediateRiskReported?: boolean;
+};
+
+export type MissionPlanItem = {
   id: string;
   wave: string;
   region: string;
