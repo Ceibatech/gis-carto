@@ -19,32 +19,42 @@ export async function POST(request: Request) {
 
 function validateSiteInput(input: CaptureSiteInput) {
   const required = [
-    ["code", input.code],
-    ["name", input.name],
-    ["organization", input.organization],
-    ["region", input.region],
-    ["district", input.district],
-    ["department", input.department],
-    ["city", input.city],
-    ["lead", input.lead],
+    ["Code site", input.code],
+    ["Nom du site", input.name],
+    ["Organisation", input.organization],
+    ["Région", input.region],
+    ["District", input.district],
+    ["Département", input.department],
+    ["Ville", input.city],
+    ["Point focal", input.lead],
+    ["Fonction du répondant", input.respondentRole],
   ];
 
   for (const [label, value] of required) {
     if (!String(value ?? "").trim()) {
-      throw new Error(`Champ requis manquant: ${label}`);
+      throw new Error(`Merci de renseigner: ${label}`);
     }
   }
 
   for (const [label, value] of [
-    ["meters", input.meters],
-    ["boxes", input.boxes],
-    ["pages", input.pages],
-    ["risk", input.risk],
-    ["priority", input.priority],
-    ["progress", input.progress],
+    ["Mètres linéaires", input.meters],
+    ["Boîtes", input.boxes],
+    ["Pages", input.pages],
+    ["Risque", input.risk],
+    ["Priorité", input.priority],
+    ["Avancement", input.progress],
+    ["Temps d'accès", input.travelTimeMinutes],
   ] as const) {
     if (!Number.isFinite(value) || value < 0) {
-      throw new Error(`Valeur invalide: ${label}`);
+      throw new Error(`Valeur invalide pour: ${label}`);
     }
+  }
+
+  if (!input.roadCondition.trim()) {
+    throw new Error("Merci de renseigner: État de la route");
+  }
+
+  if (!input.networkQuality.trim()) {
+    throw new Error("Merci de renseigner: Qualité réseau");
   }
 }

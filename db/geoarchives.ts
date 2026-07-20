@@ -1,5 +1,5 @@
 ﻿import { randomUUID } from "node:crypto";
-import type { RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, RowDataPacket } from "mysql2/promise";
 import type {
   CaptureSiteInput,
   DashboardSite,
@@ -94,14 +94,31 @@ type SiteRow = RowDataPacket & {
   region: string;
   district: string;
   department: string;
+  sub_prefecture: string | null;
+  commune: string | null;
   city: string;
+  address: string | null;
+  access_landmarks: string | null;
+  accessibility: string;
   site_type: string;
   status: string;
   risk_score: number;
   priority_score: number;
+  storage_capacity_ml: string | number | null;
   linear_meters: string | number;
   estimated_boxes: number;
+  estimated_files: number;
   estimated_pages: number;
+  total_agents: number | null;
+  archive_rooms_count: number;
+  document_categories: string | null;
+  date_range_start: number | null;
+  date_range_end: number | null;
+  has_inventory: number | boolean;
+  has_electricity: number | boolean;
+  has_internet: number | boolean;
+  has_access_control: number | boolean;
+  has_fire_detection: number | boolean;
   progress_percent: number;
   confidentiality: string;
   latitude: string | number | null;
@@ -109,10 +126,33 @@ type SiteRow = RowDataPacket & {
   map_x: number;
   map_y: number;
   lead: string | null;
+  respondent_role: string | null;
+  respondent_email: string | null;
   phone: string | null;
   next_action: string | null;
+  road_condition: string | null;
+  last_mile_condition: string | null;
+  travel_time_minutes: number | null;
+  network_quality: string | null;
+  building_condition: string | null;
+  storage_condition: string | null;
+  water_risk_level: string | null;
+  security_risk_level: string | null;
+  seasonal_constraints: string | null;
+  survey_notes: string | null;
+  gps_accuracy_meters: string | number | null;
+  gps_captured_at: string | Date | null;
+  checklist_vehicle_access: number | boolean | null;
+  checklist_loading_area: number | boolean | null;
+  checklist_site_signage: number | boolean | null;
+  checklist_archives_separated: number | boolean | null;
+  checklist_shelving_available: number | boolean | null;
+  checklist_humidity_observed: number | boolean | null;
+  checklist_pest_observed: number | boolean | null;
+  checklist_fire_extinguisher: number | boolean | null;
+  checklist_backup_power: number | boolean | null;
+  checklist_immediate_risk_reported: number | boolean | null;
 };
-
 type MissionRow = RowDataPacket & {
   id: string;
   code: string;
@@ -122,6 +162,8 @@ type MissionRow = RowDataPacket & {
   team: string | null;
   objective: string;
   status: string;
+  site_count: number | string;
+  assigned_site_codes: string | null;
 };
 
 type DocumentRow = RowDataPacket & {
@@ -138,18 +180,17 @@ type AuditRow = RowDataPacket & {
 };
 
 type IdRow = RowDataPacket & { id: string };
+type TerritoryRow = RowDataPacket & { id: string; name: string; type: string; parent_id: string | null };
 
 export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
   if (!isDatabaseConfigured()) {
-    return emptyDashboard(
-      false,
-      false,
-      "DATABASE_URL est manquant. Ajoute .env.local avec une URL MySQL, exécute sql/001_create_schema.sql une seule fois, puis lance npm run db:seed si tu veux les données initiales.",
-    );
+    return emptyDashboard(false, false, null);
   }
 
+  let pool: ReturnType<typeof getPool> | null = null;
+
   try {
-    const pool = getPool();
+    pool = getPool();
     const [siteRows] = await pool.query<SiteRow[]>(`
       select
         s.id,
@@ -159,14 +200,31 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         s.region,
         s.district,
         s.department,
+        s.sub_prefecture,
+        s.commune,
         s.city,
+        s.address,
+        s.access_landmarks,
+        s.accessibility,
         s.site_type,
         s.status,
         s.risk_score,
         s.priority_score,
+        s.storage_capacity_ml,
         s.linear_meters,
         s.estimated_boxes,
+        s.estimated_files,
         s.estimated_pages,
+        s.total_agents,
+        s.archive_rooms_count,
+        s.document_categories,
+        s.date_range_start,
+        s.date_range_end,
+        s.has_inventory,
+        s.has_electricity,
+        s.has_internet,
+        s.has_access_control,
+        s.has_fire_detection,
         s.progress_percent,
         s.confidentiality,
         s.latitude,
@@ -174,11 +232,36 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         s.map_x,
         s.map_y,
         c.full_name as lead,
+        c.role as respondent_role,
+        c.email as respondent_email,
         c.phone,
-        s.next_action
+        s.next_action,
+        scs.road_condition,
+        scs.last_mile_condition,
+        scs.travel_time_minutes,
+        scs.network_quality,
+        scs.building_condition,
+        scs.storage_condition,
+        scs.water_risk_level,
+        scs.security_risk_level,
+        scs.seasonal_constraints,
+        scs.survey_notes,
+        scs.gps_accuracy_meters,
+        scs.gps_captured_at,
+        scs.checklist_vehicle_access,
+        scs.checklist_loading_area,
+        scs.checklist_site_signage,
+        scs.checklist_archives_separated,
+        scs.checklist_shelving_available,
+        scs.checklist_humidity_observed,
+        scs.checklist_pest_observed,
+        scs.checklist_fire_extinguisher,
+        scs.checklist_backup_power,
+        scs.checklist_immediate_risk_reported
       from archive_sites s
       left join organizations o on o.id = s.organization_id
       left join site_contacts c on c.site_id = s.id and c.is_primary = 1
+      left join site_census_surveys scs on scs.site_id = s.id
       order by s.priority_score desc, s.risk_score desc
     `);
 
@@ -191,9 +274,14 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         m.end_date,
         t.name as team,
         m.objective,
-        m.status
+        m.status,
+        count(ms.site_id) as site_count,
+        group_concat(s.code order by ms.planned_sequence separator '|') as assigned_site_codes
       from missions m
       left join teams t on t.id = m.lead_team_id
+      left join mission_sites ms on ms.mission_id = m.id
+      left join archive_sites s on s.id = ms.site_id
+      group by m.id, m.code, m.region_scope, m.start_date, m.end_date, t.name, m.objective, m.status
       order by m.start_date asc
     `);
 
@@ -213,9 +301,7 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
     return {
       databaseReady: true,
       schemaReady: true,
-      message: siteRows.length
-        ? null
-        : "Base connectée et tables présentes, mais aucune fiche de site n'est encore enregistrée. Lance npm run db:seed ou crée le premier site.",
+      message: null,
       sites: siteRows.map((site): DashboardSite => ({
         id: site.id,
         code: site.code,
@@ -224,14 +310,31 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         region: site.region,
         district: site.district,
         department: site.department,
+        subPrefecture: site.sub_prefecture ?? "",
+        commune: site.commune ?? "",
         city: site.city,
+        address: site.address ?? "",
+        accessLandmarks: site.access_landmarks ?? "",
+        accessibility: site.accessibility,
         type: siteTypeLabels[site.site_type] ?? site.site_type,
         status: statusLabels[site.status] ?? "Non évalué",
         risk: Number(site.risk_score),
         priority: Number(site.priority_score),
+        storageCapacityMl: Number(site.storage_capacity_ml ?? 0),
         meters: Number(site.linear_meters),
         boxes: Number(site.estimated_boxes),
+        files: Number(site.estimated_files),
         pages: Number(site.estimated_pages),
+        totalAgents: Number(site.total_agents ?? 0),
+        archiveRoomsCount: Number(site.archive_rooms_count),
+        documentCategories: parseDocumentCategories(site.document_categories),
+        dateRangeStart: site.date_range_start === null ? null : Number(site.date_range_start),
+        dateRangeEnd: site.date_range_end === null ? null : Number(site.date_range_end),
+        hasInventory: Boolean(site.has_inventory),
+        hasElectricity: Boolean(site.has_electricity),
+        hasInternet: Boolean(site.has_internet),
+        hasAccessControl: Boolean(site.has_access_control),
+        hasFireDetection: Boolean(site.has_fire_detection),
         progress: Number(site.progress_percent),
         confidentiality: confidentialityLabels[site.confidentiality] ?? "Interne",
         latitude: site.latitude === null ? null : Number(site.latitude),
@@ -239,17 +342,45 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
         x: Number(site.map_x),
         y: Number(site.map_y),
         lead: site.lead ?? "Point focal à désigner",
+        respondentRole: site.respondent_role ?? "Point focal",
+        respondentEmail: site.respondent_email ?? "",
         phone: site.phone ?? "Non renseigné",
         nextStep: site.next_action ?? "Planifier la prochaine action",
+        roadCondition: site.road_condition ?? "",
+        lastMileCondition: site.last_mile_condition ?? "",
+        travelTimeMinutes: site.travel_time_minutes ?? 0,
+        networkQuality: site.network_quality ?? "",
+        buildingCondition: site.building_condition ?? "",
+        storageCondition: site.storage_condition ?? "",
+        waterRiskLevel: site.water_risk_level ?? "",
+        securityRiskLevel: site.security_risk_level ?? "",
+        seasonalConstraints: site.seasonal_constraints ?? "",
+        surveyNotes: site.survey_notes ?? "",
+        gpsAccuracyMeters: site.gps_accuracy_meters === null ? null : Number(site.gps_accuracy_meters),
+        gpsCapturedAt: site.gps_captured_at ? new Date(site.gps_captured_at).toISOString() : null,
+        checklistVehicleAccess: Boolean(site.checklist_vehicle_access),
+        checklistLoadingArea: Boolean(site.checklist_loading_area),
+        checklistSiteSignage: Boolean(site.checklist_site_signage),
+        checklistArchivesSeparated: Boolean(site.checklist_archives_separated),
+        checklistShelvingAvailable: Boolean(site.checklist_shelving_available),
+        checklistHumidityObserved: Boolean(site.checklist_humidity_observed),
+        checklistPestObserved: Boolean(site.checklist_pest_observed),
+        checklistFireExtinguisher: Boolean(site.checklist_fire_extinguisher),
+        checklistBackupPower: Boolean(site.checklist_backup_power),
+        checklistImmediateRiskReported: Boolean(site.checklist_immediate_risk_reported),
       })),
       missions: missionRows.map((mission): MissionPlanItem => ({
         id: mission.id,
         wave: mission.code,
         region: mission.region_scope,
         dates: formatDateRange(mission.start_date, mission.end_date),
+        startDate: toIsoDate(mission.start_date),
+        endDate: toIsoDate(mission.end_date),
         team: mission.team ?? "Équipe à affecter",
         focus: mission.objective,
         status: mission.status,
+        siteCount: Number(mission.site_count),
+        assignedSiteCodes: mission.assigned_site_codes ? mission.assigned_site_codes.split("|") : [],
       })),
       documents: documentRows.map((document): DocumentStat => ({
         label: documentLabels[document.type] ?? document.type,
@@ -264,18 +395,20 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
       })),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erreur base de données inconnue";
+    const message = error instanceof Error ? error.message : "Le service est temporairement indisponible";
     return emptyDashboard(
       true,
       false,
-      `Base connectée mais schéma indisponible: ${message}. Exécute sql/001_create_schema.sql une seule fois dans MySQL/phpMyAdmin.`,
+      `Le service de pilotage est en cours d'ouverture. ${message}`,
     );
+  } finally {
+    await pool?.end().catch(() => undefined);
   }
 }
 
 export async function createCapturedSite(input: CaptureSiteInput) {
   if (!isDatabaseConfigured()) {
-    throw new Error("DATABASE_URL est requis pour enregistrer une fiche de site.");
+    throw new Error("La publication des fiches n'est pas encore ouverte.");
   }
 
   const pool = getPool();
@@ -305,6 +438,8 @@ export async function createCapturedSite(input: CaptureSiteInput) {
       );
     }
 
+    const territoryId = await ensureAdministrativeTerritoryChain(connection, input);
+
     const [existingSites] = await connection.query<IdRow[]>(
       "select id from archive_sites where code = ? limit 1",
       [siteCode],
@@ -313,20 +448,38 @@ export async function createCapturedSite(input: CaptureSiteInput) {
     const siteValues = [
       input.name.trim(),
       organizationId,
+      territoryId,
       siteTypeValues[input.type] ?? "archive_depot",
       statusValues[input.status] ?? "evaluation_scheduled",
       input.district.trim(),
       input.region.trim(),
       input.department.trim(),
+      nullIfEmpty(input.subPrefecture),
+      nullIfEmpty(input.commune),
       input.city.trim(),
+      nullIfEmpty(input.address),
       input.latitude ?? null,
       input.longitude ?? null,
       mapPoint.x,
       mapPoint.y,
+      nullIfEmpty(input.accessLandmarks),
+      input.accessibility.trim() || "accessible",
+      input.totalAgents,
+      input.archiveRoomsCount,
+      input.storageCapacityMl,
       input.meters,
       input.boxes,
+      input.files,
       input.pages,
+      JSON.stringify(input.documentCategories),
+      input.dateRangeStart ?? null,
+      input.dateRangeEnd ?? null,
       confidentialityValues[input.confidentiality] ?? "internal",
+      input.hasInventory,
+      input.hasElectricity,
+      input.hasInternet,
+      input.hasAccessControl,
+      input.hasFireDetection,
       input.risk,
       input.priority,
       input.progress,
@@ -336,19 +489,19 @@ export async function createCapturedSite(input: CaptureSiteInput) {
     if (existingSites.length) {
       await connection.execute(
         `update archive_sites set
-          name = ?, organization_id = ?, site_type = ?, status = ?, district = ?, region = ?, department = ?, city = ?,
-          latitude = ?, longitude = ?, map_x = ?, map_y = ?, linear_meters = ?, estimated_boxes = ?, estimated_pages = ?,
-          confidentiality = ?, risk_score = ?, priority_score = ?, progress_percent = ?, next_action = ?, updated_at = current_timestamp
+          name = ?, organization_id = ?, territory_id = ?, site_type = ?, status = ?, district = ?, region = ?, department = ?, sub_prefecture = ?, commune = ?, city = ?, address = ?,
+          latitude = ?, longitude = ?, map_x = ?, map_y = ?, access_landmarks = ?, accessibility = ?, total_agents = ?, archive_rooms_count = ?, storage_capacity_ml = ?, linear_meters = ?, estimated_boxes = ?, estimated_files = ?, estimated_pages = ?,
+          document_categories = ?, date_range_start = ?, date_range_end = ?, confidentiality = ?, has_inventory = ?, has_electricity = ?, has_internet = ?, has_access_control = ?, has_fire_detection = ?, risk_score = ?, priority_score = ?, progress_percent = ?, next_action = ?, updated_at = current_timestamp
         where id = ?`,
         [...siteValues, siteId],
       );
     } else {
       await connection.execute(
         `insert into archive_sites (
-          id, code, name, organization_id, site_type, status, district, region, department, city,
-          latitude, longitude, map_x, map_y, linear_meters, estimated_boxes, estimated_pages,
-          confidentiality, risk_score, priority_score, progress_percent, next_action
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, code, name, organization_id, territory_id, site_type, status, district, region, department, sub_prefecture, commune, city, address,
+          latitude, longitude, map_x, map_y, access_landmarks, accessibility, total_agents, archive_rooms_count, storage_capacity_ml, linear_meters, estimated_boxes, estimated_files, estimated_pages,
+          document_categories, date_range_start, date_range_end, confidentiality, has_inventory, has_electricity, has_internet, has_access_control, has_fire_detection, risk_score, priority_score, progress_percent, next_action
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [siteId, siteCode, ...siteValues],
       );
     }
@@ -360,13 +513,76 @@ export async function createCapturedSite(input: CaptureSiteInput) {
 
     if (existingContacts.length) {
       await connection.execute(
-        "update site_contacts set full_name = ?, role = 'Point focal', phone = ?, can_validate = 1 where id = ?",
-        [input.lead.trim(), input.phone.trim(), existingContacts[0].id],
+        "update site_contacts set full_name = ?, role = ?, phone = ?, email = ?, can_validate = 1 where id = ?",
+        [input.lead.trim(), input.respondentRole.trim() || "Point focal", input.phone.trim(), nullIfEmpty(input.respondentEmail), existingContacts[0].id],
       );
     } else {
       await connection.execute(
-        "insert into site_contacts (id, site_id, full_name, role, phone, can_validate, is_primary) values (?, ?, ?, 'Point focal', ?, 1, 1)",
-        [randomUUID(), siteId, input.lead.trim(), input.phone.trim()],
+        "insert into site_contacts (id, site_id, full_name, role, phone, email, can_validate, is_primary) values (?, ?, ?, ?, ?, ?, 1, 1)",
+        [randomUUID(), siteId, input.lead.trim(), input.respondentRole.trim() || "Point focal", input.phone.trim(), nullIfEmpty(input.respondentEmail)],
+      );
+    }
+
+    const censusValues = [
+      siteId,
+      input.lead.trim(),
+      input.respondentRole.trim() || "Point focal",
+      input.phone.trim(),
+      nullIfEmpty(input.respondentEmail),
+      input.roadCondition.trim(),
+      input.lastMileCondition.trim(),
+      input.travelTimeMinutes,
+      input.networkQuality.trim(),
+      input.buildingCondition.trim(),
+      input.storageCondition.trim(),
+      input.waterRiskLevel.trim(),
+      input.securityRiskLevel.trim(),
+      nullIfEmpty(input.seasonalConstraints),
+      nullIfEmpty(input.surveyNotes),
+      JSON.stringify(input.photoReferences),
+      input.gpsAccuracyMeters ?? null,
+      input.gpsCapturedAt ?? null,
+      input.checklistVehicleAccess,
+      input.checklistLoadingArea,
+      input.checklistSiteSignage,
+      input.checklistArchivesSeparated,
+      input.checklistShelvingAvailable,
+      input.checklistHumidityObserved,
+      input.checklistPestObserved,
+      input.checklistFireExtinguisher,
+      input.checklistBackupPower,
+      input.checklistImmediateRiskReported,
+      JSON.stringify(input),
+    ];
+
+    const [existingSurveyRows] = await connection.query<IdRow[]>(
+      "select id from site_census_surveys where site_id = ? limit 1",
+      [siteId],
+    );
+
+    if (existingSurveyRows.length) {
+      await connection.execute(
+        `update site_census_surveys set
+          respondent_name = ?, respondent_role = ?, respondent_phone = ?, respondent_email = ?, road_condition = ?, last_mile_condition = ?,
+          travel_time_minutes = ?, network_quality = ?, building_condition = ?, storage_condition = ?, water_risk_level = ?, security_risk_level = ?,
+          seasonal_constraints = ?, survey_notes = ?, photo_references = ?, gps_accuracy_meters = ?, gps_captured_at = ?,
+          checklist_vehicle_access = ?, checklist_loading_area = ?, checklist_site_signage = ?, checklist_archives_separated = ?, checklist_shelving_available = ?,
+          checklist_humidity_observed = ?, checklist_pest_observed = ?, checklist_fire_extinguisher = ?, checklist_backup_power = ?, checklist_immediate_risk_reported = ?,
+          raw_payload = ?, updated_at = current_timestamp
+        where site_id = ?`,
+        [...censusValues.slice(1), siteId],
+      );
+    } else {
+      await connection.execute(
+        `insert into site_census_surveys (
+          id, site_id, respondent_name, respondent_role, respondent_phone, respondent_email, road_condition, last_mile_condition,
+          travel_time_minutes, network_quality, building_condition, storage_condition, water_risk_level, security_risk_level,
+          seasonal_constraints, survey_notes, photo_references, gps_accuracy_meters, gps_captured_at,
+          checklist_vehicle_access, checklist_loading_area, checklist_site_signage, checklist_archives_separated, checklist_shelving_available,
+          checklist_humidity_observed, checklist_pest_observed, checklist_fire_extinguisher, checklist_backup_power, checklist_immediate_risk_reported,
+          raw_payload
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [randomUUID(), ...censusValues],
       );
     }
 
@@ -388,10 +604,11 @@ export async function createCapturedSite(input: CaptureSiteInput) {
     throw error;
   } finally {
     connection.release();
+    await pool.end().catch(() => undefined);
   }
 }
 
-function emptyDashboard(databaseReady: boolean, schemaReady: boolean, message: string): GeoArchivesDashboard {
+function emptyDashboard(databaseReady: boolean, schemaReady: boolean, message: string | null): GeoArchivesDashboard {
   return {
     databaseReady,
     schemaReady,
@@ -409,6 +626,10 @@ function formatDateRange(start: string | Date, end: string | Date) {
 
 function formatShortDate(value: string | Date) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(new Date(value));
+}
+
+function toIsoDate(value: string | Date) {
+  return new Date(value).toISOString();
 }
 
 function makeCode(prefix: string, value: string) {
@@ -436,4 +657,59 @@ function coordinatesToMap(latitude: number | null, longitude: number | null) {
     x: Math.min(88, Math.max(12, x)),
     y: Math.min(90, Math.max(8, y)),
   };
+}
+
+function parseDocumentCategories(value: string | null) {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function nullIfEmpty(value: string) {
+  const normalized = value.trim();
+  return normalized ? normalized : null;
+}
+
+async function ensureAdministrativeTerritoryChain(connection: PoolConnection, input: CaptureSiteInput) {
+  const districtId = await ensureTerritory(connection, "district", input.district.trim(), null);
+  const regionId = await ensureTerritory(connection, "region", input.region.trim(), districtId);
+  const departmentId = await ensureTerritory(connection, "department", input.department.trim(), regionId);
+  const subPrefectureId = input.subPrefecture.trim()
+    ? await ensureTerritory(connection, "sub_prefecture", input.subPrefecture.trim(), departmentId)
+    : null;
+  const communeId = input.commune.trim()
+    ? await ensureTerritory(connection, "commune", input.commune.trim(), subPrefectureId ?? departmentId)
+    : null;
+
+  return communeId ?? subPrefectureId ?? departmentId ?? regionId ?? districtId;
+}
+
+async function ensureTerritory(
+  connection: PoolConnection,
+  type: "district" | "region" | "department" | "sub_prefecture" | "commune",
+  name: string,
+  parentId: string | null,
+) {
+  const code = makeCode(type.toUpperCase(), `${parentId ?? "ROOT"}-${name}`);
+  const [existing] = await connection.query<TerritoryRow[]>(
+    "select id, name, type, parent_id from administrative_territories where code = ? limit 1",
+    [code],
+  );
+
+  if (existing.length) {
+    return existing[0].id;
+  }
+
+  const id = randomUUID();
+  await connection.execute(
+    "insert into administrative_territories (id, code, name, type, parent_id) values (?, ?, ?, ?, ?)",
+    [id, code, name, type, parentId],
+  );
+
+  return id;
 }

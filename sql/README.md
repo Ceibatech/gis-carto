@@ -18,11 +18,3 @@ Ordre normal:
 # 4. Lancer l'application
 npm run dev
 ```
-
-Seed optionnel:
-
-```bash
-npm run db:seed
-```
-
-Le seed insère des données de démonstration dans les tables existantes. Il ne crée pas le schéma.

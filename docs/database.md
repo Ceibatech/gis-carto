@@ -46,14 +46,6 @@ copy .env.example .env.local
 npm run dev
 ```
 
-## Seed optionnel
-
-Le seed est optionnel. Il ne crée pas les tables, il insère seulement des données de départ dans les tables existantes.
-
-```bash
-npm run db:seed
-```
-
 ## Capture de données
 
 L'écran `Registre des sites` contient une capture rapide. Chaque enregistrement écrit dans:

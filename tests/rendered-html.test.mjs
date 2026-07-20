@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -23,7 +23,7 @@ async function render() {
   );
 }
 
-test("server-renders GeoArchives with MySQL setup guidance", async () => {
+test("server-renders GeoArchives operational shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -31,12 +31,11 @@ test("server-renders GeoArchives with MySQL setup guidance", async () => {
   const html = await response.text();
   assert.match(html, /<title>MULCV GeoArchives<\/title>/i);
   assert.match(html, /GeoArchives/);
-  assert.match(html, /Base à initialiser/);
-  assert.match(html, /DATABASE_URL est manquant/);
-  assert.match(html, /URL MySQL/);
-  assert.match(html, /sql\/001_create_schema\.sql/);
-  assert.match(html, /Registre des sites/);
-  assert.match(html, /Carte SIG nationale/);
+  assert.match(html, /Registre/);
+  assert.match(html, /Vue executive/);
+  assert.match(html, /Portefeuille archivistique MULCV/);
+  assert.match(html, /Indicateurs/);
+  assert.doesNotMatch(html, /DATABASE_URL est manquant|Configuration requise|db:seed|seed/i);
 });
 
 test("keeps the database contract on MySQL tables", async () => {
@@ -53,8 +52,10 @@ test("keeps the database contract on MySQL tables", async () => {
   assert.doesNotMatch(sql, /CREATE TYPE|"public"|public\./i);
 
   assert.match(packageJson, /"mysql2"/);
-  assert.doesNotMatch(packageJson, /drizzle-orm|drizzle-kit|@neondatabase\/serverless/);
-  assert.match(dbIndex, /process\.env\.DATABASE_URL \?\? process\.env\.MYSQL_URL/);
-  assert.match(app, /MySQL connecté/);
-  assert.doesNotMatch(app, /PostgreSQL|migrations/i);
+  assert.doesNotMatch(packageJson, /drizzle-orm|drizzle-kit|@neondatabase\/serverless|db:seed/);
+  assert.match(dbIndex, /disableEval: true/);
+  assert.match(app, /Capturer GPS/);
+  assert.match(app, /deriveCaptureScores/);
+  assert.doesNotMatch(app, /PostgreSQL|migrations|db:seed|lance le seed/i);
+  assert.doesNotMatch(app, /<label>[^<]*<input value=\{capture\.(risk|priority|progress)\}/i);
 });

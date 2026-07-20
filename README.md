@@ -24,12 +24,6 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Seed optionnel, seulement si tu veux charger des données de départ:
-
-```bash
-npm run db:seed
-```
-
 ## Modules
 
 - Carte SIG nationale alimentée par les sites en base.
