@@ -663,20 +663,33 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   }, [compactMode]);
 
   async function handleLogin(login: string, password: string) {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login, password }),
-    });
+    let response: Response;
+
+    try {
+      response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password }),
+      });
+    } catch {
+      throw new Error("Connexion impossible. Vérifie le déploiement Vercel.");
+    }
+
     const result = (await response.json()) as LoginResponse;
 
     if (!response.ok || !("session" in result)) {
       throw new Error("message" in result ? result.message : "Connexion impossible");
     }
 
-    const dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
-      headers: { accept: "application/json" },
-    });
+    let dashboardResponse: Response;
+
+    try {
+      dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
+        headers: { accept: "application/json" },
+      });
+    } catch {
+      throw new Error("API nationale injoignable. Vérifie l'URL API Vercel et le CORS Contabo.");
+    }
 
     if (!dashboardResponse.ok) {
       throw new Error("Connexion acceptée, mais les données nationales sont indisponibles.");
@@ -1337,18 +1350,18 @@ function LoginScreen({ onLogin }: { onLogin: (login: string, password: string) =
   return (
     <main className="login-shell">
       <section className="login-hero" aria-label="Connexion GeoArchives">
-        <div className="login-brand"><span>GA</span><div><p className="eyebrow">MULCV GeoArchives</p><h1>Connexion sécurisée</h1></div></div>
-        <p>Accès réservé aux équipes habilitées pour le pilotage national et la collecte terrain.</p>
+        <div className="login-brand"><span>GA</span><div><p className="eyebrow">MULCV GeoArchives</p><strong>Plateforme nationale</strong></div></div>
+        <div className="login-copy"><h1>Connexion sécurisée</h1><p>Accès réservé au pilotage national et aux agents habilités pour la collecte terrain.</p></div>
         <div className="login-routes" aria-label="Profils disponibles">
-          <article><strong>Pilotage exécutif</strong><span>Tableau de bord national, arbitrages, cartographie et suivi.</span></article>
-          <article><strong>Accès agent registre</strong><span>Identifiant personnel pour ouvrir directement le Registre des sites et renseigner les fiches terrain.</span></article>
+          <article><strong>Pilotage exécutif</strong><span>Dashboard national, arbitrages, cartographie et suivi.</span></article>
+          <article><strong>Accès agent registre</strong><span>Identifiant personnel pour ouvrir le Registre des sites.</span></article>
         </div>
       </section>
       <form className="login-panel" onSubmit={submit}>
-        <div><p className="panel-label">Accès plateforme</p><h2>Se connecter</h2></div>
-        <label>Identifiant<input autoComplete="username" required value={login} onChange={(event) => setLogin(event.target.value)} /></label>
-        <label>Mot de passe<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-        {message && <p className="form-message">{message}</p>}
+        <div className="login-panel-head"><p className="panel-label">Accès plateforme</p><h2>Se connecter</h2></div>
+        <label><span>Identifiant</span><input autoComplete="username" required value={login} onChange={(event) => setLogin(event.target.value)} /></label>
+        <label><span>Mot de passe</span><input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        {message && <p className="form-message login-error" role="alert">{message}</p>}
         <button className="primary-button" disabled={isSubmitting} type="submit">{isSubmitting ? "Vérification..." : "Entrer"}</button>
       </form>
     </main>

@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/+$/, "");
+}
+
 function configuredOrigins() {
   return (process.env.GEOARCHIVES_ALLOWED_ORIGINS ?? process.env.GEOARCHIVES_ALLOWED_ORIGIN ?? "")
     .split(",")
-    .map((origin) => origin.trim())
+    .map(normalizeOrigin)
     .filter(Boolean);
 }
 
 function allowedOrigin(request: Request) {
   const requestOrigin = request.headers.get("origin");
+  const normalizedRequestOrigin = requestOrigin ? normalizeOrigin(requestOrigin) : "";
   const origins = configuredOrigins();
 
   if (!origins.length) {
@@ -19,8 +24,8 @@ function allowedOrigin(request: Request) {
     return "*";
   }
 
-  if (requestOrigin && origins.includes(requestOrigin)) {
-    return requestOrigin;
+  if (normalizedRequestOrigin && origins.includes(normalizedRequestOrigin)) {
+    return normalizedRequestOrigin;
   }
 
   return origins[0];
