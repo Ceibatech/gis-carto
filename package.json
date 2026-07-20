@@ -12,7 +12,8 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "build:vercel": "next build",
-    "start:contabo": "node scripts/run-vinext.mjs start --hostname 0.0.0.0"
+    "start:contabo": "next start -H 0.0.0.0 -p 4000",
+    "build:contabo": "next build"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

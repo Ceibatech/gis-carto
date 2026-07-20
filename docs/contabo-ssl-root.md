@@ -54,8 +54,10 @@ cd /var/www
 git clone https://github.com/Ceibatech/gis-carto.git
 cd /var/www/gis-carto
 npm ci
-npm run build
+npm run build:contabo
 ```
+
+Contabo utilise `next start` via `npm run start:contabo`, afin de servir correctement les routes `/api/auth`, `/api/geoarchives` et `/api/sites`.
 
 ## 4. Variables Contabo API
 

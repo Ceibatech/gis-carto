@@ -25,7 +25,7 @@ Build Command:
 npm run build:vercel
 ```
 
-Le fichier `vercel.json` force cette commande pour éviter que Vercel lance le build Contabo/Vinext (`npm run build`).
+Le fichier `vercel.json` force cette commande pour éviter que Vercel lance le build Contabo/Vinext (`npm run build:contabo`).
 
 Variables Vercel à configurer:
 
@@ -48,7 +48,7 @@ Sur le serveur Contabo, installer Node.js 22+, cloner le repo, puis préparer l'
 ```bash
 cd /var/www/gis-carto
 npm ci
-npm run build
+npm run build:contabo
 ```
 
 Créer `/etc/geoarchives-api.env` à partir de `deploy/contabo/geoarchives-api.env.example`.
