@@ -66,6 +66,7 @@ test("keeps the database contract on MySQL tables", async () => {
   assert.match(envExample, /GEOARCHIVES_AGENT_LOGIN/);
   assert.match(envExample, /GEOARCHIVES_EXECUTIVE_LOGIN/);
   assert.match(auth, /GEOARCHIVES_AGENT_ACCOUNTS/);
+  assert.match(auth, /unwrapQuotedEnvValue/);
   assert.match(app, /deriveCaptureScores/);
   assert.doesNotMatch(app, /PostgreSQL|migrations|db:seed|lance le seed/i);
   assert.doesNotMatch(app, /<label>[^<]*<input value=\{capture\.(risk|priority|progress)\}/i);

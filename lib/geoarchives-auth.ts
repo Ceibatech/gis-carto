@@ -41,12 +41,22 @@ function cleanText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function unwrapQuotedEnvValue(value: string) {
+  const trimmed = value.trim();
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 function isAgentAccountEnv(value: unknown): value is AgentAccountEnv {
   return typeof value === "object" && value !== null;
 }
 
 function agentAccountsFromJson(): ConfiguredAccount[] {
-  const configured = process.env.GEOARCHIVES_AGENT_ACCOUNTS?.trim();
+  const configured = unwrapQuotedEnvValue(process.env.GEOARCHIVES_AGENT_ACCOUNTS ?? "");
   if (!configured) return [];
 
   try {
