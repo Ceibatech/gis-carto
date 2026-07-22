@@ -3185,3 +3185,64 @@ tr:hover td {
     display: none;
   }
 }
+
+
+.agent-shell {
+  background: #f6f7f9;
+  display: grid;
+  gap: 22px;
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.agent-topbar {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 20px 22px;
+}
+
+.agent-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.agent-form-frame {
+  margin: 0 auto;
+  width: min(1180px, 100%);
+}
+
+.agent-form-frame .wizard-panel {
+  min-height: calc(100vh - 150px);
+}
+
+.agent-form-frame .wizard-shell {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .agent-shell {
+    padding: 16px;
+  }
+
+  .agent-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agent-actions {
+    justify-content: flex-start;
+  }
+
+  .agent-form-frame .wizard-shell {
+    grid-template-columns: 1fr;
+  }
+}

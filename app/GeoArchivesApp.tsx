@@ -99,15 +99,15 @@ const statuses: SiteStatusLabel[] = [
 ];
 
 const statusProgress: Record<SiteStatusLabel, number> = {
-  "Non \u00e9valu\u00e9": 0,
-  "\u00c9valuation planifi\u00e9e": 10,
-  "\u00c9valuation r\u00e9alis\u00e9e": 30,
+  "Non évalué": 0,
+  "Évaluation planifiée": 10,
+  "Évaluation réalisée": 30,
   "Mobilisation en cours": 45,
   "Traitement en cours": 62,
-  "Num\u00e9risation en cours": 76,
-  "Contr\u00f4le qualit\u00e9": 88,
-  "Traitement termin\u00e9": 100,
-  "Risque \u00e9lev\u00e9": 20,
+  "Numérisation en cours": 76,
+  "Contrôle qualité": 88,
+  "Traitement terminé": 100,
+  "Risque élevé": 20,
   Inaccessible: 5,
 };
 
@@ -306,10 +306,10 @@ function clampScore(value: number) {
 }
 
 function deriveCaptureScores(capture: CaptureFormState) {
-  const waterRisk = scoreOf(capture.waterRiskLevel, { Faible: 4, "Mod\u00e9r\u00e9": 16, "\u00c9lev\u00e9": 31, Critique: 45 });
-  const securityRisk = scoreOf(capture.securityRiskLevel, { Faible: 3, "Mod\u00e9r\u00e9": 12, "\u00c9lev\u00e9": 24, Critique: 36 });
-  const buildingRisk = scoreOf(capture.buildingCondition, { "Bon \u00e9tat": 0, "\u00c9tat moyen": 8, Fragile: 18, "Tr\u00e8s d\u00e9grad\u00e9": 28 });
-  const storageRisk = scoreOf(capture.storageCondition, { "Adapt\u00e9": 0, Acceptable: 6, "Satur\u00e9": 16, "Inadapt\u00e9": 26 });
+  const waterRisk = scoreOf(capture.waterRiskLevel, { Faible: 4, "Modéré": 16, "Élevé": 31, Critique: 45 });
+  const securityRisk = scoreOf(capture.securityRiskLevel, { Faible: 3, "Modéré": 12, "Élevé": 24, Critique: 36 });
+  const buildingRisk = scoreOf(capture.buildingCondition, { "Bon état": 0, "État moyen": 8, Fragile: 18, "Très dégradé": 28 });
+  const storageRisk = scoreOf(capture.storageCondition, { "Adapté": 0, Acceptable: 6, "Saturé": 16, "Inadapté": 26 });
   const operationalRisk =
     (capture.checklistHumidityObserved ? 10 : 0) +
     (capture.checklistPestObserved ? 8 : 0) +
@@ -325,10 +325,10 @@ function deriveCaptureScores(capture: CaptureFormState) {
   const travelTime = toNumber(capture.travelTimeMinutes);
   const volumePressure = Math.min(18, meters / 20 + boxes / 180 + pages / 50000);
   const logisticsPressure =
-    scoreOf(capture.accessibility, { Accessible: 0, "Acc\u00e8s limit\u00e9": 4, "Acc\u00e8s difficile": 8, "Site isol\u00e9": 12, "Acc\u00e8s restreint": 10 }) +
-    scoreOf(capture.roadCondition, { Bonne: 0, "D\u00e9grad\u00e9e": 4, "Tr\u00e8s d\u00e9grad\u00e9e": 8, "Saisonni\u00e8re": 7, "Piste rurale": 8 }) +
-    scoreOf(capture.lastMileCondition, { Bonne: 0, "D\u00e9grad\u00e9e": 3, "Tr\u00e8s d\u00e9grad\u00e9e": 7, "Saisonni\u00e8re": 7, "Piste rurale": 8 }) +
-    scoreOf(capture.networkQuality, { Bonne: 0, Moyenne: 2, Faible: 5, "Tr\u00e8s faible": 8, "Aucune couverture": 10 }) +
+    scoreOf(capture.accessibility, { Accessible: 0, "Accès limité": 4, "Accès difficile": 8, "Site isolé": 12, "Accès restreint": 10 }) +
+    scoreOf(capture.roadCondition, { Bonne: 0, "Dégradée": 4, "Très dégradée": 8, "Saisonnière": 7, "Piste rurale": 8 }) +
+    scoreOf(capture.lastMileCondition, { Bonne: 0, "Dégradée": 3, "Très dégradée": 7, "Saisonnière": 7, "Piste rurale": 8 }) +
+    scoreOf(capture.networkQuality, { Bonne: 0, Moyenne: 2, Faible: 5, "Très faible": 8, "Aucune couverture": 10 }) +
     Math.min(8, travelTime / 25);
   const sensitivity = scoreOf(capture.confidentiality, { Faible: 0, Interne: 3, Confidentiel: 9, Critique: 14 });
   const priority = clampScore(risk * 0.62 + volumePressure + logisticsPressure + sensitivity);
@@ -840,6 +840,28 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   if (!session) {
     return <LoginScreen onLogin={handleLogin} />;
+  }
+
+  if (session.role === "agent") {
+    return (
+      <main className="agent-shell">
+        <header className="agent-topbar">
+          <div>
+            <p className="eyebrow">MULCV GeoArchives</p>
+            <h2>Registre terrain</h2>
+            <p className="view-description">Saisie guidée des fiches site. Aucun tableau de bord n&apos;est affiché pour le profil agent.</p>
+          </div>
+          <div className="agent-actions">
+            <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
+            <span className={sourceState.badgeClass}>{sourceState.badge}</span>
+            <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
+          </div>
+        </header>
+        <section className="agent-form-frame">
+          <CapturePanel capture={capture} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -1387,15 +1409,15 @@ type BooleanCaptureKey =
   | "checklistImmediateRiskReported";
 
 const captureSteps = [
-  { id: "general", title: "Informations g?n?rales", icon: ClipboardCheck, summary: "R?f?rencement et p?rim?tre du site" },
-  { id: "location", title: "Localisation", icon: MapPinned, summary: "Territoire, adresse et rep?res" },
+  { id: "general", title: "Informations générales", icon: ClipboardCheck, summary: "Référencement et périmètre du site" },
+  { id: "location", title: "Localisation", icon: MapPinned, summary: "Territoire, adresse et repères" },
   { id: "responsible", title: "Responsable", icon: UserRound, summary: "Point focal et contact terrain" },
-  { id: "access", title: "Acc?s", icon: Route, summary: "Route, r?seau et contraintes" },
-  { id: "condition", title: "Conditions du site", icon: Building2, summary: "Risques b?timent, s?ret? et conservation" },
-  { id: "capacity", title: "Capacit? d'archives", icon: Archive, summary: "Volumes, dates extr?mes et cat?gories" },
-  { id: "equipment", title: "?quipements", icon: ShieldCheck, summary: "Pr?-requis op?rationnels et checklist" },
-  { id: "geolocation", title: "G?olocalisation", icon: LocateFixed, summary: "GPS, pr?cision et preuve terrain" },
-  { id: "validation", title: "Validation", icon: CheckCircle2, summary: "Contr?le final avant publication" },
+  { id: "access", title: "Accès", icon: Route, summary: "Route, réseau et contraintes" },
+  { id: "condition", title: "Conditions du site", icon: Building2, summary: "Risques bâtiment, sûreté et conservation" },
+  { id: "capacity", title: "Capacité d'archives", icon: Archive, summary: "Volumes, dates extrêmes et catégories" },
+  { id: "equipment", title: "Équipements", icon: ShieldCheck, summary: "Pré-requis opérationnels et checklist" },
+  { id: "geolocation", title: "Géolocalisation", icon: LocateFixed, summary: "GPS, précision et preuve terrain" },
+  { id: "validation", title: "Validation", icon: CheckCircle2, summary: "Contrôle final avant publication" },
 ] as const;
 
 function CapturePanel({
@@ -1473,9 +1495,9 @@ function CapturePanel({
           gpsAccuracyMeters: position.coords.accuracy ? position.coords.accuracy.toFixed(1) : "",
           gpsCapturedAt: new Date().toISOString(),
         });
-        setGpsMessage("Coordonn?es GPS captur?es.");
+        setGpsMessage("Coordonnées GPS capturées.");
       },
-      () => setGpsMessage("Position GPS non disponible ou autorisation refus?e."),
+      () => setGpsMessage("Position GPS non disponible ou autorisation refusée."),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
     );
   }
@@ -1504,7 +1526,7 @@ function CapturePanel({
             <Field label="Nom du site"><input required value={capture.name} onChange={(event) => update("name", event.target.value)} /></Field>
             <Field label="Organisation"><input required value={capture.organization} onChange={(event) => update("organization", event.target.value)} /></Field>
             <Field label="Type de site"><select value={capture.type} onChange={(event) => update("type", event.target.value)}>{siteTypes.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Confidentialit?"><select value={capture.confidentiality} onChange={(event) => update("confidentiality", event.target.value as DashboardSite["confidentiality"])}>{confidentialityLevels.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Confidentialité"><select value={capture.confidentiality} onChange={(event) => update("confidentiality", event.target.value as DashboardSite["confidentiality"])}>{confidentialityLevels.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Statut"><select value={capture.status} onChange={(event) => update("status", event.target.value as SiteStatusLabel)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></Field>
           </div>
         );
@@ -1512,78 +1534,78 @@ function CapturePanel({
         return (
           <div className="wizard-grid">
             <Field label="District"><select value={capture.district} onChange={(event) => update("district", event.target.value)}>{rgphDistricts.map((item) => <option key={item.district}>{item.district}</option>)}</select></Field>
-            <Field label="R?gion"><select value={capture.region} onChange={(event) => update("region", event.target.value)}>{rgphRegions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="D?partement"><input required value={capture.department} onChange={(event) => update("department", event.target.value)} /></Field>
-            <Field label="Sous-pr?fecture"><input value={capture.subPrefecture} onChange={(event) => update("subPrefecture", event.target.value)} /></Field>
+            <Field label="Région"><select value={capture.region} onChange={(event) => update("region", event.target.value)}>{rgphRegions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Département"><input required value={capture.department} onChange={(event) => update("department", event.target.value)} /></Field>
+            <Field label="Sous-préfecture"><input value={capture.subPrefecture} onChange={(event) => update("subPrefecture", event.target.value)} /></Field>
             <Field label="Commune"><input value={capture.commune} onChange={(event) => update("commune", event.target.value)} /></Field>
-            <Field label="Ville ou localit?"><input required value={capture.city} onChange={(event) => update("city", event.target.value)} /></Field>
+            <Field label="Ville ou localité"><input required value={capture.city} onChange={(event) => update("city", event.target.value)} /></Field>
             <Field label="Adresse ou emplacement" wide><input value={capture.address} onChange={(event) => update("address", event.target.value)} /></Field>
-            <Field label="Rep?res d'acc?s" wide><input value={capture.accessLandmarks} onChange={(event) => update("accessLandmarks", event.target.value)} /></Field>
+            <Field label="Repères d'accès" wide><input value={capture.accessLandmarks} onChange={(event) => update("accessLandmarks", event.target.value)} /></Field>
           </div>
         );
       case "responsible":
         return (
           <div className="wizard-grid">
-            <Field label="Nom du r?pondant"><input required value={capture.lead} onChange={(event) => update("lead", event.target.value)} /></Field>
+            <Field label="Nom du répondant"><input required value={capture.lead} onChange={(event) => update("lead", event.target.value)} /></Field>
             <Field label="Fonction"><input required value={capture.respondentRole} onChange={(event) => update("respondentRole", event.target.value)} /></Field>
-            <Field label="T?l?phone"><input inputMode="tel" value={capture.phone} onChange={(event) => update("phone", event.target.value)} /></Field>
+            <Field label="Téléphone"><input inputMode="tel" value={capture.phone} onChange={(event) => update("phone", event.target.value)} /></Field>
             <Field label="Email"><input inputMode="email" value={capture.respondentEmail} onChange={(event) => update("respondentEmail", event.target.value)} /></Field>
           </div>
         );
       case "access":
         return (
           <div className="wizard-grid">
-            <Field label="Accessibilit?"><select value={capture.accessibility} onChange={(event) => update("accessibility", event.target.value)}>{accessibilityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="?tat de la route"><select value={capture.roadCondition} onChange={(event) => update("roadCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Derniers kilom?tres"><select value={capture.lastMileCondition} onChange={(event) => update("lastMileCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Temps d'acc?s (min)"><input inputMode="numeric" value={capture.travelTimeMinutes} onChange={(event) => update("travelTimeMinutes", event.target.value)} /></Field>
-            <Field label="Qualit? r?seau"><select value={capture.networkQuality} onChange={(event) => update("networkQuality", event.target.value)}>{networkQualityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Contraintes saisonni?res"><input value={capture.seasonalConstraints} onChange={(event) => update("seasonalConstraints", event.target.value)} /></Field>
+            <Field label="Accessibilité"><select value={capture.accessibility} onChange={(event) => update("accessibility", event.target.value)}>{accessibilityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="État de la route"><select value={capture.roadCondition} onChange={(event) => update("roadCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Derniers kilomètres"><select value={capture.lastMileCondition} onChange={(event) => update("lastMileCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Temps d'accès (min)"><input inputMode="numeric" value={capture.travelTimeMinutes} onChange={(event) => update("travelTimeMinutes", event.target.value)} /></Field>
+            <Field label="Qualité réseau"><select value={capture.networkQuality} onChange={(event) => update("networkQuality", event.target.value)}>{networkQualityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Contraintes saisonnières"><input value={capture.seasonalConstraints} onChange={(event) => update("seasonalConstraints", event.target.value)} /></Field>
           </div>
         );
       case "condition":
         return (
           <div className="wizard-grid">
-            <Field label="?tat du b?timent"><select value={capture.buildingCondition} onChange={(event) => update("buildingCondition", event.target.value)}>{buildingConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="État du bâtiment"><select value={capture.buildingCondition} onChange={(event) => update("buildingCondition", event.target.value)}>{buildingConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Espaces d'archives"><select value={capture.storageCondition} onChange={(event) => update("storageCondition", event.target.value)}>{storageConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Risque eau"><select value={capture.waterRiskLevel} onChange={(event) => update("waterRiskLevel", event.target.value)}>{riskLevelOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Risque s?ret?"><select value={capture.securityRiskLevel} onChange={(event) => update("securityRiskLevel", event.target.value)}>{riskLevelOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
+            <Field label="Risque sûreté"><select value={capture.securityRiskLevel} onChange={(event) => update("securityRiskLevel", event.target.value)}>{riskLevelOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Observations terrain" wide><textarea rows={6} value={capture.surveyNotes} onChange={(event) => update("surveyNotes", event.target.value)} /></Field>
           </div>
         );
       case "capacity":
         return (
           <div className="wizard-grid">
-            <Field label="Capacit? estim?e (ml)"><input inputMode="decimal" value={capture.storageCapacityMl} onChange={(event) => update("storageCapacityMl", event.target.value)} /></Field>
-            <Field label="M?tres lin?aires"><input inputMode="decimal" value={capture.meters} onChange={(event) => update("meters", event.target.value)} /></Field>
-            <Field label="Bo?tes"><input inputMode="numeric" value={capture.boxes} onChange={(event) => update("boxes", event.target.value)} /></Field>
+            <Field label="Capacité estimée (ml)"><input inputMode="decimal" value={capture.storageCapacityMl} onChange={(event) => update("storageCapacityMl", event.target.value)} /></Field>
+            <Field label="Mètres linéaires"><input inputMode="decimal" value={capture.meters} onChange={(event) => update("meters", event.target.value)} /></Field>
+            <Field label="Boîtes"><input inputMode="numeric" value={capture.boxes} onChange={(event) => update("boxes", event.target.value)} /></Field>
             <Field label="Dossiers"><input inputMode="numeric" value={capture.files} onChange={(event) => update("files", event.target.value)} /></Field>
             <Field label="Pages"><input inputMode="numeric" value={capture.pages} onChange={(event) => update("pages", event.target.value)} /></Field>
             <Field label="Nombre de salles"><input inputMode="numeric" value={capture.archiveRoomsCount} onChange={(event) => update("archiveRoomsCount", event.target.value)} /></Field>
             <Field label="Nombre d'agents"><input inputMode="numeric" value={capture.totalAgents} onChange={(event) => update("totalAgents", event.target.value)} /></Field>
-            <Field label="Dates extr?mes d?but"><input inputMode="numeric" value={capture.dateRangeStart} onChange={(event) => update("dateRangeStart", event.target.value)} /></Field>
-            <Field label="Dates extr?mes fin"><input inputMode="numeric" value={capture.dateRangeEnd} onChange={(event) => update("dateRangeEnd", event.target.value)} /></Field>
-            <Field label="Cat?gories documentaires" wide><input value={capture.documentCategoriesText} onChange={(event) => update("documentCategoriesText", event.target.value)} /></Field>
+            <Field label="Dates extrêmes début"><input inputMode="numeric" value={capture.dateRangeStart} onChange={(event) => update("dateRangeStart", event.target.value)} /></Field>
+            <Field label="Dates extrêmes fin"><input inputMode="numeric" value={capture.dateRangeEnd} onChange={(event) => update("dateRangeEnd", event.target.value)} /></Field>
+            <Field label="Catégories documentaires" wide><input value={capture.documentCategoriesText} onChange={(event) => update("documentCategoriesText", event.target.value)} /></Field>
           </div>
         );
       case "equipment":
         return (
           <div className="toggle-grid">
-            <ToggleCard field="hasInventory" label="Inventaire disponible" detail="Rep?rage documentaire exploitable" />
-            <ToggleCard field="hasElectricity" label="?lectricit? disponible" detail="Alimentation stable sur site" />
-            <ToggleCard field="hasInternet" label="Internet disponible" detail="Connexion op?rationnelle" />
-            <ToggleCard field="hasAccessControl" label="Contr?le d'acc?s" detail="Acc?s s?curis? aux fonds" />
-            <ToggleCard field="hasFireDetection" label="D?tection incendie" detail="Dispositif de pr?vention pr?sent" />
-            <ToggleCard field="checklistVehicleAccess" label="Acc?s v?hicule confirm?" detail="Arriv?e et ?vacuation possibles" />
-            <ToggleCard field="checklistLoadingArea" label="Zone de chargement" detail="Manipulation s?curis?e" />
+            <ToggleCard field="hasInventory" label="Inventaire disponible" detail="Repérage documentaire exploitable" />
+            <ToggleCard field="hasElectricity" label="Électricité disponible" detail="Alimentation stable sur site" />
+            <ToggleCard field="hasInternet" label="Internet disponible" detail="Connexion opérationnelle" />
+            <ToggleCard field="hasAccessControl" label="Contrôle d'accès" detail="Accès sécurisé aux fonds" />
+            <ToggleCard field="hasFireDetection" label="Détection incendie" detail="Dispositif de prévention présent" />
+            <ToggleCard field="checklistVehicleAccess" label="Accès véhicule confirmé" detail="Arrivée et évacuation possibles" />
+            <ToggleCard field="checklistLoadingArea" label="Zone de chargement" detail="Manipulation sécurisée" />
             <ToggleCard field="checklistSiteSignage" label="Signalisation visible" detail="Site identifiable rapidement" />
-            <ToggleCard field="checklistArchivesSeparated" label="Archives s?par?es" detail="Fonds isol?s des bureaux" />
-            <ToggleCard field="checklistShelvingAvailable" label="Rayonnages disponibles" detail="Stockage non pos? au sol" />
-            <ToggleCard field="checklistHumidityObserved" label="Humidit? observ?e" detail="Point d'alerte conservation" />
-            <ToggleCard field="checklistPestObserved" label="Nuisibles observ?s" detail="Point d'alerte sanitaire" />
-            <ToggleCard field="checklistFireExtinguisher" label="Extincteurs pr?sents" detail="Premi?re r?ponse incendie" />
-            <ToggleCard field="checklistBackupPower" label="?nergie de secours" detail="Continuit? minimale" />
-            <ToggleCard field="checklistImmediateRiskReported" label="Risque imm?diat" detail="Escalade requise" />
+            <ToggleCard field="checklistArchivesSeparated" label="Archives séparées" detail="Fonds isolés des bureaux" />
+            <ToggleCard field="checklistShelvingAvailable" label="Rayonnages disponibles" detail="Stockage non posé au sol" />
+            <ToggleCard field="checklistHumidityObserved" label="Humidité observée" detail="Point d'alerte conservation" />
+            <ToggleCard field="checklistPestObserved" label="Nuisibles observés" detail="Point d'alerte sanitaire" />
+            <ToggleCard field="checklistFireExtinguisher" label="Extincteurs présents" detail="Première réponse incendie" />
+            <ToggleCard field="checklistBackupPower" label="Énergie de secours" detail="Continuité minimale" />
+            <ToggleCard field="checklistImmediateRiskReported" label="Risque immédiat" detail="Escalade requise" />
           </div>
         );
       case "geolocation":
@@ -1591,10 +1613,10 @@ function CapturePanel({
           <div className="wizard-grid">
             <Field label="Latitude"><input inputMode="decimal" value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} /></Field>
             <Field label="Longitude"><input inputMode="decimal" value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} /></Field>
-            <Field label="Pr?cision GPS (m)"><input inputMode="decimal" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
-            <Field label="R?f?rences photo"><input value={capture.photoReferencesText} onChange={(event) => update("photoReferencesText", event.target.value)} /></Field>
+            <Field label="Précision GPS (m)"><input inputMode="decimal" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
+            <Field label="Références photo"><input value={capture.photoReferencesText} onChange={(event) => update("photoReferencesText", event.target.value)} /></Field>
             <div className="gps-card wide">
-              <div><strong>Capture assist?e</strong><span>{gpsMessage ?? "Utilise la g?olocalisation de l'appareil pour r?duire les erreurs de saisie."}</span></div>
+              <div><strong>Capture assistée</strong><span>{gpsMessage ?? "Utilise la géolocalisation de l'appareil pour réduire les erreurs de saisie."}</span></div>
               <button className="secondary-button iconed" onClick={captureGps} type="button"><LocateFixed size={16} />Capturer GPS</button>
             </div>
           </div>
@@ -1603,11 +1625,11 @@ function CapturePanel({
         return (
           <div className="validation-grid">
             <article className="review-card primary"><span>Score risque</span><strong>{derivedScores.risk}/100</strong><small>{riskLabel(derivedScores.risk)}</small></article>
-            <article className="review-card"><span>Priorit?</span><strong>{derivedScores.priority}/100</strong><small>Calcul?e automatiquement</small></article>
+            <article className="review-card"><span>Priorité</span><strong>{derivedScores.priority}/100</strong><small>Calculée automatiquement</small></article>
             <article className="review-card"><span>Avancement</span><strong>{derivedScores.progress}%</strong><small>{capture.status}</small></article>
-            <article className="review-card"><span>Site</span><strong>{capture.code || "Non renseign?"}</strong><small>{capture.name || "Nom ? compl?ter"}</small></article>
-            <article className="review-card wide"><span>Localisation</span><strong>{capture.city || "Ville ? compl?ter"}</strong><small>{capture.department || "D?partement ? compl?ter"} ? {capture.region}</small></article>
-            <article className="review-card wide"><span>Prochaine action</span><strong>{capture.nextStep}</strong><small>{capture.lead ? "Point focal: " + capture.lead : "Point focal ? compl?ter"}</small></article>
+            <article className="review-card"><span>Site</span><strong>{capture.code || "Non renseigné"}</strong><small>{capture.name || "Nom à compléter"}</small></article>
+            <article className="review-card wide"><span>Localisation</span><strong>{capture.city || "Ville à compléter"}</strong><small>{capture.department || "Département à compléter"} - {capture.region}</small></article>
+            <article className="review-card wide"><span>Prochaine action</span><strong>{capture.nextStep}</strong><small>{capture.lead ? "Point focal: " + capture.lead : "Point focal à compléter"}</small></article>
           </div>
         );
     }
@@ -1617,7 +1639,7 @@ function CapturePanel({
     <form className="wizard-panel" onSubmit={onSubmit}>
       <div className="wizard-topline">
         <div>
-          <p className="panel-label">Remont?e terrain</p>
+          <p className="panel-label">Remontée terrain</p>
           <h3>Nouvelle fiche site</h3>
         </div>
         <span className={isOnline ? "network-pill online" : "network-pill offline"}>{isOnline ? <Wifi size={15} /> : <WifiOff size={15} />}{isOnline ? "Connexion disponible" : "Mode faible connexion"}</span>
@@ -1626,7 +1648,7 @@ function CapturePanel({
       {(draftRestored || pendingCount > 0 || !databaseUsable) && (
         <div className="wizard-notice">
           <Database size={16} />
-          <span>{databaseUsable ? "Les brouillons et files d'attente locales sont synchronis?s avec la base nationale d?s que possible." : "La base nationale n'est pas disponible. La saisie peut continuer hors ligne."}</span>
+          <span>{databaseUsable ? "Les brouillons et files d'attente locales sont synchronisés avec la base nationale dès que possible." : "La base nationale n&apos;est pas disponible. La saisie peut continuer hors ligne."}</span>
           {pendingCount > 0 && <button className="secondary-button" onClick={() => void onFlushPending()} type="button">Publier {pendingCount}</button>}
         </div>
       )}
@@ -1669,7 +1691,7 @@ function CapturePanel({
       <div className="wizard-actions">
         <button className="secondary-button iconed" disabled={activeStepIndex === 0 || isSaving} onClick={goBack} type="button"><ChevronLeft size={16} />Retour</button>
         <div>
-          <span className="capture-helper">{pendingCount > 0 ? pendingCount + " fiche(s) en attente." : "La saisie est sauvegard?e localement."}</span>
+          <span className="capture-helper">{pendingCount > 0 ? pendingCount + " fiche(s) en attente." : "La saisie est sauvegardée localement."}</span>
           {isFinalStep ? (
             <button className="primary-button iconed" disabled={isSaving} type="submit">{isSaving ? <Save size={16} /> : <Send size={16} />}{isSaving ? "Publication..." : isOnline && databaseUsable ? "Publier la fiche" : "Enregistrer hors ligne"}</button>
           ) : (
