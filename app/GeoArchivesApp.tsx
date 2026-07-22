@@ -166,6 +166,26 @@ function regionOptionsForDistrict(district: string) {
   return selectedDistrict.regionLabel ? [selectedDistrict.regionLabel] : selectedDistrict.regions;
 }
 
+function getRgphRegion(district: string, region: string) {
+  const selectedDistrict = getRgphDistrict(district);
+  return selectedDistrict?.regionItems?.find((item) => item.nom === region) ?? selectedDistrict?.regionItems?.[0] ?? null;
+}
+
+function getRgphDepartment(district: string, region: string, department: string) {
+  const selectedRegion = getRgphRegion(district, region);
+  return selectedRegion?.departments.find((item) => item.nom === department) ?? selectedRegion?.departments[0] ?? null;
+}
+
+function departmentOptionsForLocation(district: string, region: string) {
+  if (isAbidjanDistrict(district)) return [abidjanDepartment];
+  return getRgphRegion(district, region)?.departments.map((item) => item.nom) ?? [];
+}
+
+function subPrefectureOptionsForLocation(district: string, region: string, department: string) {
+  if (isAbidjanDistrict(district)) return abidjanSubPrefectures.map((item) => item.nom);
+  return getRgphDepartment(district, region, department)?.subPrefectures.map((item) => item.nom) ?? [];
+}
+
 function communesForAbidjanSubPrefecture(subPrefecture: string) {
   return abidjanSubPrefectures.find((item) => item.nom === subPrefecture)?.communes ?? [];
 }
@@ -174,27 +194,40 @@ function abidjanSubPrefectureForCommune(commune: string) {
   return abidjanSubPrefectures.find((item) => item.communes.includes(commune))?.nom ?? abidjanUrbanSubPrefecture;
 }
 
+function communeOptionsForLocation(district: string, region: string, department: string, subPrefecture: string) {
+  if (isAbidjanDistrict(district)) return communesForAbidjanSubPrefecture(subPrefecture);
+  return subPrefecture ? [subPrefecture] : [];
+}
+
+function localitySuggestionsForLocation(district: string, region: string, department: string, subPrefecture: string, commune: string) {
+  const suggestions = isAbidjanDistrict(district)
+    ? [commune, ...abidjanCitySuggestions]
+    : [commune, subPrefecture, department, region].filter(Boolean);
+  return Array.from(new Set(suggestions)).filter(Boolean);
+}
+
+function locationDefaultsForSubPrefecture(district: string, region: string, department: string, subPrefecture: string) {
+  const commune = communeOptionsForLocation(district, region, department, subPrefecture)[0] ?? "";
+  return { region, department, subPrefecture, commune };
+}
+
+function locationDefaultsForDepartment(district: string, region: string, department: string) {
+  const subPrefecture = subPrefectureOptionsForLocation(district, region, department)[0] ?? "";
+  return locationDefaultsForSubPrefecture(district, region, department, subPrefecture);
+}
+
+function locationDefaultsForRegion(district: string, region: string) {
+  if (isAbidjanDistrict(district)) {
+    return locationDefaultsForSubPrefecture(district, abidjanRegionLabel, abidjanDepartment, abidjanUrbanSubPrefecture);
+  }
+
+  const department = departmentOptionsForLocation(district, region)[0] ?? "";
+  return locationDefaultsForDepartment(district, region, department);
+}
+
 function locationDefaultsForDistrict(district: string) {
-  const selectedDistrict = getRgphDistrict(district);
-  if (!selectedDistrict) {
-    return { region: "", department: "", subPrefecture: "", commune: "" };
-  }
-
-  if (selectedDistrict.district === abidjanDistrictName) {
-    return {
-      region: abidjanRegionLabel,
-      department: abidjanDepartment,
-      subPrefecture: abidjanUrbanSubPrefecture,
-      commune: communesForAbidjanSubPrefecture(abidjanUrbanSubPrefecture)[0] ?? "",
-    };
-  }
-
-  return {
-    region: selectedDistrict.regions[0] ?? "",
-    department: "",
-    subPrefecture: "",
-    commune: "",
-  };
+  const region = regionOptionsForDistrict(district)[0] ?? "";
+  return locationDefaultsForRegion(district, region);
 }
 
 function captureSyncMeta(status: CaptureSyncStatus) {
@@ -1555,13 +1588,34 @@ function CapturePanel({
   const selectedDistrict = getRgphDistrict(capture.district);
   const districtValue = selectedDistrict?.district ?? capture.district;
   const isAbidjanCapture = isAbidjanDistrict(capture.district);
-  const selectedSubPrefecture = isAbidjanCapture && abidjanSubPrefectures.some((item) => item.nom === capture.subPrefecture)
-    ? capture.subPrefecture
-    : abidjanUrbanSubPrefecture;
-  const abidjanCommuneOptions = isAbidjanCapture ? communesForAbidjanSubPrefecture(selectedSubPrefecture) : [];
-  const selectedCommune = isAbidjanCapture && abidjanCommuneOptions.includes(capture.commune)
-    ? capture.commune
-    : abidjanCommuneOptions[0] ?? "";
+  const regionValue = isAbidjanCapture ? abidjanRegionLabel : rgphRegions.includes(capture.region) ? capture.region : rgphRegions[0] ?? capture.region;
+  const departmentOptions = departmentOptionsForLocation(districtValue, regionValue);
+  const selectedDepartment = departmentOptions.includes(capture.department) ? capture.department : departmentOptions[0] ?? capture.department;
+  const subPrefectureOptions = subPrefectureOptionsForLocation(districtValue, regionValue, selectedDepartment);
+  const selectedSubPrefecture = subPrefectureOptions.includes(capture.subPrefecture) ? capture.subPrefecture : subPrefectureOptions[0] ?? capture.subPrefecture;
+  const communeOptions = communeOptionsForLocation(districtValue, regionValue, selectedDepartment, selectedSubPrefecture);
+  const selectedCommune = communeOptions.includes(capture.commune) ? capture.commune : communeOptions[0] ?? capture.commune;
+  const localityOptions = localitySuggestionsForLocation(districtValue, regionValue, selectedDepartment, selectedSubPrefecture, selectedCommune);
+
+  useEffect(() => {
+    if (
+      capture.region === regionValue &&
+      capture.department === selectedDepartment &&
+      capture.subPrefecture === selectedSubPrefecture &&
+      capture.commune === selectedCommune
+    ) {
+      return;
+    }
+
+    onChange({
+      ...capture,
+      region: regionValue,
+      department: selectedDepartment,
+      subPrefecture: selectedSubPrefecture,
+      commune: selectedCommune,
+    });
+  }, [capture, onChange, regionValue, selectedCommune, selectedDepartment, selectedSubPrefecture]);
+
   const effectiveSyncStatus: CaptureSyncStatus = isSaving ? "syncing" : captureSyncStatus;
   const currentCaptureStatus = captureSyncMeta(effectiveSyncStatus);
   const pendingCaptureStatus = captureSyncMeta(isSaving ? "syncing" : captureSyncStatus === "failed" ? "failed" : "waiting");
@@ -1588,26 +1642,40 @@ function CapturePanel({
       return;
     }
 
-    if (key === "subPrefecture" && isAbidjanDistrict(capture.district)) {
-      const subPrefecture = String(value);
-      const communes = communesForAbidjanSubPrefecture(subPrefecture);
+    if (key === "region") {
+      const region = String(value);
       onChange({
         ...capture,
-        region: abidjanRegionLabel,
-        department: abidjanDepartment,
-        subPrefecture,
-        commune: communes.includes(capture.commune) ? capture.commune : communes[0] ?? "",
+        ...locationDefaultsForRegion(capture.district, region),
       });
       return;
     }
 
-    if (key === "commune" && isAbidjanDistrict(capture.district)) {
+    if (key === "department") {
+      const department = String(value);
+      onChange({
+        ...capture,
+        ...locationDefaultsForDepartment(capture.district, regionValue, department),
+      });
+      return;
+    }
+
+    if (key === "subPrefecture") {
+      const subPrefecture = String(value);
+      onChange({
+        ...capture,
+        ...locationDefaultsForSubPrefecture(capture.district, regionValue, selectedDepartment, subPrefecture),
+      });
+      return;
+    }
+
+    if (key === "commune") {
       const commune = String(value);
       onChange({
         ...capture,
-        region: abidjanRegionLabel,
-        department: abidjanDepartment,
-        subPrefecture: abidjanSubPrefectureForCommune(commune),
+        region: regionValue,
+        department: selectedDepartment,
+        subPrefecture: isAbidjanDistrict(capture.district) ? abidjanSubPrefectureForCommune(commune) : selectedSubPrefecture,
         commune,
       });
       return;
@@ -1688,32 +1756,28 @@ function CapturePanel({
               </select>
             </Field>
             <Field label="Région">
-              <select disabled={isAbidjanCapture} value={isAbidjanCapture ? abidjanRegionLabel : capture.region} onChange={(event) => update("region", event.target.value)}>
+              <select disabled={isAbidjanCapture} value={regionValue} onChange={(event) => update("region", event.target.value)}>
                 {rgphRegions.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </Field>
-            <Field label="Département"><input disabled={isAbidjanCapture} required value={isAbidjanCapture ? abidjanDepartment : capture.department} onChange={(event) => update("department", event.target.value)} /></Field>
+            <Field label="Département">
+              <select disabled={isAbidjanCapture} required value={selectedDepartment} onChange={(event) => update("department", event.target.value)}>
+                {departmentOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </Field>
             <Field label="Sous-préfecture">
-              {isAbidjanCapture ? (
-                <select value={selectedSubPrefecture} onChange={(event) => update("subPrefecture", event.target.value)}>
-                  {abidjanSubPrefectures.map((item) => <option key={item.nom} value={item.nom}>{item.nom}</option>)}
-                </select>
-              ) : (
-                <input value={capture.subPrefecture} onChange={(event) => update("subPrefecture", event.target.value)} />
-              )}
+              <select required value={selectedSubPrefecture} onChange={(event) => update("subPrefecture", event.target.value)}>
+                {subPrefectureOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
             </Field>
             <Field label="Commune">
-              {isAbidjanCapture ? (
-                <select value={selectedCommune} onChange={(event) => update("commune", event.target.value)}>
-                  {abidjanCommuneOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              ) : (
-                <input value={capture.commune} onChange={(event) => update("commune", event.target.value)} />
-              )}
+              <select required value={selectedCommune} onChange={(event) => update("commune", event.target.value)}>
+                {communeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
             </Field>
             <Field label="Ville ou localité">
-              <input list={isAbidjanCapture ? "abidjan-locality-suggestions" : undefined} required value={capture.city} onChange={(event) => update("city", event.target.value)} />
-              {isAbidjanCapture && <datalist id="abidjan-locality-suggestions">{abidjanCitySuggestions.map((item) => <option key={item} value={item} />)}</datalist>}
+              <input list="territory-locality-suggestions" required value={capture.city} onChange={(event) => update("city", event.target.value)} />
+              <datalist id="territory-locality-suggestions">{localityOptions.map((item) => <option key={item} value={item} />)}</datalist>
             </Field>
             <Field label="Adresse ou emplacement" wide><input value={capture.address} onChange={(event) => update("address", event.target.value)} /></Field>
             <Field label="Repères d'accès" wide><input value={capture.accessLandmarks} onChange={(event) => update("accessLandmarks", event.target.value)} /></Field>
