@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import { Archive, Building2, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, ClipboardCheck, Database, LocateFixed, MapPinned, Route, Save, Send, ShieldCheck, UserRound, Wifi, WifiOff } from "lucide-react";
@@ -14,7 +14,7 @@ import type {
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import type { AuthRole, AuthSession, LoginResponse } from "../lib/geoarchives-auth-types";
 import { geoArchivesApiUrl } from "../lib/api-url";
-import { rgphDistricts } from "../lib/rgph-territories";
+import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, rgphDistricts } from "../lib/rgph-territories";
 
 type Assessment = {
   physical: number;
@@ -130,6 +130,71 @@ const confidentialityLevels: DashboardSite["confidentiality"][] = [
   "Critique",
 ];
 
+
+const abidjanCitySuggestions = [
+  "Abobo Baoulé",
+  "Angré",
+  "Attinguié",
+  "Akoupé-Zeudji",
+  "Anyama-Adjamé",
+  "Bingerville",
+  "Brofodoumé",
+  "Ebimpé",
+  "Songon-Agban",
+  "Songon-Kassemblé",
+  "Vridi",
+  "Zone 4",
+];
+
+function getRgphDistrict(district: string) {
+  if (district === "Abidjan") {
+    return rgphDistricts.find((item) => item.district === abidjanDistrictName) ?? rgphDistricts[0];
+  }
+
+  return rgphDistricts.find((item) => item.district === district) ?? rgphDistricts[0];
+}
+
+function isAbidjanDistrict(district: string) {
+  return getRgphDistrict(district)?.district === abidjanDistrictName;
+}
+
+function regionOptionsForDistrict(district: string) {
+  const selectedDistrict = getRgphDistrict(district);
+  if (!selectedDistrict) return [];
+  return selectedDistrict.regionLabel ? [selectedDistrict.regionLabel] : selectedDistrict.regions;
+}
+
+function communesForAbidjanSubPrefecture(subPrefecture: string) {
+  return abidjanSubPrefectures.find((item) => item.nom === subPrefecture)?.communes ?? [];
+}
+
+function abidjanSubPrefectureForCommune(commune: string) {
+  return abidjanSubPrefectures.find((item) => item.communes.includes(commune))?.nom ?? abidjanUrbanSubPrefecture;
+}
+
+function locationDefaultsForDistrict(district: string) {
+  const selectedDistrict = getRgphDistrict(district);
+  if (!selectedDistrict) {
+    return { region: "", department: "", subPrefecture: "", commune: "" };
+  }
+
+  if (selectedDistrict.district === abidjanDistrictName) {
+    return {
+      region: abidjanRegionLabel,
+      department: abidjanDepartment,
+      subPrefecture: abidjanUrbanSubPrefecture,
+      commune: communesForAbidjanSubPrefecture(abidjanUrbanSubPrefecture)[0] ?? "",
+    };
+  }
+
+  return {
+    region: selectedDistrict.regions[0] ?? "",
+    department: "",
+    subPrefecture: "",
+    commune: "",
+  };
+}
+
 type NavigationItem = {
   view: string;
   label: string;
@@ -227,11 +292,11 @@ const defaultCapture: CaptureFormState = {
   code: "",
   name: "",
   organization: "",
-  region: rgphDistricts[0]?.regions[0] ?? "",
-  district: rgphDistricts[0]?.district ?? "",
-  department: "",
-  subPrefecture: "",
-  commune: "",
+  region: abidjanRegionLabel,
+  district: abidjanDistrictName,
+  department: abidjanDepartment,
+  subPrefecture: abidjanUrbanSubPrefecture,
+  commune: abidjanSubPrefectures[0]?.communes[0] ?? "",
   city: "",
   address: "",
   accessLandmarks: "",
@@ -481,8 +546,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           badgeClass: "sync-pill warning",
         };
     const rgphRegionsForCapture = useMemo(() => {
-      const selectedDistrict = rgphDistricts.find((item) => item.district === capture.district);
-      return selectedDistrict?.regions ?? [];
+      return regionOptionsForDistrict(capture.district);
     }, [capture.district]);
   const regions = useMemo(() => Array.from(new Set(sites.map((site) => site.region))).sort(), [sites]);
     const missionsBySiteCode = useMemo(() => {
@@ -848,8 +912,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         <header className="agent-topbar">
           <div>
             <p className="eyebrow">MULCV GeoArchives</p>
-            <h2>Registre terrain</h2>
-            <p className="view-description">Saisie guidée des fiches site. Aucun tableau de bord n&apos;est affiché pour le profil agent.</p>
+            <h2>Enregistrement des sites</h2>
+            <p className="view-description">Renseignez les informations de chaque site étape par étape.</p>
           </div>
           <div className="agent-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
@@ -1452,14 +1516,48 @@ function CapturePanel({
   const derivedScores = deriveCaptureScores(capture);
   const progress = Math.round(((activeStepIndex + 1) / captureSteps.length) * 100);
   const isFinalStep = activeStepIndex === captureSteps.length - 1;
-
+  const selectedDistrict = getRgphDistrict(capture.district);
+  const districtValue = selectedDistrict?.district ?? capture.district;
+  const isAbidjanCapture = isAbidjanDistrict(capture.district);
+  const selectedSubPrefecture = isAbidjanCapture && abidjanSubPrefectures.some((item) => item.nom === capture.subPrefecture)
+    ? capture.subPrefecture
+    : abidjanUrbanSubPrefecture;
+  const abidjanCommuneOptions = isAbidjanCapture ? communesForAbidjanSubPrefecture(selectedSubPrefecture) : [];
+  const selectedCommune = isAbidjanCapture && abidjanCommuneOptions.includes(capture.commune)
+    ? capture.commune
+    : abidjanCommuneOptions[0] ?? "";
   function update<K extends keyof CaptureFormState>(key: K, value: CaptureFormState[K]) {
     if (key === "district") {
-      const nextDistrict = rgphDistricts.find((item) => item.district === value);
+      const district = String(value);
       onChange({
         ...capture,
-        district: String(value),
-        region: nextDistrict?.regions[0] ?? capture.region,
+        district,
+        ...locationDefaultsForDistrict(district),
+      });
+      return;
+    }
+
+    if (key === "subPrefecture" && isAbidjanDistrict(capture.district)) {
+      const subPrefecture = String(value);
+      const communes = communesForAbidjanSubPrefecture(subPrefecture);
+      onChange({
+        ...capture,
+        region: abidjanRegionLabel,
+        department: abidjanDepartment,
+        subPrefecture,
+        commune: communes.includes(capture.commune) ? capture.commune : communes[0] ?? "",
+      });
+      return;
+    }
+
+    if (key === "commune" && isAbidjanDistrict(capture.district)) {
+      const commune = String(value);
+      onChange({
+        ...capture,
+        region: abidjanRegionLabel,
+        department: abidjanDepartment,
+        subPrefecture: abidjanSubPrefectureForCommune(commune),
+        commune,
       });
       return;
     }
@@ -1533,12 +1631,39 @@ function CapturePanel({
       case "location":
         return (
           <div className="wizard-grid">
-            <Field label="District"><select value={capture.district} onChange={(event) => update("district", event.target.value)}>{rgphDistricts.map((item) => <option key={item.district}>{item.district}</option>)}</select></Field>
-            <Field label="Région"><select value={capture.region} onChange={(event) => update("region", event.target.value)}>{rgphRegions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Département"><input required value={capture.department} onChange={(event) => update("department", event.target.value)} /></Field>
-            <Field label="Sous-préfecture"><input value={capture.subPrefecture} onChange={(event) => update("subPrefecture", event.target.value)} /></Field>
-            <Field label="Commune"><input value={capture.commune} onChange={(event) => update("commune", event.target.value)} /></Field>
-            <Field label="Ville ou localité"><input required value={capture.city} onChange={(event) => update("city", event.target.value)} /></Field>
+            <Field label="District">
+              <select value={districtValue} onChange={(event) => update("district", event.target.value)}>
+                {rgphDistricts.map((item) => <option key={item.district} value={item.district}>{item.district}</option>)}
+              </select>
+            </Field>
+            <Field label="Région">
+              <select disabled={isAbidjanCapture} value={isAbidjanCapture ? abidjanRegionLabel : capture.region} onChange={(event) => update("region", event.target.value)}>
+                {rgphRegions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </Field>
+            <Field label="Département"><input disabled={isAbidjanCapture} required value={isAbidjanCapture ? abidjanDepartment : capture.department} onChange={(event) => update("department", event.target.value)} /></Field>
+            <Field label="Sous-préfecture">
+              {isAbidjanCapture ? (
+                <select value={selectedSubPrefecture} onChange={(event) => update("subPrefecture", event.target.value)}>
+                  {abidjanSubPrefectures.map((item) => <option key={item.nom} value={item.nom}>{item.nom}</option>)}
+                </select>
+              ) : (
+                <input value={capture.subPrefecture} onChange={(event) => update("subPrefecture", event.target.value)} />
+              )}
+            </Field>
+            <Field label="Commune">
+              {isAbidjanCapture ? (
+                <select value={selectedCommune} onChange={(event) => update("commune", event.target.value)}>
+                  {abidjanCommuneOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              ) : (
+                <input value={capture.commune} onChange={(event) => update("commune", event.target.value)} />
+              )}
+            </Field>
+            <Field label="Ville ou localité">
+              <input list={isAbidjanCapture ? "abidjan-locality-suggestions" : undefined} required value={capture.city} onChange={(event) => update("city", event.target.value)} />
+              {isAbidjanCapture && <datalist id="abidjan-locality-suggestions">{abidjanCitySuggestions.map((item) => <option key={item} value={item} />)}</datalist>}
+            </Field>
             <Field label="Adresse ou emplacement" wide><input value={capture.address} onChange={(event) => update("address", event.target.value)} /></Field>
             <Field label="Repères d'accès" wide><input value={capture.accessLandmarks} onChange={(event) => update("accessLandmarks", event.target.value)} /></Field>
           </div>
