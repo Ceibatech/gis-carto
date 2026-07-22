@@ -1637,7 +1637,7 @@ function CapturePanel({
       </div>
 
       <div className="wizard-shell">
-        <aside className="wizard-rail" aria-label="?tapes du formulaire">
+        <aside className="wizard-rail" aria-label="Etapes du formulaire">
           {captureSteps.map((step, index) => {
             const StepIcon = step.icon;
             const isDone = index < activeStepIndex;
@@ -1655,7 +1655,7 @@ function CapturePanel({
           <div className="wizard-section-head">
             <div className="wizard-section-icon"><CurrentStepIcon size={20} /></div>
             <div>
-              <p className="panel-label">?tape {activeStepIndex + 1} sur {captureSteps.length}</p>
+              <p className="panel-label">Etape {activeStepIndex + 1} sur {captureSteps.length}</p>
               <h3>{currentStep.title}</h3>
               <p>{currentStep.summary}</p>
             </div>
