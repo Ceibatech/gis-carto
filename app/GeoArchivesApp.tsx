@@ -16,7 +16,7 @@ import type {
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import type { AuthRole, AuthSession, LoginResponse } from "../lib/geoarchives-auth-types";
 import { geoArchivesApiUrl } from "../lib/api-url";
-import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, rgphDistricts } from "../lib/rgph-territories";
+import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
 
 type Assessment = {
   physical: number;
@@ -553,7 +553,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
     return window.matchMedia("(max-width: 1024px)").matches;
   });
-  const [region, setRegion] = useState("Toutes");
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [regionSearch, setRegionSearch] = useState("");
   const [status, setStatus] = useState("Tous");
   const [risk, setRisk] = useState("Tous");
   const [territoryLevel, setTerritoryLevel] = useState("Tous");
@@ -603,6 +604,25 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       return regionOptionsForDistrict(capture.district);
     }, [capture.district]);
   const regions = useMemo(() => Array.from(new Set(sites.map((site) => site.region))).sort(), [sites]);
+  const regionFilterOptions = useMemo(() => allRgphRegions, []);
+  const filteredRegionOptions = useMemo(() => {
+    const term = regionSearch.trim().toLowerCase();
+    return regionFilterOptions.filter((item) => !term || item.toLowerCase().includes(term));
+  }, [regionFilterOptions, regionSearch]);
+  const selectedRegionSummary = selectedRegions.length
+    ? `${selectedRegions.slice(0, 2).join(" \u00b7 ")}${selectedRegions.length > 2 ? ` +${selectedRegions.length - 2}` : ""}`
+    : `${regionFilterOptions.length} r\u00e9gions ANStat disponibles`;
+  const toggleRegionFilter = useCallback((regionName: string) => {
+    setSelectedRegions((current) =>
+      current.includes(regionName)
+        ? current.filter((item) => item !== regionName)
+        : [...current, regionName].sort((left, right) => left.localeCompare(right, "fr")),
+    );
+  }, []);
+  const clearRegionFilters = useCallback(() => {
+    setSelectedRegions([]);
+    setRegionSearch("");
+  }, []);
     const missionsBySiteCode = useMemo(() => {
       const ranking = { active: 3, upcoming: 2, completed: 1 } as const;
       const map = new Map<string, ReturnType<typeof missionStatusMeta>>();
@@ -626,7 +646,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const filteredSites = useMemo(() => {
     return sites.filter((site) => {
-      const matchesRegion = region === "Toutes" || site.region === region;
+      const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(site.region);
       const matchesStatus = status === "Tous" || site.status === status;
       const matchesRisk =
         risk === "Tous" ||
@@ -641,7 +661,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       const haystack = `${site.code} ${site.name} ${site.organization} ${site.city} ${site.region}`.toLowerCase();
       return matchesRegion && matchesStatus && matchesRisk && matchesTerritory && matchesMissionPhase && haystack.includes(query.toLowerCase());
     });
-  }, [missionPhase, missionsBySiteCode, query, region, risk, sites, status, territoryLevel]);
+  }, [missionPhase, missionsBySiteCode, query, risk, selectedRegions, sites, status, territoryLevel]);
 
   const selectedSite = sites.find((site) => site.code === selectedCode) ?? filteredSites[0] ?? sites[0] ?? null;
 
@@ -1087,7 +1107,28 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         </section>
 
         <section className="filters" aria-label="Filtres de recherche">
-          <label>Région<select value={region} onChange={(event) => setRegion(event.target.value)}><option>Toutes</option>{regions.map((item) => <option key={item}>{item}</option>)}</select></label>
+          <div className="region-filter">
+            <div className="filter-label-row">
+              <span>Région</span>
+              {selectedRegions.length > 0 && <button onClick={clearRegionFilters} type="button">Réinitialiser</button>}
+            </div>
+            <div className="region-filter-box">
+              <div className="region-filter-summary">
+                <strong>{selectedRegions.length ? `${selectedRegions.length} sélectionnée(s)` : "Toutes les régions"}</strong>
+                <small>{selectedRegionSummary}</small>
+              </div>
+              <input aria-label="Rechercher une région ANStat" onChange={(event) => setRegionSearch(event.target.value)} placeholder="Rechercher une région..." type="search" value={regionSearch} />
+              <div className="region-checklist" role="group" aria-label="Sélection multiple des régions ANStat">
+                {filteredRegionOptions.map((item) => (
+                  <label className={selectedRegions.includes(item) ? "region-check active" : "region-check"} key={item}>
+                    <input checked={selectedRegions.includes(item)} onChange={() => toggleRegionFilter(item)} type="checkbox" />
+                    <span>{item}</span>
+                  </label>
+                ))}
+                {!filteredRegionOptions.length && <p className="empty-text">Aucune région trouvée.</p>}
+              </div>
+            </div>
+          </div>
           <label>Statut<select value={status} onChange={(event) => setStatus(event.target.value)}><option>Tous</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Risque<select value={risk} onChange={(event) => setRisk(event.target.value)}><option>Tous</option><option>Critique</option><option>Élevé</option><option>Modéré</option><option>Maîtrisé</option></select></label>
           <label>Niveau<select value={territoryLevel} onChange={(event) => setTerritoryLevel(event.target.value)}><option>Tous</option><option>National</option><option>Régional</option><option>Départemental</option><option>Terrain</option></select></label>
