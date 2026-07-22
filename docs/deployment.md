@@ -57,7 +57,7 @@ Variables Contabo à configurer:
 
 ```text
 NODE_ENV=production
-PORT=4000
+PORT=4100
 DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives
 GEOARCHIVES_ALLOWED_ORIGINS=https://mulcv-geoarchives.vercel.app,https://ton-domaine-front.ci
 GEOARCHIVES_AUTH_SECRET=<meme-secret-que-vercel-si-tu-gardes-le-login-sur-les-deux>

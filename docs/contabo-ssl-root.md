@@ -71,7 +71,7 @@ Contenu a adapter:
 
 ```env
 NODE_ENV=production
-PORT=4000
+PORT=4100
 DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives
 GEOARCHIVES_ALLOWED_ORIGINS=https://ton-front-vercel.vercel.app,https://www.ton-domaine.ci
 
@@ -119,7 +119,7 @@ journalctl -u geoarchives-api -f
 Verifier localement sur le serveur:
 
 ```bash
-curl http://127.0.0.1:4000/api/geoarchives
+curl http://127.0.0.1:4100/api/geoarchives
 ```
 
 ## 7. Nginx HTTP avant SSL

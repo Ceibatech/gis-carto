@@ -12,7 +12,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "build:vercel": "next build",
-    "start:contabo": "next start -H 0.0.0.0 -p 4000",
+    "start:contabo": "node scripts/start-contabo.mjs",
     "build:contabo": "next build"
   },
   "dependencies": {
