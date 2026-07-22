@@ -27,6 +27,8 @@ type Assessment = {
 
 type AssessmentKey = keyof Assessment;
 
+type CaptureSyncStatus = "offlineSaved" | "waiting" | "syncing" | "sent" | "failed";
+
 type CaptureFormState = Omit<
   CaptureSiteInput,
   | "meters"
@@ -193,6 +195,22 @@ function locationDefaultsForDistrict(district: string) {
     subPrefecture: "",
     commune: "",
   };
+}
+
+function captureSyncMeta(status: CaptureSyncStatus) {
+  switch (status) {
+    case "waiting":
+      return { label: "En attente d’envoi", tone: "waiting" };
+    case "syncing":
+      return { label: "Synchronisation en cours", tone: "syncing" };
+    case "sent":
+      return { label: "Envoyée", tone: "sent" };
+    case "failed":
+      return { label: "Échec de l’envoi — réessayer", tone: "failed" };
+    case "offlineSaved":
+    default:
+      return { label: "Enregistrée hors ligne", tone: "offline" };
+  }
 }
 
 type NavigationItem = {
@@ -509,6 +527,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const [selectedCode, setSelectedCode] = useState(initialData.sites[0]?.code ?? "");
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [captureSyncStatus, setCaptureSyncStatus] = useState<CaptureSyncStatus>("offlineSaved");
   const [capture, setCapture] = useState<CaptureFormState>(() => readStoredCaptureDraft() ?? defaultCapture);
   const [pendingCaptures, setPendingCaptures] = useState<CaptureSiteInput[]>(() => readStoredCaptureQueue());
   const [isOnline, setIsOnline] = useState(() => (typeof window === "undefined" ? true : window.navigator.onLine));
@@ -778,6 +797,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     event.preventDefault();
     setIsSaving(true);
     setFormMessage(null);
+    setCaptureSyncStatus("syncing");
 
     const derivedScores = deriveCaptureScores(capture);
     const payload: CaptureSiteInput = {
@@ -807,7 +827,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       if (!isOnline || !databaseUsable) {
         queueCapture(payload);
         setCapture(defaultCapture);
-        setFormMessage("Les saisies sont conservées sur l'appareil en cas de coupure. La publication reprendra dès que la connexion sera disponible.");
+        setCaptureSyncStatus(!isOnline ? "offlineSaved" : "waiting");
+        setFormMessage("Fiche enregistrée sur cet appareil. Elle sera envoyée automatiquement dès le retour de la connexion.");
         return;
       }
 
@@ -819,14 +840,22 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         window.localStorage.removeItem(captureDraftStorageKey);
       }
       setDraftRestored(false);
-      setFormMessage("Fiche enregistrée et vue nationale mise à jour.");
+      setCaptureSyncStatus("sent");
+      setFormMessage("Fiche envoyée. Vue nationale mise à jour.");
     } catch (error) {
-      if (!isOnline || error instanceof TypeError) {
+      if (!isOnline) {
         queueCapture(payload);
         setCapture(defaultCapture);
-        setFormMessage("Connexion instable: les saisies restent enregistrées sur l'appareil en attente de publication.");
+        setCaptureSyncStatus("offlineSaved");
+        setFormMessage("Fiche enregistrée sur cet appareil. Elle sera envoyée automatiquement dès le retour de la connexion.");
+      } else if (error instanceof TypeError) {
+        queueCapture(payload);
+        setCapture(defaultCapture);
+        setCaptureSyncStatus("failed");
+        setFormMessage("Échec de l’envoi — réessayer.");
       } else {
-        setFormMessage(error instanceof Error ? error.message : "Enregistrement impossible");
+        setCaptureSyncStatus("failed");
+        setFormMessage(error instanceof Error ? error.message : "Échec de l’envoi — réessayer.");
       }
     } finally {
       setIsSaving(false);
@@ -860,6 +889,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     if (!pendingCaptures.length || !isOnline || isSaving || !databaseUsable) return;
 
     setIsSaving(true);
+    setCaptureSyncStatus("syncing");
     const remaining: CaptureSiteInput[] = [];
     let lastDashboard: GeoArchivesDashboard | null = null;
 
@@ -874,11 +904,15 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setPendingCaptures(remaining);
     if (lastDashboard) {
       setData(lastDashboard);
+      setCaptureSyncStatus(remaining.length ? "failed" : "sent");
       setFormMessage(
         remaining.length
-          ? `${pendingCaptures.length - remaining.length} fiche(s) publiées. ${remaining.length} restent en attente.`
-          : "Toutes les fiches en attente ont été publiées.",
+          ? `${pendingCaptures.length - remaining.length} fiche(s) envoyée(s). ${remaining.length} restent en attente d’envoi.`
+          : "Toutes les fiches en attente ont été envoyées.",
       );
+    } else if (remaining.length) {
+      setCaptureSyncStatus("failed");
+      setFormMessage("Échec de l’envoi — réessayer.");
     }
     setIsSaving(false);
   }, [databaseUsable, isOnline, isSaving, pendingCaptures, publishCapture]);
@@ -912,8 +946,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         <header className="agent-topbar">
           <div>
             <p className="eyebrow">MULCV GeoArchives</p>
-            <h2>Enregistrement des sites</h2>
-            <p className="view-description">Renseignez les informations de chaque site étape par étape.</p>
+            <h2>Registre terrain</h2>
+            <p className="view-description">Renseignez les fiches même sans connexion. Elles sont enregistrées sur l’appareil et envoyées automatiquement dès que le réseau est disponible.</p>
           </div>
           <div className="agent-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
@@ -922,7 +956,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </div>
         </header>
         <section className="agent-form-frame">
-          <CapturePanel capture={capture} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+          <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
         </section>
       </main>
     );
@@ -1093,7 +1127,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
               <div className="section-head"><div><p className="panel-label">Registre national unique</p><h3>Fiches structurées des sites</h3></div></div>
               <div className="table-wrap"><table><thead><tr><th>Code</th><th>Site</th><th>Localisation</th><th>Niveau</th><th>Risque</th><th>Priorité</th><th>Avancement</th></tr></thead><tbody>{filteredSites.map((site) => { const territory = siteTerritoryMeta(site); return <tr key={site.code} onClick={() => setSelectedCode(site.code)}><td>{site.code}</td><td><strong>{site.name}</strong><span>{site.organization}</span></td><td>{site.city}, {site.region}</td><td><span className={`territory-chip ${territory.tone}`}>{territory.label}</span><small className="type-caption">{site.type}</small></td><td><RiskBadge value={site.risk} /></td><td>{site.priority}/100</td><td><div className="mini-progress"><div style={{ width: `${site.progress}%` }} /></div></td></tr>; })}</tbody></table>{!filteredSites.length && <p className="empty-text">Aucune fiche ne correspond aux critères retenus.</p>}</div>
             </div>
-            <CapturePanel capture={capture} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+            <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
           </section>
         )}
 
@@ -1486,6 +1520,7 @@ const captureSteps = [
 
 function CapturePanel({
   capture,
+  captureSyncStatus,
   databaseUsable,
   draftRestored,
   formMessage,
@@ -1498,6 +1533,7 @@ function CapturePanel({
   rgphRegions,
 }: {
   capture: CaptureFormState;
+  captureSyncStatus: CaptureSyncStatus;
   databaseUsable: boolean;
   draftRestored: boolean;
   formMessage: string | null;
@@ -1526,6 +1562,21 @@ function CapturePanel({
   const selectedCommune = isAbidjanCapture && abidjanCommuneOptions.includes(capture.commune)
     ? capture.commune
     : abidjanCommuneOptions[0] ?? "";
+  const effectiveSyncStatus: CaptureSyncStatus = isSaving ? "syncing" : captureSyncStatus;
+  const currentCaptureStatus = captureSyncMeta(effectiveSyncStatus);
+  const pendingCaptureStatus = captureSyncMeta(isSaving ? "syncing" : captureSyncStatus === "failed" ? "failed" : "waiting");
+  const noticeMessage = !isOnline
+    ? "Fiche enregistrée sur cet appareil. Elle sera envoyée automatiquement dès le retour de la connexion."
+    : captureSyncStatus === "failed"
+      ? "Échec de l’envoi — réessayer."
+      : pendingCount > 0
+        ? "Des fiches sont en attente d’envoi. Elles seront envoyées automatiquement dès que le réseau est disponible."
+        : !databaseUsable
+          ? "Service national indisponible. La saisie reste enregistrée sur cet appareil."
+          : draftRestored
+            ? "Une fiche enregistrée sur cet appareil a été restaurée."
+            : null;
+  const canRetryPendingCaptures = pendingCount > 0 && isOnline && databaseUsable && !isSaving;
   function update<K extends keyof CaptureFormState>(key: K, value: CaptureFormState[K]) {
     if (key === "district") {
       const district = String(value);
@@ -1770,13 +1821,26 @@ function CapturePanel({
         <span className={isOnline ? "network-pill online" : "network-pill offline"}>{isOnline ? <Wifi size={15} /> : <WifiOff size={15} />}{isOnline ? "Connexion disponible" : "Mode faible connexion"}</span>
       </div>
 
-      {(draftRestored || pendingCount > 0 || !databaseUsable) && (
+      {noticeMessage && (
         <div className="wizard-notice">
           <Database size={16} />
-          <span>{databaseUsable ? "Les brouillons et files d'attente locales sont synchronisés avec la base nationale dès que possible." : "La base nationale n&apos;est pas disponible. La saisie peut continuer hors ligne."}</span>
-          {pendingCount > 0 && <button className="secondary-button" onClick={() => void onFlushPending()} type="button">Publier {pendingCount}</button>}
+          <span>{noticeMessage}</span>
+          {canRetryPendingCaptures && <button className="secondary-button" onClick={() => void onFlushPending()} type="button">Réessayer l’envoi</button>}
         </div>
       )}
+
+      <div className="capture-sync-status" aria-label="Statut des fiches">
+        <div className="capture-sync-item">
+          <span>Fiche en cours</span>
+          <strong className={`capture-status-badge ${currentCaptureStatus.tone}`}>{currentCaptureStatus.label}</strong>
+        </div>
+        {pendingCount > 0 && (
+          <div className="capture-sync-item">
+            <span>{pendingCount} fiche(s) locale(s)</span>
+            <strong className={`capture-status-badge ${pendingCaptureStatus.tone}`}>{pendingCaptureStatus.label}</strong>
+          </div>
+        )}
+      </div>
 
       <div className="wizard-progress" aria-label="Progression de la saisie">
         <div><span style={{ width: progress + "%" }} /></div>
@@ -1816,9 +1880,9 @@ function CapturePanel({
       <div className="wizard-actions">
         <button className="secondary-button iconed" disabled={activeStepIndex === 0 || isSaving} onClick={goBack} type="button"><ChevronLeft size={16} />Retour</button>
         <div>
-          <span className="capture-helper">{pendingCount > 0 ? pendingCount + " fiche(s) en attente." : "La saisie est sauvegardée localement."}</span>
+          <span className="capture-helper">{pendingCount > 0 ? pendingCount + " fiche(s) en attente d’envoi." : "Chaque saisie est conservée sur cet appareil jusqu’à son envoi."}</span>
           {isFinalStep ? (
-            <button className="primary-button iconed" disabled={isSaving} type="submit">{isSaving ? <Save size={16} /> : <Send size={16} />}{isSaving ? "Publication..." : isOnline && databaseUsable ? "Publier la fiche" : "Enregistrer hors ligne"}</button>
+            <button className="primary-button iconed" disabled={isSaving} type="submit">{isSaving ? <Save size={16} /> : <Send size={16} />}{isSaving ? "Synchronisation en cours" : "Enregistrer et envoyer"}</button>
           ) : (
             <button className="primary-button iconed" disabled={isSaving} onClick={goNext} type="button">Continuer<ChevronRight size={16} /></button>
           )}
