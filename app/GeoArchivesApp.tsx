@@ -5,8 +5,10 @@ import { Archive, Building2, Check, CheckCircle2, ChevronLeft, ChevronRight, Cir
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  AuditEntry,
   CaptureSiteInput,
   DashboardSite,
+  DocumentStat,
   GeoArchivesDashboard,
   MissionPlanItem,
   SiteStatusLabel,
@@ -1095,7 +1097,9 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         {activeView === "Vue executive" && (
           <ExecutiveView
+            auditEntries={data.auditEntries}
             databaseUsable={databaseUsable}
+            documents={data.documents}
             missions={missions}
             onSelectSite={setSelectedCode}
             regions={regions}
@@ -1193,292 +1197,284 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   );
 }
 
-function ExecutiveView({ databaseUsable, missions, onSelectSite, regions, selectedSite, sites, totals }: { databaseUsable: boolean; missions: MissionPlanItem[]; onSelectSite: (code: string) => void; regions: string[]; selectedSite: DashboardSite | null; sites: DashboardSite[]; totals: { sites: number; meters: number; pages: number; progress: number; evaluated: number; critical: number } }) {
-  const gpsCaptured = sites.filter((site) => site.latitude !== null && site.longitude !== null).length;
-  const gpsCoverage = sites.length ? Math.round((gpsCaptured / sites.length) * 100) : 0;
-  const highRisk = sites.filter((site) => site.risk >= 60).length;
-  const confidential = sites.filter((site) => site.confidentiality === "Confidentiel" || site.confidentiality === "Critique").length;
-  const activeProcessing = sites.filter((site) => site.progress > 0 && site.progress < 100).length;
+﻿function ExecutiveView({ auditEntries, databaseUsable, documents, missions, onSelectSite, regions, selectedSite, sites, totals }: { auditEntries: AuditEntry[]; databaseUsable: boolean; documents: DocumentStat[]; missions: MissionPlanItem[]; onSelectSite: (code: string) => void; regions: string[]; selectedSite: DashboardSite | null; sites: DashboardSite[]; totals: { sites: number; meters: number; pages: number; progress: number; evaluated: number; critical: number } }) {
+  const totalSites = sites.length;
   const missionSnapshots = missions.map((mission) => ({ ...mission, ...missionStatusMeta(mission) }));
   const activeMissions = missionSnapshots.filter((mission) => mission.phase === "active");
-  const nextMission = missionSnapshots.find((mission) => mission.phase === "upcoming");
-  const executiveStatus = databaseUsable ? "Pilotage disponible" : "Ouverture en préparation";
-  const nationalPosture = sites.length
-    ? highRisk > 0
-      ? "Arbitrage prioritaire sur les sites à risque élevé."
-      : "Portefeuille sous contrôle, collecte et qualification à poursuivre."
-    : "Aucune fiche consolidée pour le moment. La campagne terrain peut démarrer.";
-  const topRegions = regions
-    .map((item) => ({
-      region: item,
-      sites: sites.filter((site) => site.region === item).length,
-      meters: sites.filter((site) => site.region === item).reduce((sum, site) => sum + site.meters, 0),
-    }))
-    .sort((a, b) => b.sites - a.sites || b.meters - a.meters)
-    .slice(0, 5);
-  const decisionItems = [
-    { label: "Dispositif national", value: databaseUsable ? "Ouvert" : "En préparation", tone: databaseUsable ? "good" : "watch" },
-    { label: "Collecte terrain", value: sites.length ? "En cours" : "À lancer", tone: sites.length ? "good" : "watch" },
-    { label: "Localisation", value: sites.length ? `${gpsCoverage}%` : "0%", tone: gpsCoverage >= 80 ? "good" : "watch" },
-    { label: "Qualification", value: totals.evaluated ? "Disponible" : "En attente", tone: totals.evaluated ? "good" : "watch" },
-  ];
-  const executiveHighlights = [
-    { label: "Sites actifs", value: formatNumber(totals.sites) },
-    { label: "Risque consolidé", value: `${formatNumber(highRisk)} en surveillance` },
-    { label: "Traitement en cours", value: `${formatNumber(activeProcessing)} dossiers` },
-  ];
+  const upcomingMissions = missionSnapshots.filter((mission) => mission.phase === "upcoming");
+  const missionSiteCodes = new Set(missionSnapshots.flatMap((mission) => mission.assignedSiteCodes));
+  const assignedSites = sites.filter((site) => missionSiteCodes.has(site.code)).length;
+  const gpsCaptured = sites.filter((site) => site.latitude !== null && site.longitude !== null).length;
+  const gpsMissing = Math.max(0, totalSites - gpsCaptured);
+  const gpsCoverage = totalSites ? Math.round((gpsCaptured / totalSites) * 100) : 0;
+  const evaluatedRate = totalSites ? Math.round((totals.evaluated / totalSites) * 100) : 0;
+  const inventoryReady = sites.filter((site) => site.hasInventory).length;
+  const inventoryRate = totalSites ? Math.round((inventoryReady / totalSites) * 100) : 0;
+  const missionCoverage = totalSites ? Math.round((assignedSites / totalSites) * 100) : activeMissions.length ? 50 : 0;
+  const criticalSites = sites.filter((site) => site.risk >= 80);
+  const elevatedSites = sites.filter((site) => site.risk >= 60 && site.risk < 80);
+  const moderateSites = sites.filter((site) => site.risk >= 40 && site.risk < 60);
+  const controlledSites = sites.filter((site) => site.risk < 40);
+  const sensitiveSites = sites.filter((site) => site.confidentiality === "Confidentiel" || site.confidentiality === "Critique").length;
+  const inaccessibleSites = sites.filter((site) => site.status === "Inaccessible" || site.accessibility.toLowerCase().includes("difficile") || site.accessibility.toLowerCase().includes("restreint")).length;
+  const missingLead = sites.filter((site) => !site.lead.trim()).length;
+  const missingCapacity = sites.filter((site) => site.meters <= 0 && site.pages <= 0 && site.storageCapacityMl <= 0).length;
   const readinessScore = Math.max(
     0,
     Math.min(
       100,
-      Math.round(
-        totals.progress * 0.45 +
-          gpsCoverage * 0.35 +
-          ((totals.evaluated / Math.max(1, sites.length)) * 100) * 0.2,
-      ),
+      Math.round(totals.progress * 0.26 + gpsCoverage * 0.22 + evaluatedRate * 0.2 + inventoryRate * 0.16 + missionCoverage * 0.16),
     ),
   );
-  const executiveAlerts = [
+  const nationalPosture = totalSites
+    ? totals.critical
+      ? "Arbitrage national requis sur les sites critiques avant industrialisation."
+      : elevatedSites.length
+        ? "Portefeuille exploitable, avec surveillance rapprochée des sites sensibles."
+        : "Portefeuille sous contrôle, accélération possible sur la collecte et la numérisation."
+    : "Aucune fiche consolidée. La priorité est l’ouverture de la collecte terrain.";
+  const scoreTone = readinessScore >= 75 ? "good" : readinessScore >= 50 ? "watch" : "critical";
+  const commandSignals = [
     {
-      label: "Sauvegarde urgente",
-      value: formatNumber(totals.critical),
-      detail: totals.critical ? "Sites à isoler sous 72h" : "Aucun site en criticité immédiate",
-      tone: totals.critical ? "critical" : "ok",
+      label: "Sauvegarde critique",
+      value: totals.critical,
+      detail: totals.critical ? "Sites à sécuriser sous 72h" : "Aucun blocage immédiat",
+      tone: totals.critical ? "critical" : "good",
     },
     {
-      label: "Régions non couvertes",
-      value: formatNumber(Math.max(0, 14 - regions.length)),
-      detail: regions.length >= 14 ? "Couverture nationale complète" : "Collecte terrain à accélérer",
-      tone: regions.length >= 10 ? "watch" : "critical",
+      label: "GPS manquant",
+      value: gpsMissing,
+      detail: gpsMissing ? "Coordonnées à capturer" : "Couverture GPS complète",
+      tone: gpsMissing ? "watch" : "good",
     },
     {
-      label: "Sites sans GPS",
-      value: formatNumber(Math.max(0, sites.length - gpsCaptured)),
-      detail: gpsCoverage >= 80 ? "Géolocalisation maîtrisée" : "Campagne GPS prioritaire",
-      tone: gpsCoverage >= 80 ? "ok" : "watch",
+      label: "Qualification à terminer",
+      value: Math.max(0, totalSites - totals.evaluated),
+      detail: evaluatedRate >= 80 ? "Niveau de lecture suffisant" : "Evaluation à consolider",
+      tone: evaluatedRate >= 80 ? "good" : "watch",
+    },
+    {
+      label: "Accès contraint",
+      value: inaccessibleSites,
+      detail: inaccessibleSites ? "Missions à préparer" : "Accès terrain maîtrisé",
+      tone: inaccessibleSites ? "critical" : "good",
     },
   ];
-  const topPrioritySites = [...sites]
-    .sort((left, right) => right.priority - left.priority || right.risk - left.risk)
-    .slice(0, 5);
-  const weeklyRegionalPlan = regions
-    .map((item) => {
-      const regionSites = sites.filter((site) => site.region === item);
-      const regionMissions = missionSnapshots.filter((mission) => mission.region === item);
-      const averageRisk = regionSites.length
-        ? Math.round(regionSites.reduce((sum, site) => sum + site.risk, 0) / regionSites.length)
-        : 0;
-      const withoutGps = regionSites.filter((site) => site.latitude === null || site.longitude === null).length;
-      const inProgress = regionSites.filter((site) => site.progress > 0 && site.progress < 100).length;
-
+  const riskBands = [
+    { label: "Critique", value: criticalSites.length, tone: "critical" },
+    { label: "Élevé", value: elevatedSites.length, tone: "elevated" },
+    { label: "Modéré", value: moderateSites.length, tone: "watch" },
+    { label: "Maîtrisé", value: controlledSites.length, tone: "good" },
+  ];
+  const dataQualityItems = [
+    { label: "Géolocalisation", value: gpsCoverage, detail: `${formatNumber(gpsCaptured)} / ${formatNumber(totalSites)} sites GPS` },
+    { label: "Evaluation", value: evaluatedRate, detail: `${formatNumber(totals.evaluated)} fiches qualifiées` },
+    { label: "Inventaire", value: inventoryRate, detail: `${formatNumber(inventoryReady)} inventaires disponibles` },
+    { label: "Responsable", value: totalSites ? Math.round(((totalSites - missingLead) / totalSites) * 100) : 0, detail: missingLead ? `${formatNumber(missingLead)} point(s) focal à compléter` : "Responsables renseignés" },
+  ];
+  const regionalPortfolio = regions
+    .map((region) => {
+      const regionSites = sites.filter((site) => site.region === region);
+      const regionCritical = regionSites.filter((site) => site.risk >= 80).length;
+      const regionHigh = regionSites.filter((site) => site.risk >= 60).length;
+      const regionGpsMissing = regionSites.filter((site) => site.latitude === null || site.longitude === null).length;
+      const averageRisk = regionSites.length ? Math.round(regionSites.reduce((sum, site) => sum + site.risk, 0) / regionSites.length) : 0;
+      const averageProgress = regionSites.length ? Math.round(regionSites.reduce((sum, site) => sum + site.progress, 0) / regionSites.length) : 0;
+      const mission = missionSnapshots.find((item) => item.region === region);
       return {
-        region: item,
+        region,
+        averageProgress,
         averageRisk,
+        critical: regionCritical,
+        gpsMissing: regionGpsMissing,
+        high: regionHigh,
+        mission,
         sites: regionSites.length,
-        withoutGps,
-        inProgress,
-        nextWindow: regionMissions[0]?.timeline ?? "Mission à programmer",
-        missionCount: regionMissions.length,
+        volume: regionSites.reduce((sum, site) => sum + site.meters, 0),
       };
     })
-    .sort((left, right) => right.averageRisk - left.averageRisk || right.withoutGps - left.withoutGps)
-    .slice(0, 4);
-  const emergencyMessage = totals.critical
-    ? `${formatNumber(totals.critical)} site(s) critique(s) à sécuriser avant la prochaine vague de numérisation.`
-    : highRisk
-      ? `${formatNumber(highRisk)} site(s) sous surveillance rapprochée avant arbitrage ministériel.`
-      : activeMissions.length
-        ? `${formatNumber(activeMissions.length)} mission(s) terrain active(s) en ce moment.`
-        : "Aucune alerte bloquante: le portefeuille peut basculer sur l'accélération terrain.";
+    .sort((left, right) => right.critical - left.critical || right.averageRisk - left.averageRisk || right.gpsMissing - left.gpsMissing || right.sites - left.sites)
+    .slice(0, 7);
+  const topPrioritySites = [...sites]
+    .sort((left, right) => right.priority - left.priority || right.risk - left.risk || right.meters - left.meters)
+    .slice(0, 6);
+  const missionQueue = [...missionSnapshots]
+    .sort((left, right) => {
+      const phaseRank = { active: 0, upcoming: 1, completed: 2 } as const;
+      return phaseRank[left.phase] - phaseRank[right.phase] || new Date(left.startDate).getTime() - new Date(right.startDate).getTime();
+    })
+    .slice(0, 5);
+  const recentActivity = [...auditEntries]
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, 5);
+  const documentTotal = documents.reduce((sum, item) => sum + item.count, 0);
+  const selectedDecisionSite = selectedSite ?? topPrioritySites[0] ?? null;
 
   return (
-    <section className="executive-grid" aria-label="Vue executive nationale">
-      <article className="executive-war-room">
-        <div>
-          <p className="panel-label">Cellule de pilotage</p>
-          <h3>Point de situation immédiat</h3>
-          <p>{emergencyMessage}</p>
-        </div>
-        <div className="war-room-metrics">
-          <span>
-            <b>{formatNumber(totals.critical)}</b>
-            <small>Urgences</small>
-          </span>
-          <span>
-            <b>{formatNumber(topPrioritySites.length)}</b>
-            <small>Dossiers du jour</small>
-          </span>
-          <span>
-            <b>{formatNumber(activeMissions.length || weeklyRegionalPlan.length)}</b>
-            <small>Régions suivies</small>
-          </span>
-        </div>
-      </article>
-
-      <article className="executive-brief">
-        <div>
-          <p className="panel-label">Pilotage national</p>
-          <h3>Portefeuille archivistique MULCV</h3>
+    <section className="executive-command-grid" aria-label="Vue exécutive nationale">
+      <article className="executive-command-hero">
+        <div className="executive-hero-copy">
+          <p className="panel-label">Gouvernance nationale</p>
+          <h3>Centre de commandement archivistique</h3>
           <p>{nationalPosture}</p>
-          <div className="executive-highlights">
-            {executiveHighlights.map((item) => (
-              <span key={item.label}>
-                <b>{item.value}</b>
-                <small>{item.label}</small>
-              </span>
-            ))}
+          <div className="executive-hero-tags">
+            <span>{databaseUsable ? "Base nationale active" : "Service national à vérifier"}</span>
+            <span>{formatNumber(regions.length)} / 33 régions couvertes</span>
+            <span>{formatNumber(activeMissions.length)} mission(s) active(s)</span>
           </div>
         </div>
-        <div className="executive-status-bar">
-          <span>{executiveStatus}</span>
-          <strong>{sites.length ? `${formatNumber(sites.length)} fiches suivies` : "Lancement de campagne"}</strong>
+        <div className={`executive-readiness-card ${scoreTone}`}>
+          <div className="executive-score-ring" style={{ "--score": readinessScore } as CSSProperties}>
+            <strong>{readinessScore}%</strong>
+            <span>maturité</span>
+          </div>
+          <p>{readinessScore >= 75 ? "Décision industrialisable" : readinessScore >= 50 ? "Pilotage opérationnel" : "Collecte à renforcer"}</p>
         </div>
       </article>
 
-      <section className="executive-kpis" aria-label="Indicateurs exécutifs">
-        <ExecutiveMetric label="Sites validés" value={formatNumber(totals.sites)} detail={`${formatNumber(regions.length)} régions couvertes`} />
+      <section className="executive-kpi-strip" aria-label="Indicateurs exécutifs">
+        <ExecutiveMetric label="Sites consolidés" value={formatNumber(totals.sites)} detail={`${formatNumber(totals.evaluated)} évalués`} tone="good" />
         <ExecutiveMetric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${formatNumber(totals.pages)} pages estimées`} />
-        <ExecutiveMetric label="Couverture GPS" value={`${gpsCoverage}%`} detail={`${formatNumber(gpsCaptured)} sites géolocalisés`} />
-        <ExecutiveMetric label="Risque élevé" value={formatNumber(highRisk)} detail={`${formatNumber(confidential)} sites sensibles`} />
-        <ExecutiveMetric label="Missions actives" value={formatNumber(activeMissions.length)} detail={nextMission ? nextMission.timeline : "Aucune mobilisation imminente"} />
+        <ExecutiveMetric label="Couverture GPS" value={`${gpsCoverage}%`} detail={`${formatNumber(gpsMissing)} sites à géocoder`} tone={gpsCoverage >= 80 ? "good" : "watch"} />
+        <ExecutiveMetric label="Risque élevé" value={formatNumber(criticalSites.length + elevatedSites.length)} detail={`${formatNumber(sensitiveSites)} sites sensibles`} tone={criticalSites.length ? "critical" : elevatedSites.length ? "watch" : "good"} />
+        <ExecutiveMetric label="Missions" value={formatNumber(activeMissions.length + upcomingMissions.length)} detail={`${formatNumber(assignedSites)} sites affectés`} />
       </section>
 
-      <article className="executive-panel decision-panel">
-        <p className="panel-label">Maturité opérationnelle</p>
-        <h3>Conditions de décision</h3>
-        <div className="decision-list">
-          {decisionItems.map((item) => (
-            <div className="decision-row" key={item.label}>
-              <span className={`decision-dot ${item.tone}`} aria-hidden="true" />
-              <div><strong>{item.label}</strong><small>{item.value}</small></div>
+      <section className="executive-signal-strip" aria-label="Signaux de décision">
+        {commandSignals.map((item) => (
+          <article className={`executive-signal ${item.tone}`} key={item.label}>
+            <span>{item.label}</span>
+            <strong>{formatNumber(item.value)}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </section>
+
+      <article className="executive-panel executive-panel-large">
+        <div className="executive-panel-head">
+          <div><p className="panel-label">Priorités nationales</p><h3>Dossiers à engager maintenant</h3></div>
+          <span>{formatNumber(topPrioritySites.length)} dossiers</span>
+        </div>
+        <div className="executive-priority-stack">
+          {topPrioritySites.length ? topPrioritySites.map((site, index) => {
+            const mission = missionSnapshots.find((item) => item.assignedSiteCodes.includes(site.code));
+            return (
+              <button className="executive-priority-row" key={site.code} onClick={() => onSelectSite(site.code)} type="button">
+                <span className="priority-rank">{index + 1}</span>
+                <div>
+                  <strong>{site.name}</strong>
+                  <small>{site.region} · {site.department} · {site.city}</small>
+                  <small>{mission ? `${mission.wave} · ${mission.label}` : site.nextStep}</small>
+                </div>
+                <RiskBadge value={site.risk} />
+              </button>
+            );
+          }) : <p className="empty-text">Aucune priorité immédiate n’est disponible.</p>}
+        </div>
+      </article>
+
+      <article className="executive-panel executive-panel-side">
+        <div className="executive-panel-head"><div><p className="panel-label">Risque consolidé</p><h3>Lecture portefeuille</h3></div></div>
+        <div className="executive-risk-bands">
+          {riskBands.map((item) => (
+            <div className={`executive-risk-band ${item.tone}`} key={item.label}>
+              <span>{item.label}</span>
+              <strong>{formatNumber(item.value)}</strong>
+              <div><i style={{ width: `${totalSites ? Math.max(5, (item.value / totalSites) * 100) : 0}%` }} /></div>
             </div>
           ))}
         </div>
-      </article>
-
-      <article className="executive-panel">
-        <p className="panel-label">Couverture territoriale</p>
-        <h3>Régions alimentées</h3>
-        {topRegions.length ? (
-          <div className="executive-bars">
-            {topRegions.map((item) => (
-              <div className="executive-bar-row" key={item.region}>
-                <span>{item.region}</span>
-                <div className="bar-track"><div style={{ width: `${Math.max(8, (item.sites / topRegions[0].sites) * 100)}%` }} /></div>
-                <strong>{item.sites}</strong>
-              </div>
-            ))}
-          </div>
-        ) : <p className="empty-text">Aucune région alimentée pour le moment.</p>}
-      </article>
-
-      <article className="executive-panel">
-        <p className="panel-label">Risque consolidé</p>
-        <h3>Qualification du portefeuille</h3>
-        <div className="risk-summary">
-          <div><span>Critique</span><strong>{formatNumber(totals.critical)}</strong></div>
-          <div><span>En traitement</span><strong>{formatNumber(activeProcessing)}</strong></div>
-          <div><span>À évaluer</span><strong>{formatNumber(Math.max(0, sites.length - totals.evaluated))}</strong></div>
+        <div className="executive-decision-note">
+          <strong>{selectedDecisionSite ? selectedDecisionSite.name : "Aucun dossier sélectionné"}</strong>
+          <p>{selectedDecisionSite ? selectedDecisionSite.nextStep : "Les arbitrages apparaîtront après consolidation des premières fiches terrain."}</p>
         </div>
       </article>
 
-      <article className="executive-panel alert-panel">
-        <p className="panel-label">Alerte nationale</p>
-        <h3>Priorites des 30 prochains jours</h3>
-        <div className="alert-list">
-          {executiveAlerts.map((item) => (
-            <div className={`alert-row ${item.tone}`} key={item.label}>
+      <article className="executive-panel executive-panel-large">
+        <div className="executive-panel-head">
+          <div><p className="panel-label">Couverture territoriale</p><h3>Régions à arbitrer</h3></div>
+          <span>{formatNumber(Math.max(0, 33 - regions.length))} non couvertes</span>
+        </div>
+        <div className="executive-region-table">
+          {regionalPortfolio.length ? regionalPortfolio.map((item) => (
+            <div className="executive-region-row" key={item.region}>
+              <div>
+                <strong>{item.region}</strong>
+                <small>{item.sites} sites · {item.volume} ml · {item.mission ? item.mission.label : "mission à programmer"}</small>
+              </div>
+              <div className="region-health-bars">
+                <span><i style={{ width: `${Math.min(100, item.averageRisk)}%` }} /></span>
+                <small>Risque {item.averageRisk}</small>
+              </div>
+              <b>{item.gpsMissing} GPS</b>
+            </div>
+          )) : <p className="empty-text">La couverture régionale apparaîtra dès les premières fiches.</p>}
+        </div>
+      </article>
+
+      <article className="executive-panel executive-panel-side">
+        <div className="executive-panel-head"><div><p className="panel-label">Qualité de donnée</p><h3>Fiabilité BI et cartographie</h3></div></div>
+        <div className="data-quality-list">
+          {dataQualityItems.map((item) => (
+            <div className="data-quality-row" key={item.label}>
               <div>
                 <strong>{item.label}</strong>
                 <small>{item.detail}</small>
               </div>
-              <b>{item.value}</b>
+              <span>{item.value}%</span>
+              <div><i style={{ width: `${item.value}%` }} /></div>
             </div>
           ))}
         </div>
+        {missingCapacity > 0 && <p className="executive-warning-text">{formatNumber(missingCapacity)} fiche(s) sans volume exploitable pour la planification.</p>}
       </article>
 
-      <article className="executive-panel readiness-panel">
-        <p className="panel-label">Indice national</p>
-        <h3>Préparation opérationnelle</h3>
-        <div className="readiness-dial" style={{ "--score": readinessScore } as CSSProperties}>
-          <span>{readinessScore}%</span>
-          <small>Préparation</small>
-        </div>
-        <p className="empty-text">
-          {readinessScore >= 75
-            ? "Portefeuille stabilisé, passage en phase d'industrialisation possible."
-            : readinessScore >= 50
-              ? "Le dispositif est exploitable, avec un renforcement recommandé sur la couverture terrain."
-              : "Le dispositif reste en phase initiale: priorité à la collecte et à la qualification."}
-        </p>
-      </article>
-
-      <article className="executive-panel today-panel">
-        <p className="panel-label">Traitement du jour</p>
-        <h3>5 dossiers à engager maintenant</h3>
-        <div className="today-list">
-          {topPrioritySites.length ? (
-            topPrioritySites.map((site, index) => (
-              (() => { const assignedMission = missionSnapshots.find((mission) => mission.assignedSiteCodes.includes(site.code)); return (
-              <button className="today-row" key={site.code} onClick={() => onSelectSite(site.code)} type="button">
-                <span>{index + 1}</span>
-                <div>
-                  <strong>{site.name}</strong>
-                  <small>{site.region} · {site.city} · {site.priority}/100</small>
-                  <small>{assignedMission ? `${assignedMission.wave} · ${assignedMission.label}` : "Aucune mobilisation affectée"}</small>
-                </div>
-                <RiskBadge value={site.risk} />
-              </button>
-              ); })()
-            ))
-          ) : (
-            <p className="empty-text">Aucune priorité immédiate n&apos;est identifiée pour le moment.</p>
-          )}
-        </div>
-      </article>
-
-      <article className="executive-panel weekly-panel">
-        <p className="panel-label">Semaine terrain</p>
-        <h3>Cadencement par région</h3>
-        <div className="weekly-plan-list">
-          {weeklyRegionalPlan.length ? (
-            weeklyRegionalPlan.map((item) => (
-              <div className="weekly-plan-row" key={item.region}>
-                <div>
-                  <strong>{item.region}</strong>
-                  <small>{item.sites} sites · {item.withoutGps} sans GPS · {item.missionCount} mission(s)</small>
-                  <small>{item.nextWindow}</small>
-                </div>
-                <b>{item.averageRisk}</b>
+      <article className="executive-panel executive-panel-medium">
+        <div className="executive-panel-head"><div><p className="panel-label">Mobilisation</p><h3>Cadencement opérationnel</h3></div></div>
+        <div className="mission-command-list">
+          {missionQueue.length ? missionQueue.map((mission) => (
+            <div className={`mission-command-row ${mission.phase}`} key={mission.id}>
+              <span>{mission.phase === "active" ? "En cours" : mission.phase === "upcoming" ? "À venir" : "Terminé"}</span>
+              <div>
+                <strong>{mission.region}</strong>
+                <small>{mission.timeline}</small>
+                <small>{mission.team} · {mission.focus}</small>
               </div>
-            ))
-          ) : (
-            <p className="empty-text">Le rythme régional apparaîtra après les premières remontées terrain.</p>
-          )}
+              <b>{mission.assignedSiteCodes.length || mission.siteCount}</b>
+            </div>
+          )) : <p className="empty-text">Aucune mission planifiée pour le moment.</p>}
         </div>
       </article>
 
-      <article className="executive-panel executive-wide">
-        <p className="panel-label">Arbitrages</p>
-        <h3>{selectedSite ? "Premier dossier prioritaire" : "Aucune priorité terrain"}</h3>
-        {selectedSite ? (
-          <div className="executive-priority">
-            <div>
-              <strong>{selectedSite.name}</strong>
-              <span>{selectedSite.region} / {selectedSite.city} / {selectedSite.type}</span>
+      <article className="executive-panel executive-panel-medium">
+        <div className="executive-panel-head"><div><p className="panel-label">Traçabilité</p><h3>Activité récente</h3></div></div>
+        <div className="executive-activity-list">
+          {recentActivity.length ? recentActivity.map((entry) => (
+            <div className="executive-activity-row" key={entry.id}>
+              <span>{new Date(entry.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>
+              <div><strong>{entry.description}</strong><small>{entry.actor}</small></div>
             </div>
-            <RiskBadge value={selectedSite.risk} />
-            <p>{selectedSite.nextStep}</p>
-          </div>
-        ) : <p className="empty-text">Les arbitrages exécutifs apparaîtront dès consolidation des premières fiches terrain.</p>}
+          )) : <p className="empty-text">Aucune activité auditée pour le moment.</p>}
+        </div>
+      </article>
+
+      <article className="executive-panel executive-panel-medium">
+        <div className="executive-panel-head"><div><p className="panel-label">Pièces et preuves</p><h3>Socle documentaire</h3></div><span>{formatNumber(documentTotal)} pièces</span></div>
+        <div className="executive-doc-list">
+          {documents.length ? documents.slice(0, 4).map((document) => (
+            <div className="executive-doc-row" key={document.label}>
+              <strong>{document.label}</strong>
+              <span>{formatNumber(document.count)}</span>
+              <small>{document.trend}</small>
+            </div>
+          )) : <p className="empty-text">Les rapports, photos et inventaires apparaîtront après les premiers versements.</p>}
+        </div>
       </article>
     </section>
   );
 }
-
-function ExecutiveMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <article className="executive-metric"><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
+function ExecutiveMetric({ detail, label, tone = "neutral", value }: { detail: string; label: string; tone?: "neutral" | "good" | "watch" | "critical"; value: string }) {
+  return <article className={`executive-metric ${tone}`}><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
 }
 
 function LoginScreen({ onLogin }: { onLogin: (login: string, password: string) => Promise<void> }) {
