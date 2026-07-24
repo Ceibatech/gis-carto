@@ -193,6 +193,10 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
     });
   }, [form]);
 
+  const isRemoteApiMode = useMemo(() => {
+    return !dashboard.schemaReady && !!process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL;
+  }, [dashboard.schemaReady]);
+
   useEffect(() => {
     setIsUnsaved(hasUnsavedChanges);
   }, [hasUnsavedChanges]);
@@ -820,7 +824,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
                 <article>
                   <h4>Etat applicatif</h4>
                   <ul>
-                    <li>{dashboard.schemaReady ? "Schema SQL disponible" : "Schema SQL indisponible"}</li>
+                    <li>{dashboard.schemaReady ? "Schema SQL disponible" : isRemoteApiMode ? "Mode API distante en synchronisation" : "Schema SQL indisponible"}</li>
                     <li>{isUnsaved ? "Formulaire non sauvegarde" : "Aucune modification en attente"}</li>
                     <li>{isSubmitting ? "Sauvegarde en cours" : "Pret pour enregistrement"}</li>
                   </ul>
