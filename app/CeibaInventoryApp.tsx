@@ -83,6 +83,8 @@ const formSections = [
 
 type CeibaFormSectionId = (typeof formSections)[number]["id"];
 
+type CeibaInventoryAppMode = "portal" | "questionnaire";
+
 function roleLabel(role: CeibaInventoryRole) {
   return role === "admin" ? "Administrateur CEIBA" : "Agent operateur";
 }
@@ -100,7 +102,15 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
   }
 }
 
-export default function CeibaInventoryApp({ initialDashboard, session }: { initialDashboard: CeibaInventoryDashboard; session: CeibaInventoryViewer }) {
+export default function CeibaInventoryApp({
+  initialDashboard,
+  mode = "portal",
+  session,
+}: {
+  initialDashboard: CeibaInventoryDashboard;
+  mode?: CeibaInventoryAppMode;
+  session: CeibaInventoryViewer;
+}) {
   const [dashboard, setDashboard] = useState(initialDashboard ?? defaultDashboard);
   const [form, setForm] = useState<CeibaInventoryInput>(defaultForm);
   const [message, setMessage] = useState<string | null>(initialDashboard.message);
@@ -116,7 +126,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
   const [adminForm, setAdminForm] = useState<CeibaAdminFormState>(defaultAdminForm);
   const [adminFormMessage, setAdminFormMessage] = useState<string | null>(null);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(mode === "questionnaire" ? "new-record" : "overview");
   const [activeFormStep, setActiveFormStep] = useState<CeibaFormSectionId>(formSections[0].id);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -134,6 +144,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
   const draftStorageKey = "ceiba-inventory-draft";
 
   const isAdmin = session?.role === "admin";
+  const isQuestionnaireMode = mode === "questionnaire";
 
   const communeSuggestions = useMemo(() => {
     const values = new Set<string>();
@@ -253,7 +264,8 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
         throw new Error(result.message || "Connexion CEIBA impossible.");
       }
 
-      window.location.reload();
+      const nextRoute = result.session.role === "admin" ? "/inventaire-ceiba" : "/inventaire-ceiba/questionnaire";
+      window.location.href = nextRoute;
     } catch (error) {
       setLoginMessage(error instanceof Error ? error.message : "Connexion CEIBA impossible.");
     } finally {
@@ -349,12 +361,16 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
     }
   }, [session]);
 
+  useEffect(() => {
+    setActiveSection(isQuestionnaireMode ? "new-record" : "overview");
+  }, [isQuestionnaireMode]);
+
   if (!session) {
     return (
       <main className="login-shell">
         <section className="login-hero" aria-label="Connexion CEIBA">
           <div className="login-brand"><span>CI</span><div><p className="eyebrow">CEIBA Inventory</p><strong>Module dédié</strong></div></div>
-          <div className="login-copy"><h1>Connexion CEIBA</h1><p>Accès réservé aux opérateurs et administrateurs du module Inventaire CEIBA.</p></div>
+          <div className="login-copy"><h1>Connexion CEIBA</h1><p>Accès réservé aux opérateurs et administrateurs du module Inventaire CEIBA. Après connexion, chaque profil est orienté vers son espace: questionnaire terrain ou portail d'administration.</p></div>
         </section>
         <form className="login-panel" onSubmit={handleLogin}>
           <div className="login-panel-head"><p className="panel-label">Accès CEIBA</p><h2>Se connecter</h2></div>
@@ -427,18 +443,19 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
     <div className="ceiba-app-shell">
       <AppSidebar
         activeSection={activeSection}
-        canManageUsers={isAdmin}
+        canManageUsers={isAdmin && !isQuestionnaireMode}
         collapsed={sidebarCollapsed}
         onLogout={() => void handleLogout()}
         onNavigate={goToSection}
         onToggle={() => setSidebarCollapsed((current) => !current)}
+        questionnaireOnly={isQuestionnaireMode}
         user={{ login: session.login, name: session.name, role: session.role }}
       />
 
       <main className="ceiba-main">
         <TopHeader
-          breadcrumb="GeoArchives / CEIBA / Inventaire"
-          title="Inventaire foncier CEIBA"
+          breadcrumb={isQuestionnaireMode ? "GeoArchives / CEIBA / Questionnaire" : "GeoArchives / CEIBA / Inventaire"}
+          title={isQuestionnaireMode ? "Questionnaire inventaire CEIBA" : "Inventaire foncier CEIBA"}
           userName={session.name}
           searchValue={globalSearch}
           onSearchChange={setGlobalSearch}
@@ -453,7 +470,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
           onCreateRecord={() => goToSection("new-record")}
         />
 
-        {isAdmin && (
+        {!isQuestionnaireMode && isAdmin && (
           <section className="ceiba-panel" id="settings">
             <div className="ceiba-panel-head">
               <div>
@@ -478,7 +495,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
           </section>
         )}
 
-        <section className="ceiba-panel" id="overview">
+        {!isQuestionnaireMode && <section className="ceiba-panel" id="overview">
           <div className="ceiba-panel-head">
             <div>
               <p className="panel-label">Vue d'ensemble</p>
@@ -600,9 +617,9 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
               )}
             </article>
           </div>
-        </section>
+        </section>}
 
-        {isAdmin && (
+        {!isQuestionnaireMode && isAdmin && (
           <section className="ceiba-panel" id="users">
             <div className="ceiba-panel-head">
               <div>

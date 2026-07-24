@@ -50,10 +50,15 @@ type AppSidebarProps = {
   user: { name: string; login: string; role: CeibaInventoryRole };
   onLogout: () => void;
   canManageUsers: boolean;
+  questionnaireOnly?: boolean;
 };
 
-export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, user, onLogout, canManageUsers }: AppSidebarProps) {
-  const visibleItems = canManageUsers ? sidebarItems : sidebarItems.filter((item) => item.id !== "users" && item.id !== "settings");
+export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, user, onLogout, canManageUsers, questionnaireOnly = false }: AppSidebarProps) {
+  const visibleItems = questionnaireOnly
+    ? sidebarItems.filter((item) => item.id === "new-record" || item.id === "inventory")
+    : canManageUsers
+      ? sidebarItems
+      : sidebarItems.filter((item) => item.id !== "users" && item.id !== "settings");
 
   return (
     <aside className={`ceiba-sidebar ${collapsed ? "collapsed" : ""}`} aria-label="Navigation CEIBA">

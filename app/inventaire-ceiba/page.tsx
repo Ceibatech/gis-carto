@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import CeibaInventoryApp from "../CeibaInventoryApp";
 import { getCeibaInventoryDashboard } from "../../db/ceiba-inventory";
 import { ceibaInventoryAuthCookieName, verifyCeibaInventorySession } from "../../lib/ceiba-inventory-auth";
@@ -11,6 +12,10 @@ export default async function CeibaInventoryPage() {
   const geoSession = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
   const ceibaSession = verifyCeibaInventorySession(cookieStore.get(ceibaInventoryAuthCookieName)?.value);
   const session = ceibaSession ?? (geoSession?.role === "admin" ? { login: geoSession.login, name: geoSession.name, role: "admin" as const } : null);
+
+  if (session?.role === "operator") {
+    redirect("/inventaire-ceiba/questionnaire");
+  }
 
   const dashboard = session ? await getCeibaInventoryDashboard() : {
     activityByCommune: [],
@@ -26,5 +31,5 @@ export default async function CeibaInventoryPage() {
     totalRecords: 0,
     uniqueCommunes: 0,
   };
-  return <CeibaInventoryApp initialDashboard={dashboard} session={session} />;
+  return <CeibaInventoryApp initialDashboard={dashboard} mode="portal" session={session} />;
 }
