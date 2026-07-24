@@ -89,7 +89,7 @@ export function verifyCeibaInventorySession(token?: string | null): CeibaInvento
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as CeibaInventorySession;
     if (!session.role || !session.login || !session.expiresAt || session.expiresAt <= Date.now()) return null;
-    if (session.role !== "admin" && session.role !== "operator") return null;
+    if (session.role !== "admin" && session.role !== "operator" && session.role !== "supervisor") return null;
     return session;
   } catch {
     return null;

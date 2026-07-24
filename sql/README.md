@@ -32,3 +32,4 @@ npm run dev
 - Pour activer le module separe de suivi des fiches MCLU / guichet foncier, executer `sql/005_create_ceiba_inventory.sql`.
 - Une fois la table creee, la page `/inventaire-ceiba` permet de saisir les fiches et de suivre l'activite dans un dashboard dedie.
 - Le meme script cree aussi `ceiba_inventory_users`, table dediee aux comptes du module CEIBA uniquement.
+- Pour une base CEIBA existante et pour activer le role `supervisor` (lecture seule dashboard), executer ensuite `sql/006_add_ceiba_supervisor_role.sql` une seule fois.

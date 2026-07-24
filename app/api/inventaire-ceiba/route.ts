@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
   try {
     const actor = requireCeibaActor(request);
     if (!actor) return corsJson(request, { message: "Accès CEIBA requis." }, { status: 403 });
+    if (actor.role === "supervisor") {
+      return corsJson(request, { message: "Profil supervision: lecture seule du dashboard CEIBA." }, { status: 403 });
+    }
 
     const input = (await request.json()) as CeibaInventoryInput;
     validateCeibaInventoryInput(input);

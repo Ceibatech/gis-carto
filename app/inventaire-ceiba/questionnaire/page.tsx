@@ -17,6 +17,10 @@ export default async function CeibaInventoryQuestionnairePage() {
     redirect("/inventaire-ceiba");
   }
 
+  if (session.role === "supervisor") {
+    redirect("/inventaire-ceiba");
+  }
+
   const dashboard = await getCeibaInventoryDashboard();
   return <CeibaInventoryApp initialDashboard={dashboard} mode="questionnaire" session={session} />;
 }

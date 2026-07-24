@@ -35,7 +35,7 @@ export class CeibaInventoryUsersTableMissingError extends Error {
   }
 }
 
-const allowedRoles: CeibaInventoryRole[] = ["admin", "operator"];
+const allowedRoles: CeibaInventoryRole[] = ["admin", "supervisor", "operator"];
 
 export function isValidCeibaInventoryRole(value: unknown): value is CeibaInventoryRole {
   return typeof value === "string" && allowedRoles.includes(value as CeibaInventoryRole);
@@ -55,7 +55,7 @@ export async function listCeibaInventoryUsers(): Promise<CeibaInventoryUserAccou
     const [rows] = await pool.query<CeibaUserRow[]>(`
       select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
       from ceiba_inventory_users
-      order by field(role, 'admin', 'operator'), full_name asc, login asc
+      order by field(role, 'admin', 'supervisor', 'operator'), full_name asc, login asc
     `);
 
     return {

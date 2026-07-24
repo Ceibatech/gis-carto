@@ -7,7 +7,7 @@ import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord
 import { AppSidebar, EmptyState, FormSection, FormStepper, PageHeader, StatCard, StatusBadge, StickyFormActions, TechnicalAlert, TopHeader, UserDrawer } from "./components/ceiba-ui";
 
 const statusOptions: CeibaInventoryStatusLabel[] = ["Nouveau", "En revue", "Traité", "Bloqué"];
-const ceibaRoleOptions: CeibaInventoryRole[] = ["operator", "admin"];
+const ceibaRoleOptions: CeibaInventoryRole[] = ["operator", "supervisor", "admin"];
 
 type CeibaInventoryViewer = Pick<CeibaInventorySession, "login" | "name" | "role"> | null;
 
@@ -86,7 +86,9 @@ type CeibaFormSectionId = (typeof formSections)[number]["id"];
 type CeibaInventoryAppMode = "portal" | "questionnaire";
 
 function roleLabel(role: CeibaInventoryRole) {
-  return role === "admin" ? "Administrateur CEIBA" : "Agent operateur";
+  if (role === "admin") return "Administrateur CEIBA";
+  if (role === "supervisor") return "Superviseur dashboard";
+  return "Agent operateur";
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
@@ -144,6 +146,7 @@ export default function CeibaInventoryApp({
   const draftStorageKey = "ceiba-inventory-draft";
 
   const isAdmin = session?.role === "admin";
+  const canSubmitInventory = session?.role === "admin" || session?.role === "operator";
   const isQuestionnaireMode = mode === "questionnaire";
 
   const communeSuggestions = useMemo(() => {
@@ -264,7 +267,7 @@ export default function CeibaInventoryApp({
         throw new Error(result.message || "Connexion CEIBA impossible.");
       }
 
-      const nextRoute = result.session.role === "admin" ? "/inventaire-ceiba" : "/inventaire-ceiba/questionnaire";
+      const nextRoute = result.session.role === "operator" ? "/inventaire-ceiba/questionnaire" : "/inventaire-ceiba";
       window.location.href = nextRoute;
     } catch (error) {
       setLoginMessage(error instanceof Error ? error.message : "Connexion CEIBA impossible.");
@@ -723,7 +726,7 @@ export default function CeibaInventoryApp({
                   </select>
                 </label>
                 <p className="capture-helper">Le statut est prepare pour le workflow admin. La creation conserve la logique API actuelle.</p>
-                <p className="capture-helper">Profil choisi: {adminForm.role === "admin" ? "peut gerer les comptes et suivre le dashboard" : "peut saisir les fiches et suivre l'activite"}.</p>
+                <p className="capture-helper">Profil choisi: {adminForm.role === "admin" ? "peut gerer les comptes et suivre le dashboard" : adminForm.role === "supervisor" ? "peut consulter le dashboard sans saisir ni gerer les comptes" : "peut saisir les fiches et suivre l'activite"}.</p>
                 {adminFormMessage && <p className="form-message">{adminFormMessage}</p>}
                 <div className="ceiba-drawer-actions">
                   <button className="ghost-button" type="button" onClick={() => setShowUserDrawer(false)}>Annuler</button>
@@ -734,7 +737,7 @@ export default function CeibaInventoryApp({
           </section>
         )}
 
-        <section className="ceiba-panel" id="new-record">
+        {canSubmitInventory ? <section className="ceiba-panel" id="new-record">
           <div className="ceiba-panel-head">
             <div>
               <p className="panel-label">Nouvelle fiche</p>
@@ -913,7 +916,14 @@ export default function CeibaInventoryApp({
           <datalist id="ceiba-natures">
             {caseNatureSuggestions.map((nature) => <option key={nature} value={nature} />)}
           </datalist>
-        </section>
+        </section> : (
+          <section className="ceiba-panel" id="new-record">
+            <EmptyState
+              title="Profil supervision en lecture seule"
+              description="Ce compte superviseur consulte les indicateurs et le suivi inventaire, sans saisie de questionnaire."
+            />
+          </section>
+        )}
 
         <section className="ceiba-panel" id="inventory">
           <div className="ceiba-panel-head">

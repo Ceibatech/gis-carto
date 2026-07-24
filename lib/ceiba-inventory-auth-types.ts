@@ -1,4 +1,4 @@
-export type CeibaInventoryRole = "admin" | "operator";
+export type CeibaInventoryRole = "admin" | "operator" | "supervisor";
 
 export type CeibaInventorySession = {
   role: CeibaInventoryRole;
