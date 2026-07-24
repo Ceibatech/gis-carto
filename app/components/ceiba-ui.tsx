@@ -56,6 +56,8 @@ type AppSidebarProps = {
 export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, user, onLogout, canManageUsers, questionnaireOnly = false }: AppSidebarProps) {
   const visibleItems = questionnaireOnly
     ? sidebarItems.filter((item) => item.id === "new-record" || item.id === "inventory")
+    : user.role === "supervisor"
+      ? sidebarItems.filter((item) => item.id === "overview" || item.id === "inventory" || item.id === "communes" || item.id === "activities")
     : canManageUsers
       ? sidebarItems
       : sidebarItems.filter((item) => item.id !== "users" && item.id !== "settings");
@@ -132,9 +134,10 @@ type TopHeaderProps = {
   onSearchChange: (value: string) => void;
   onCreateRecord: () => void;
   userName: string;
+  showCreateAction?: boolean;
 };
 
-export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCreateRecord, userName }: TopHeaderProps) {
+export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCreateRecord, userName, showCreateAction = true }: TopHeaderProps) {
   return (
     <header className="ceiba-topbar">
       <div>
@@ -151,10 +154,12 @@ export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCr
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </label>
-        <button type="button" className="primary-button" onClick={onCreateRecord}>
-          <Plus size={16} />
-          Nouvelle fiche
-        </button>
+        {showCreateAction && (
+          <button type="button" className="primary-button" onClick={onCreateRecord}>
+            <Plus size={16} />
+            Nouvelle fiche
+          </button>
+        )}
         <button type="button" className="icon-button" aria-label="Notifications">
           <Bell size={16} />
         </button>
@@ -171,9 +176,10 @@ type PageHeaderProps = {
   title: string;
   description: string;
   onCreateRecord: () => void;
+  showCreateAction?: boolean;
 };
 
-export function PageHeader({ title, description, onCreateRecord }: PageHeaderProps) {
+export function PageHeader({ title, description, onCreateRecord, showCreateAction = true }: PageHeaderProps) {
   return (
     <section className="ceiba-page-hero">
       <div>
@@ -182,10 +188,12 @@ export function PageHeader({ title, description, onCreateRecord }: PageHeaderPro
         <p className="view-description">{description}</p>
       </div>
       <div className="ceiba-page-hero-actions">
-        <button type="button" className="primary-button" onClick={onCreateRecord}>
-          <Plus size={16} />
-          Creer une fiche
-        </button>
+        {showCreateAction && (
+          <button type="button" className="primary-button" onClick={onCreateRecord}>
+            <Plus size={16} />
+            Creer une fiche
+          </button>
+        )}
         <button type="button" className="secondary-button">
           <FileText size={16} />
           Exporter

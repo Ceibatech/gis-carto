@@ -146,6 +146,7 @@ export default function CeibaInventoryApp({
   const draftStorageKey = "ceiba-inventory-draft";
 
   const isAdmin = session?.role === "admin";
+  const isSupervisor = session?.role === "supervisor";
   const canSubmitInventory = session?.role === "admin" || session?.role === "operator";
   const isQuestionnaireMode = mode === "questionnaire";
 
@@ -463,6 +464,7 @@ export default function CeibaInventoryApp({
           searchValue={globalSearch}
           onSearchChange={setGlobalSearch}
           onCreateRecord={() => goToSection("new-record")}
+          showCreateAction={canSubmitInventory}
         />
 
         {toast && <p className={`ceiba-toast ${toast.tone}`}>{toast.message}</p>}
@@ -471,7 +473,33 @@ export default function CeibaInventoryApp({
           title="Formulaire MCLU / Guichet unique du foncier"
           description="Saisie du formulaire guichet foncier MCLU et suivi d'activite par commune, statut et date de creation."
           onCreateRecord={() => goToSection("new-record")}
+          showCreateAction={canSubmitInventory}
         />
+
+        {!isQuestionnaireMode && isSupervisor && (
+          <section className="ceiba-panel" id="supervision">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Supervision dashboard</p>
+                <h3>Espace lecture et pilotage des indicateurs CEIBA</h3>
+              </div>
+            </div>
+            <div className="ceiba-access-model-grid">
+              <article className="ceiba-access-model-card">
+                <h4>Mission du profil</h4>
+                <p>Suivre les volumes, les communes actives et les dossiers a traiter sans modifier les donnees.</p>
+              </article>
+              <article className="ceiba-access-model-card">
+                <h4>Permissions</h4>
+                <p>Lecture seule: consultation dashboard et inventaire detaille, sans creation de compte ni saisie de fiche.</p>
+              </article>
+              <article className="ceiba-access-model-card">
+                <h4>Actions recommandees</h4>
+                <p>Utiliser les filtres periode/commune/statut puis partager les arbitrages avec les administrateurs CEIBA.</p>
+              </article>
+            </div>
+          </section>
+        )}
 
         {!isQuestionnaireMode && isAdmin && (
           <section className="ceiba-panel" id="settings">
