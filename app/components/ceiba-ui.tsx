@@ -49,9 +49,12 @@ type AppSidebarProps = {
   onNavigate: (id: string) => void;
   user: { name: string; login: string; role: CeibaInventoryRole };
   onLogout: () => void;
+  canManageUsers: boolean;
 };
 
-export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, user, onLogout }: AppSidebarProps) {
+export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, user, onLogout, canManageUsers }: AppSidebarProps) {
+  const visibleItems = canManageUsers ? sidebarItems : sidebarItems.filter((item) => item.id !== "users" && item.id !== "settings");
+
   return (
     <aside className={`ceiba-sidebar ${collapsed ? "collapsed" : ""}`} aria-label="Navigation CEIBA">
       <div className="ceiba-sidebar-brand">
@@ -69,7 +72,7 @@ export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, use
       </button>
 
       <nav className="ceiba-nav" aria-label="Menu principal">
-        {sidebarItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = activeSection === item.id;
           return (

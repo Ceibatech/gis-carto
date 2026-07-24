@@ -2633,6 +2633,32 @@ body {
   padding: 14px;
 }
 
+.ceiba-access-model-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ceiba-access-model-card {
+  background: #f6fbf8;
+  border: 1px solid #d3e3db;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  padding: 12px;
+}
+
+.ceiba-access-model-card h4 {
+  color: #1f3e34;
+  font-size: 0.98rem;
+}
+
+.ceiba-access-model-card p {
+  color: #607971;
+  margin: 0;
+}
+
 .ceiba-panel-head {
   align-items: start;
   display: flex;
@@ -3159,6 +3185,10 @@ body {
   }
 
   .ceiba-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ceiba-access-model-grid {
     grid-template-columns: 1fr;
   }
 

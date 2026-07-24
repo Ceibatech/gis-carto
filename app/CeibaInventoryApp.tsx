@@ -83,6 +83,23 @@ const formSections = [
 
 type CeibaFormSectionId = (typeof formSections)[number]["id"];
 
+function roleLabel(role: CeibaInventoryRole) {
+  return role === "admin" ? "Administrateur CEIBA" : "Agent operateur";
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const body = await response.text();
+  if (!body.trim()) {
+    return { message: "Réponse API vide." } as T;
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    return { message: `Réponse API invalide (HTTP ${response.status}).` } as T;
+  }
+}
+
 export default function CeibaInventoryApp({ initialDashboard, session }: { initialDashboard: CeibaInventoryDashboard; session: CeibaInventoryViewer }) {
   const [dashboard, setDashboard] = useState(initialDashboard ?? defaultDashboard);
   const [form, setForm] = useState<CeibaInventoryInput>(defaultForm);
@@ -231,7 +248,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login, password }),
       });
-      const result = (await response.json()) as { session?: CeibaInventorySession; message?: string };
+      const result = await readJsonResponse<{ session?: CeibaInventorySession; message?: string }>(response);
       if (!response.ok || !result.session) {
         throw new Error(result.message || "Connexion CEIBA impossible.");
       }
@@ -253,7 +270,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
     setIsLoadingAccounts(true);
     try {
       const response = await fetch("/api/inventaire-ceiba/users", { headers: { accept: "application/json" } });
-      const result = (await response.json()) as CeibaInventoryUserAccountsResponse | { message?: string };
+      const result = await readJsonResponse<CeibaInventoryUserAccountsResponse | { message?: string }>(response);
       if (!response.ok || !("accounts" in result)) {
         throw new Error(("message" in result ? result.message : "") || "Impossible de charger les comptes CEIBA.");
       }
@@ -273,7 +290,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
   async function refreshDashboard() {
     try {
       const response = await fetch("/api/inventaire-ceiba", { headers: { accept: "application/json" } });
-      const result = (await response.json()) as CeibaInventoryDashboard | { message?: string };
+      const result = await readJsonResponse<CeibaInventoryDashboard | { message?: string }>(response);
       if (!response.ok || !("recentRecords" in result)) {
         throw new Error(("message" in result ? result.message : "") || "Impossible de charger le dashboard CEIBA.");
       }
@@ -300,7 +317,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
           role: adminForm.role,
         }),
       });
-      const result = (await response.json()) as CeibaInventoryUserAccountsResponse | { message?: string };
+      const result = await readJsonResponse<CeibaInventoryUserAccountsResponse | { message?: string }>(response);
       if (!response.ok || !("accounts" in result)) {
         throw new Error(("message" in result ? result.message : "") || "Impossible de créer le compte CEIBA.");
       }
@@ -361,7 +378,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const result = (await response.json()) as CeibaInventoryDashboard | { message?: string };
+      const result = await readJsonResponse<CeibaInventoryDashboard | { message?: string }>(response);
       if (!response.ok || !("recentRecords" in result)) {
         throw new Error(("message" in result ? result.message : "") || "Impossible d'enregistrer la fiche.");
       }
@@ -410,6 +427,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
     <div className="ceiba-app-shell">
       <AppSidebar
         activeSection={activeSection}
+        canManageUsers={isAdmin}
         collapsed={sidebarCollapsed}
         onLogout={() => void handleLogout()}
         onNavigate={goToSection}
@@ -434,6 +452,31 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
           description="Saisie du formulaire guichet foncier MCLU et suivi d'activite par commune, statut et date de creation."
           onCreateRecord={() => goToSection("new-record")}
         />
+
+        {isAdmin && (
+          <section className="ceiba-panel" id="settings">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Pilotage des acces</p>
+                <h3>Parcours admin metier CEIBA</h3>
+              </div>
+            </div>
+            <div className="ceiba-access-model-grid">
+              <article className="ceiba-access-model-card">
+                <h4>Etape 1: creer les comptes</h4>
+                <p>L'administrateur CEIBA cree les comptes des agents depuis la section Utilisateurs CEIBA.</p>
+              </article>
+              <article className="ceiba-access-model-card">
+                <h4>Etape 2: attribuer le profil</h4>
+                <p>Agent operateur pour la saisie terrain. Administrateur CEIBA pour supervision dashboard et gestion des acces.</p>
+              </article>
+              <article className="ceiba-access-model-card">
+                <h4>Etape 3: connexion et exploitation</h4>
+                <p>Les agents se connectent, saisissent le questionnaire d'inventaire et les profils de supervision suivent les indicateurs.</p>
+              </article>
+            </div>
+          </section>
+        )}
 
         <section className="ceiba-panel" id="overview">
           <div className="ceiba-panel-head">
@@ -621,7 +664,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
                         <strong>{account.name}</strong>
                         <span>{account.login}</span>
                       </td>
-                      <td>{account.role}</td>
+                      <td>{roleLabel(account.role)}</td>
                       <td><StatusBadge status={account.status} /></td>
                       <td>
                         {new Date(account.createdAt).toLocaleDateString("fr-FR")}
@@ -663,6 +706,7 @@ export default function CeibaInventoryApp({ initialDashboard, session }: { initi
                   </select>
                 </label>
                 <p className="capture-helper">Le statut est prepare pour le workflow admin. La creation conserve la logique API actuelle.</p>
+                <p className="capture-helper">Profil choisi: {adminForm.role === "admin" ? "peut gerer les comptes et suivre le dashboard" : "peut saisir les fiches et suivre l'activite"}.</p>
                 {adminFormMessage && <p className="form-message">{adminFormMessage}</p>}
                 <div className="ceiba-drawer-actions">
                   <button className="ghost-button" type="button" onClick={() => setShowUserDrawer(false)}>Annuler</button>
