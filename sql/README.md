@@ -26,3 +26,9 @@ npm run dev
 - Pour une base deja en production, executer seulement `sql/004_create_users.sql` une fois.
 - Le premier administrateur peut etre amorce via `.env` avec `GEOARCHIVES_ADMIN_LOGIN`, `GEOARCHIVES_ADMIN_PASSWORD` et `GEOARCHIVES_ADMIN_NAME`.
 - Ensuite, les comptes agents et executifs se creent dans l'application via `Gestion des comptes`.
+
+## Inventaire CEIBA
+
+- Pour activer le module separe de suivi des fiches MCLU / guichet foncier, executer `sql/005_create_ceiba_inventory.sql`.
+- Une fois la table creee, la page `/inventaire-ceiba` permet de saisir les fiches et de suivre l'activite dans un dashboard dedie.
+- Le meme script cree aussi `ceiba_inventory_users`, table dediee aux comptes du module CEIBA uniquement.
