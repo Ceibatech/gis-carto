@@ -33,10 +33,16 @@ Variables Vercel à configurer:
 NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL=https://api.ton-domaine.ci
 GEOARCHIVES_API_BASE_URL=https://api.ton-domaine.ci
 GEOARCHIVES_AUTH_SECRET=<secret-long-et-aleatoire>
+GEOARCHIVES_ADMIN_LOGIN=dac01@ceiba-analytics.com
+GEOARCHIVES_ADMIN_PASSWORD=<mot-de-passe-admin>
+GEOARCHIVES_ADMIN_NAME=Administrateur national
 GEOARCHIVES_EXECUTIVE_LOGIN=executif
 GEOARCHIVES_EXECUTIVE_PASSWORD=<mot-de-passe-executif>
 GEOARCHIVES_EXECUTIVE_NAME=Pilotage national
-GEOARCHIVES_AGENT_ACCOUNTS=[{"login":"agent-abidjan","password":"<mot-de-passe-agent-abidjan>","name":"Agent Abidjan"},{"login":"agent-yamoussoukro","password":"<mot-de-passe-agent-yamoussoukro>","name":"Agent Yamoussoukro"}]
+GEOARCHIVES_AGENT_ACCOUNTS=[{"login":"agent-abidjan","password":"<mot-de-passe-agent-abidjan>","name":"Agent Abidjan"}]
+RESEND_API_KEY=<cle-resend>
+RESEND_FROM_EMAIL=support@ceiba-analytics.com
+PASSWORD_RESET_REDIRECT_URL=https://geoarchiv.ceiba-analytics.com/reset-password
 ```
 
 Ne mets pas `DATABASE_URL` sur Vercel si la base reste derrière Contabo. Le front et le rendu serveur liront les données via l'API HTTPS.
@@ -60,11 +66,17 @@ NODE_ENV=production
 PORT=4100
 DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/mulcv_geoarchives
 GEOARCHIVES_ALLOWED_ORIGINS=https://mulcv-geoarchives.vercel.app,https://ton-domaine-front.ci
-GEOARCHIVES_AUTH_SECRET=<meme-secret-que-vercel-si-tu-gardes-le-login-sur-les-deux>
+GEOARCHIVES_AUTH_SECRET=<secret-long-et-aleatoire>
+GEOARCHIVES_ADMIN_LOGIN=dac01@ceiba-analytics.com
+GEOARCHIVES_ADMIN_PASSWORD=<mot-de-passe-admin>
+GEOARCHIVES_ADMIN_NAME=Administrateur national
 GEOARCHIVES_EXECUTIVE_LOGIN=executif
 GEOARCHIVES_EXECUTIVE_PASSWORD=<mot-de-passe-executif>
 GEOARCHIVES_EXECUTIVE_NAME=Pilotage national
-GEOARCHIVES_AGENT_ACCOUNTS='[{"login":"agent-abidjan","password":"<mot-de-passe-agent-abidjan>","name":"Agent Abidjan"},{"login":"agent-yamoussoukro","password":"<mot-de-passe-agent-yamoussoukro>","name":"Agent Yamoussoukro"}]'
+GEOARCHIVES_AGENT_ACCOUNTS=[{"login":"agent-abidjan","password":"<mot-de-passe-agent-abidjan>","name":"Agent Abidjan"}]
+RESEND_API_KEY=<cle-resend>
+RESEND_FROM_EMAIL=support@ceiba-analytics.com
+PASSWORD_RESET_REDIRECT_URL=https://geoarchiv.ceiba-analytics.com/reset-password
 ```
 
 Guide detaille root + SSL: `docs/contabo-ssl-root.md`.
@@ -81,3 +93,6 @@ curl -i -X OPTIONS https://api.ton-domaine.ci/api/sites \
 ```
 
 Le premier appel doit renvoyer le dashboard JSON. Le second doit renvoyer les headers CORS avec ton domaine Vercel.
+
+
+Note: apres connexion avec `GEOARCHIVES_ADMIN_LOGIN`, les agents se creent depuis `Gestion des comptes`.

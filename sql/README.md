@@ -18,3 +18,11 @@ Ordre normal:
 # 4. Lancer l'application
 npm run dev
 ```
+
+
+## Comptes utilisateurs
+
+- Pour une base neuve, la table `geoarchive_users` est incluse dans `001_create_schema.sql`.
+- Pour une base deja en production, executer seulement `sql/004_create_users.sql` une fois.
+- Le premier administrateur peut etre amorce via `.env` avec `GEOARCHIVES_ADMIN_LOGIN`, `GEOARCHIVES_ADMIN_PASSWORD` et `GEOARCHIVES_ADMIN_NAME`.
+- Ensuite, les comptes agents et executifs se creent dans l'application via `Gestion des comptes`.

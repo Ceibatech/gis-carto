@@ -3977,3 +3977,331 @@ h4 {
     text-align: left;
   }
 }
+
+.account-admin-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.35fr);
+}
+
+.account-admin-hero,
+.account-schema-card,
+.account-form-card,
+.account-list-card {
+  animation: fade-up 280ms ease both;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(205, 218, 212, 0.9);
+  border-radius: 18px;
+  box-shadow: 0 20px 55px rgba(17, 48, 39, 0.07);
+}
+
+.account-admin-hero {
+  background:
+    linear-gradient(135deg, rgba(7, 38, 32, 0.96), rgba(13, 80, 62, 0.92)),
+    linear-gradient(180deg, #ffffff, #f6faf8);
+  color: #f4fbf8;
+  display: grid;
+  gap: 28px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  overflow: hidden;
+  padding: 28px;
+  position: relative;
+}
+
+.account-admin-hero::after {
+  background: linear-gradient(135deg, transparent, rgba(228, 184, 82, 0.24));
+  content: "";
+  inset: auto -10% -45% 48%;
+  position: absolute;
+  transform: rotate(-8deg);
+}
+
+.account-admin-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.account-admin-hero h3 {
+  font-size: clamp(1.6rem, 2.4vw, 2.4rem);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.account-admin-hero p:not(.panel-label) {
+  color: rgba(244, 251, 248, 0.8);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 760px;
+}
+
+.account-admin-metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.account-admin-metrics span {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+}
+
+.account-admin-metrics strong {
+  color: #ffffff;
+  font-size: 1.55rem;
+  font-weight: 900;
+}
+
+.account-admin-metrics small {
+  color: rgba(244, 251, 248, 0.72);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-schema-card {
+  border-color: rgba(199, 66, 50, 0.2);
+  color: #7d342b;
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 18px;
+}
+
+.account-schema-card strong {
+  color: #9b2f24;
+  font-size: 1rem;
+}
+
+.account-schema-card p {
+  margin: 0;
+}
+
+.account-form-card,
+.account-list-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.account-form-card label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 7px;
+  text-transform: uppercase;
+}
+
+.account-form-card input,
+.account-form-card select {
+  background: #f7faf8;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  min-height: 44px;
+  padding: 0 12px;
+  text-transform: none;
+  width: 100%;
+}
+
+.account-form-card input:focus,
+.account-form-card select:focus {
+  border-color: #85bba8;
+  box-shadow: 0 0 0 4px rgba(15, 125, 92, 0.1);
+  outline: 0;
+}
+
+.account-list-card {
+  min-width: 0;
+}
+
+.account-table-wrap {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.account-role,
+.account-status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.account-role-admin {
+  background: #f4ead3;
+  color: #835911;
+}
+
+.account-role-executive {
+  background: #e7f0ff;
+  color: #2459a7;
+}
+
+.account-role-agent {
+  background: #dff2e8;
+  color: #0b5d45;
+}
+
+.account-status-active {
+  background: #dff2e8;
+  color: #0b5d45;
+}
+
+.account-status-disabled {
+  background: #eef2f1;
+  color: #687872;
+}
+
+.view-admin .workspace {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(240, 246, 243, 0.9)),
+    radial-gradient(circle at 80% 8%, rgba(200, 140, 31, 0.1), transparent 28%);
+}
+
+@media (max-width: 1100px) {
+  .account-admin-grid,
+  .account-admin-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .account-admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .account-admin-hero,
+  .account-form-card,
+  .account-list-card {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .account-admin-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.region-filter {
+  position: relative;
+  z-index: 20;
+}
+
+.region-filter-menu {
+  position: relative;
+}
+
+.region-filter-menu > summary {
+  align-items: center;
+  background: #fbfdfc;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.region-filter-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.region-filter-menu > summary::after {
+  color: var(--muted);
+  content: "Open";
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.region-filter-menu[open] > summary {
+  border-color: #98c7b5;
+  box-shadow: 0 0 0 4px rgba(15, 125, 92, 0.08);
+}
+
+.region-filter-menu[open] > summary::after {
+  content: "Close";
+}
+
+.region-filter-menu > summary strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.region-filter-menu > summary small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  max-width: 58%;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.region-filter-menu .region-filter-box {
+  left: 0;
+  margin-top: 8px;
+  position: absolute;
+  right: auto;
+  top: 100%;
+  width: min(540px, calc(100vw - 48px));
+  z-index: 40;
+}
+
+.gps-guidance {
+  background: linear-gradient(135deg, rgba(255, 248, 230, 0.98), rgba(236, 248, 242, 0.96));
+  border: 1px solid rgba(198, 140, 31, 0.32);
+  border-left: 5px solid var(--gold);
+  border-radius: 16px;
+  color: #344238;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.gps-guidance strong {
+  color: #74500f;
+  display: block;
+  font-size: 0.98rem;
+  margin-bottom: 6px;
+}
+
+.gps-guidance p,
+.gps-guidance ul {
+  margin: 0;
+}
+
+.gps-guidance p,
+.gps-guidance li {
+  color: #465850;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.gps-guidance ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+@media (max-width: 720px) {
+  .region-filter-menu .region-filter-box {
+    position: static;
+    width: 100%;
+  }
+}

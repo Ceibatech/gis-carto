@@ -1,5 +1,11 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+﻿import { createHmac, timingSafeEqual } from "node:crypto";
+import {
+  findActiveGeoArchiveUserByLogin,
+  touchGeoArchiveUserLogin,
+  upsertBootstrapGeoArchiveUser,
+} from "../db/users";
 import type { AuthRole, AuthSession } from "./geoarchives-auth-types";
+import { verifyPasswordHash } from "./password-hash";
 
 export const geoArchivesAuthCookieName = "geoarchives_session";
 
@@ -21,7 +27,9 @@ function authSecret() {
 }
 
 function landingViewForRole(role: AuthRole) {
-  return role === "agent" ? "Registre des sites" : "Vue executive";
+  if (role === "agent") return "Registre des sites";
+  if (role === "admin") return "Gestion des comptes";
+  return "Vue executive";
 }
 
 type ConfiguredAccount = {
@@ -89,6 +97,12 @@ function configuredAccounts() {
 
   return [
     {
+      login: process.env.GEOARCHIVES_ADMIN_LOGIN?.trim() || process.env.GEOARCHIVES_ADMIN_EMAIL?.trim() || (useDevDefaults ? "admin" : ""),
+      name: process.env.GEOARCHIVES_ADMIN_NAME?.trim() || "Administration nationale",
+      password: process.env.GEOARCHIVES_ADMIN_PASSWORD || (useDevDefaults ? "admin-geoarchives" : ""),
+      role: "admin" as const,
+    },
+    {
       login: process.env.GEOARCHIVES_EXECUTIVE_LOGIN?.trim() || (useDevDefaults ? "executif" : ""),
       name: process.env.GEOARCHIVES_EXECUTIVE_NAME?.trim() || "Pilotage national",
       password: process.env.GEOARCHIVES_EXECUTIVE_PASSWORD || (useDevDefaults ? "executif-geoarchives" : ""),
@@ -112,25 +126,7 @@ function signature(payload: string) {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-export function authRuntimeReady() {
-  const accounts = configuredAccounts();
-  return (
-    Boolean(authSecret()) &&
-    accounts.some((account) => account.role === "executive") &&
-    accounts.some((account) => account.role === "agent")
-  );
-}
-
-export function authenticateGeoArchivesUser(login: string, password: string): AuthSession | null {
-  if (!authRuntimeReady()) return null;
-
-  const normalizedLogin = login.trim().toLowerCase();
-  const account = configuredAccounts().find((item) => safeEqualText(item.login.toLowerCase(), normalizedLogin));
-
-  if (!account || !safeEqualText(account.password, password)) {
-    return null;
-  }
-
+function createSession(account: { login: string; name: string; role: AuthRole }): AuthSession {
   const issuedAt = Date.now();
   return {
     expiresAt: issuedAt + sessionMaxAgeSeconds() * 1000,
@@ -140,6 +136,31 @@ export function authenticateGeoArchivesUser(login: string, password: string): Au
     name: account.name,
     role: account.role,
   };
+}
+
+export function authRuntimeReady() {
+  return Boolean(authSecret());
+}
+
+export async function authenticateGeoArchivesUser(login: string, password: string): Promise<AuthSession | null> {
+  if (!authRuntimeReady()) return null;
+
+  const normalizedLogin = login.trim().toLowerCase();
+  if (!normalizedLogin || !password) return null;
+
+  const dbUser = await findActiveGeoArchiveUserByLogin(normalizedLogin);
+  if (dbUser && await verifyPasswordHash(password, dbUser.passwordHash)) {
+    await touchGeoArchiveUserLogin(dbUser.id).catch(() => undefined);
+    return createSession({ login: dbUser.login, name: dbUser.name, role: dbUser.role });
+  }
+
+  const account = configuredAccounts().find((item) => safeEqualText(item.login.toLowerCase(), normalizedLogin));
+  if (!account || !safeEqualText(account.password, password)) {
+    return null;
+  }
+
+  await upsertBootstrapGeoArchiveUser(account).catch(() => undefined);
+  return createSession(account);
 }
 
 export function signAuthSession(session: AuthSession) {
@@ -157,7 +178,7 @@ export function verifyAuthSession(token?: string | null): AuthSession | null {
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as AuthSession;
     if (!session.role || !session.login || !session.expiresAt || session.expiresAt <= Date.now()) return null;
-    if (session.role !== "agent" && session.role !== "executive") return null;
+    if (session.role !== "admin" && session.role !== "agent" && session.role !== "executive") return null;
     return session;
   } catch {
     return null;

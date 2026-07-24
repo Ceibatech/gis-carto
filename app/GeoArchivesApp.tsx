@@ -14,7 +14,7 @@ import type {
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
-import type { AuthRole, AuthSession, LoginResponse } from "../lib/geoarchives-auth-types";
+import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse } from "../lib/geoarchives-auth-types";
 import { geoArchivesApiUrl } from "../lib/api-url";
 import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
 
@@ -31,227 +31,31 @@ type AssessmentKey = keyof Assessment;
 
 type CaptureSyncStatus = "offlineSaved" | "waiting" | "syncing" | "sent" | "failed";
 
-type CaptureFormState = Omit<
-  CaptureSiteInput,
-  | "meters"
-  | "storageCapacityMl"
-  | "boxes"
-  | "files"
-  | "pages"
-  | "risk"
-  | "priority"
-  | "progress"
-  | "latitude"
-  | "longitude"
-  | "totalAgents"
-  | "archiveRoomsCount"
-  | "dateRangeStart"
-  | "dateRangeEnd"
-  | "documentCategories"
-  | "travelTimeMinutes"
-  | "photoReferences"
-  | "gpsAccuracyMeters"
-  | "gpsCapturedAt"
-> & {
-  meters: string;
-  storageCapacityMl: string;
-  boxes: string;
-  files: string;
-  pages: string;
-  latitude: string;
-  longitude: string;
-  totalAgents: string;
-  archiveRoomsCount: string;
-  dateRangeStart: string;
-  dateRangeEnd: string;
-  documentCategoriesText: string;
-  travelTimeMinutes: string;
-  photoReferencesText: string;
-  gpsAccuracyMeters: string;
-  gpsCapturedAt: string;
+type AccountFormState = {
+  login: string;
+  name: string;
+  password: string;
+  role: AuthRole;
 };
-
-const captureDraftStorageKey = "geoarchives-capture-draft-v2";
-const captureQueueStorageKey = "geoarchives-capture-queue-v2";
-const compactModeStorageKey = "geoarchives-compact-mode-v1";
-
-const accessibilityOptions = [
-  "Accessible",
-  "Accès limité",
-  "Accès difficile",
-  "Site isolé",
-  "Accès restreint",
-];
-
-const roadConditionOptions = ["Bonne", "Dégradée", "Très dégradée", "Saisonnière", "Piste rurale"];
-const networkQualityOptions = ["Bonne", "Moyenne", "Faible", "Très faible", "Aucune couverture"];
-const buildingConditionOptions = ["Bon état", "État moyen", "Fragile", "Très dégradé"];
-const storageConditionOptions = ["Adapté", "Acceptable", "Saturé", "Inadapté"];
-const riskLevelOptions = ["Faible", "Modéré", "Élevé", "Critique"];
-
-const statuses: SiteStatusLabel[] = [
-  "Non évalué",
-  "Évaluation planifiée",
-  "Évaluation réalisée",
-  "Mobilisation en cours",
-  "Traitement en cours",
-  "Numérisation en cours",
-  "Contrôle qualité",
-  "Traitement terminé",
-  "Risque élevé",
-  "Inaccessible",
-];
-
-const statusProgress: Record<SiteStatusLabel, number> = {
-  "Non évalué": 0,
-  "Évaluation planifiée": 10,
-  "Évaluation réalisée": 30,
-  "Mobilisation en cours": 45,
-  "Traitement en cours": 62,
-  "Numérisation en cours": 76,
-  "Contrôle qualité": 88,
-  "Traitement terminé": 100,
-  "Risque élevé": 20,
-  Inaccessible: 5,
-};
-
-const siteTypes = [
-  "Direction centrale",
-  "Direction régionale",
-  "Direction départementale",
-  "Agence rattachée",
-  "Dépôt d'archives",
-  "Local d'archives",
-  "Centre temporaire",
-  "Site CEIBA",
-  "Unité mobile",
-];
-
-const confidentialityLevels: DashboardSite["confidentiality"][] = [
-  "Faible",
-  "Interne",
-  "Confidentiel",
-  "Critique",
-];
-
-
-const abidjanCitySuggestions = [
-  "Abobo Baoulé",
-  "Angré",
-  "Attinguié",
-  "Akoupé-Zeudji",
-  "Anyama-Adjamé",
-  "Bingerville",
-  "Brofodoumé",
-  "Ebimpé",
-  "Songon-Agban",
-  "Songon-Kassemblé",
-  "Vridi",
-  "Zone 4",
-];
-
-function getRgphDistrict(district: string) {
-  if (district === "Abidjan") {
-    return rgphDistricts.find((item) => item.district === abidjanDistrictName) ?? rgphDistricts[0];
-  }
-
-  return rgphDistricts.find((item) => item.district === district) ?? rgphDistricts[0];
-}
-
-function isAbidjanDistrict(district: string) {
-  return getRgphDistrict(district)?.district === abidjanDistrictName;
-}
-
-function regionOptionsForDistrict(district: string) {
-  const selectedDistrict = getRgphDistrict(district);
-  if (!selectedDistrict) return [];
-  return selectedDistrict.regionLabel ? [selectedDistrict.regionLabel] : selectedDistrict.regions;
-}
-
-function getRgphRegion(district: string, region: string) {
-  const selectedDistrict = getRgphDistrict(district);
-  return selectedDistrict?.regionItems?.find((item) => item.nom === region) ?? selectedDistrict?.regionItems?.[0] ?? null;
-}
-
-function getRgphDepartment(district: string, region: string, department: string) {
-  const selectedRegion = getRgphRegion(district, region);
-  return selectedRegion?.departments.find((item) => item.nom === department) ?? selectedRegion?.departments[0] ?? null;
-}
-
-function departmentOptionsForLocation(district: string, region: string) {
-  if (isAbidjanDistrict(district)) return [abidjanDepartment];
-  return getRgphRegion(district, region)?.departments.map((item) => item.nom) ?? [];
-}
-
-function subPrefectureOptionsForLocation(district: string, region: string, department: string) {
-  if (isAbidjanDistrict(district)) return abidjanSubPrefectures.map((item) => item.nom);
-  return getRgphDepartment(district, region, department)?.subPrefectures.map((item) => item.nom) ?? [];
-}
-
-function communesForAbidjanSubPrefecture(subPrefecture: string) {
-  return abidjanSubPrefectures.find((item) => item.nom === subPrefecture)?.communes ?? [];
-}
-
-function abidjanSubPrefectureForCommune(commune: string) {
-  return abidjanSubPrefectures.find((item) => item.communes.includes(commune))?.nom ?? abidjanUrbanSubPrefecture;
-}
-
-function communeOptionsForLocation(district: string, region: string, department: string, subPrefecture: string) {
-  if (isAbidjanDistrict(district)) return communesForAbidjanSubPrefecture(subPrefecture);
-  return subPrefecture ? [subPrefecture] : [];
-}
-
-function localitySuggestionsForLocation(district: string, region: string, department: string, subPrefecture: string, commune: string) {
-  const suggestions = isAbidjanDistrict(district)
-    ? [commune, ...abidjanCitySuggestions]
-    : [commune, subPrefecture, department, region].filter(Boolean);
-  return Array.from(new Set(suggestions)).filter(Boolean);
-}
-
-function locationDefaultsForSubPrefecture(district: string, region: string, department: string, subPrefecture: string) {
-  const commune = communeOptionsForLocation(district, region, department, subPrefecture)[0] ?? "";
-  return { region, department, subPrefecture, commune };
-}
-
-function locationDefaultsForDepartment(district: string, region: string, department: string) {
-  const subPrefecture = subPrefectureOptionsForLocation(district, region, department)[0] ?? "";
-  return locationDefaultsForSubPrefecture(district, region, department, subPrefecture);
-}
-
-function locationDefaultsForRegion(district: string, region: string) {
-  if (isAbidjanDistrict(district)) {
-    return locationDefaultsForSubPrefecture(district, abidjanRegionLabel, abidjanDepartment, abidjanUrbanSubPrefecture);
-  }
-
-  const department = departmentOptionsForLocation(district, region)[0] ?? "";
-  return locationDefaultsForDepartment(district, region, department);
-}
-
-function locationDefaultsForDistrict(district: string) {
-  const region = regionOptionsForDistrict(district)[0] ?? "";
-  return locationDefaultsForRegion(district, region);
-}
-
-function captureSyncMeta(status: CaptureSyncStatus) {
-  switch (status) {
-    case "waiting":
-      return { label: "En attente d’envoi", tone: "waiting" };
-    case "syncing":
-      return { label: "Synchronisation en cours", tone: "syncing" };
-    case "sent":
-      return { label: "Envoyée", tone: "sent" };
-    case "failed":
-      return { label: "Échec de l’envoi — réessayer", tone: "failed" };
-    case "offlineSaved":
-    default:
-      return { label: "Enregistrée hors ligne", tone: "offline" };
-  }
-}
 
 type NavigationItem = {
   view: string;
   label: string;
   helper: string;
+};
+
+const defaultAccountForm: AccountFormState = {
+  login: "",
+  name: "",
+  password: "",
+  role: "agent",
+};
+
+const accountRoleOptions: AuthRole[] = ["agent", "executive", "admin"];
+const accountRoleLabels: Record<AuthRole, string> = {
+  admin: "Administration nationale",
+  executive: "Pilotage ex\u00e9cutif",
+  agent: "Agent registre",
 };
 
 const navigationItems: { section: string; items: NavigationItem[] }[] = [
@@ -266,34 +70,48 @@ const navigationItems: { section: string; items: NavigationItem[] }[] = [
     section: "Conduite terrain",
     items: [
       { view: "Registre des sites", label: "Registre", helper: "Fiches et collecte" },
-      { view: "Evaluation", label: "Evaluation", helper: "Scores de priorité" },
-      { view: "Mobilisation", label: "Mobilisation", helper: "Vagues et équipes" },
-      { view: "Documents", label: "Documents", helper: "Pièces et audit" },
+      { view: "Evaluation", label: "Evaluation", helper: "Scores de priorit\u00e9" },
+      { view: "Mobilisation", label: "Mobilisation", helper: "Vagues et \u00e9quipes" },
+      { view: "Documents", label: "Documents", helper: "Pi\u00e8ces et audit" },
+    ],
+  },
+  {
+    section: "Administration",
+    items: [
+      { view: "Gestion des comptes", label: "Comptes", helper: "Agents et acc\u00e8s" },
     ],
   },
 ];
 
+const executiveNavigationViews = navigationItems
+  .filter((group) => group.section !== "Administration")
+  .flatMap((group) => group.items.map((item) => item.view));
+const adminNavigationViews = navigationItems.flatMap((group) => group.items.map((item) => item.view));
+
 const viewNarratives: Record<string, string> = {
-  "Vue executive": "Synthèse nationale pour arbitrer les priorités de conservation et de numérisation.",
-  "Carte nationale": "Vision territoriale des sites, risques et progression des opérations.",
-  "Registre des sites": "Fiches terrain structurées et capture métier centralisée.",
-  Evaluation: "Diagnostic archivistique et calcul automatisé des niveaux de risque.",
-  Mobilisation: "Programmation des vagues terrain, équipes et chronologie d'intervention.",
-  Documents: "Traçabilité documentaire et audit continu des pièces justificatives.",
+  "Vue executive": "Synth\u00e8se nationale pour arbitrer les priorit\u00e9s de conservation et de num\u00e9risation.",
+  "Carte nationale": "Vision territoriale des sites, risques et progression des op\u00e9rations.",
+  "Registre des sites": "Fiches terrain structur\u00e9es et capture m\u00e9tier centralis\u00e9e.",
+  Evaluation: "Diagnostic archivistique et calcul automatis\u00e9 des niveaux de risque.",
+  Mobilisation: "Programmation des vagues terrain, \u00e9quipes et chronologie d\'intervention.",
+  Documents: "Tra\u00e7abilit\u00e9 documentaire et audit continu des pi\u00e8ces justificatives.",
+  "Gestion des comptes": "Cr\u00e9ation et suivi des acc\u00e8s agents, ex\u00e9cutifs et administrateurs.",
 };
 
 const viewIconMap: Record<string, string> = {
-  "Vue executive": "◆",
-  "Carte nationale": "◎",
-  "Registre des sites": "▦",
-  Evaluation: "△",
-  Mobilisation: "◈",
-  Documents: "▤",
+  "Vue executive": "EX",
+  "Carte nationale": "CA",
+  "Registre des sites": "RG",
+  Evaluation: "EV",
+  Mobilisation: "MO",
+  Documents: "DO",
+  "Gestion des comptes": "AD",
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
+  admin: adminNavigationViews,
   agent: ["Registre des sites"],
-  executive: navigationItems.flatMap((group) => group.items.map((item) => item.view)),
+  executive: executiveNavigationViews,
 };
 
 function landingViewForSession(session: AuthSession | null) {
@@ -305,7 +123,7 @@ function allowedViewsForSession(session: AuthSession | null) {
 }
 
 function roleLabel(role: AuthRole) {
-  return role === "agent" ? "Agent registre" : "Pilotage exécutif";
+  return accountRoleLabels[role];
 }
 
 const InteractiveNationalMap = dynamic(() => import("./SiteOperationsMap"), {
@@ -327,6 +145,8 @@ function viewThemeClass(view: string) {
       return "view-operations";
     case "Documents":
       return "view-documents";
+    case "Gestion des comptes":
+      return "view-admin";
     default:
       return "view-executive";
   }
@@ -553,8 +373,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
     return window.matchMedia("(max-width: 1024px)").matches;
   });
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-  const [regionSearch, setRegionSearch] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("Toutes");
   const [status, setStatus] = useState("Tous");
   const [risk, setRisk] = useState("Tous");
   const [territoryLevel, setTerritoryLevel] = useState("Tous");
@@ -568,6 +387,13 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const [pendingCaptures, setPendingCaptures] = useState<CaptureSiteInput[]>(() => readStoredCaptureQueue());
   const [isOnline, setIsOnline] = useState(() => (typeof window === "undefined" ? true : window.navigator.onLine));
   const [draftRestored, setDraftRestored] = useState(() => Boolean(readStoredCaptureDraft()));
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>([]);
+  const [usersTableReady, setUsersTableReady] = useState(false);
+  const [usersMessage, setUsersMessage] = useState<string | null>(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [accountForm, setAccountForm] = useState<AccountFormState>({ ...defaultAccountForm });
+  const [accountFormMessage, setAccountFormMessage] = useState<string | null>(null);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [assessment, setAssessment] = useState<Assessment>({
     physical: 4,
     humidity: 5,
@@ -604,25 +430,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       return regionOptionsForDistrict(capture.district);
     }, [capture.district]);
   const regions = useMemo(() => Array.from(new Set(sites.map((site) => site.region))).sort(), [sites]);
-  const regionFilterOptions = useMemo(() => allRgphRegions, []);
-  const filteredRegionOptions = useMemo(() => {
-    const term = regionSearch.trim().toLowerCase();
-    return regionFilterOptions.filter((item) => !term || item.toLowerCase().includes(term));
-  }, [regionFilterOptions, regionSearch]);
-  const selectedRegionSummary = selectedRegions.length
-    ? `${selectedRegions.slice(0, 2).join(" \u00b7 ")}${selectedRegions.length > 2 ? ` +${selectedRegions.length - 2}` : ""}`
-    : `${regionFilterOptions.length} r\u00e9gions ANStat disponibles`;
-  const toggleRegionFilter = useCallback((regionName: string) => {
-    setSelectedRegions((current) =>
-      current.includes(regionName)
-        ? current.filter((item) => item !== regionName)
-        : [...current, regionName].sort((left, right) => left.localeCompare(right, "fr")),
-    );
-  }, []);
-  const clearRegionFilters = useCallback(() => {
-    setSelectedRegions([]);
-    setRegionSearch("");
-  }, []);
+  const regionFilterOptions = useMemo(() => ["Toutes", ...allRgphRegions], []);
     const missionsBySiteCode = useMemo(() => {
       const ranking = { active: 3, upcoming: 2, completed: 1 } as const;
       const map = new Map<string, ReturnType<typeof missionStatusMeta>>();
@@ -646,7 +454,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const filteredSites = useMemo(() => {
     return sites.filter((site) => {
-      const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(site.region);
+      const matchesRegion = selectedRegion === "Toutes" || site.region === selectedRegion;
       const matchesStatus = status === "Tous" || site.status === status;
       const matchesRisk =
         risk === "Tous" ||
@@ -661,7 +469,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       const haystack = `${site.code} ${site.name} ${site.organization} ${site.city} ${site.region}`.toLowerCase();
       return matchesRegion && matchesStatus && matchesRisk && matchesTerritory && matchesMissionPhase && haystack.includes(query.toLowerCase());
     });
-  }, [missionPhase, missionsBySiteCode, query, risk, selectedRegions, sites, status, territoryLevel]);
+  }, [missionPhase, missionsBySiteCode, query, risk, selectedRegion, sites, status, territoryLevel]);
 
   const selectedSite = sites.find((site) => site.code === selectedCode) ?? filteredSites[0] ?? sites[0] ?? null;
 
@@ -732,8 +540,9 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       Evaluation: `${computedRisk}/100`,
       Mobilisation: `${formatNumber(activeMissionCount)} actives`,
       Documents: `${formatNumber(data.documents.length)} pieces`,
+      "Gestion des comptes": usersTableReady ? `${formatNumber(userAccounts.length)} comptes` : "SQL requis",
     }),
-    [activeMissionCount, computedRisk, data.documents.length, filteredSites.length, geolocatedFilteredSites.length, totals.critical],
+    [activeMissionCount, computedRisk, data.documents.length, filteredSites.length, geolocatedFilteredSites.length, totals.critical, userAccounts.length, usersTableReady],
   );
   const contextualShortcuts = useMemo(() => {
     let shortcuts: { label: string; target: string }[];
@@ -811,7 +620,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         body: JSON.stringify({ login, password }),
       });
     } catch {
-      throw new Error("Connexion impossible. Vérifie le déploiement Vercel.");
+      throw new Error("Connexion impossible. V\u00e9rifie le d\u00e9ploiement Vercel.");
     }
 
     const result = (await response.json()) as LoginResponse;
@@ -820,25 +629,31 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       throw new Error("message" in result ? result.message : "Connexion impossible");
     }
 
-    let dashboardResponse: Response;
+    const authenticatedSession = result.session;
+    let nextDashboard = emptyGeoArchivesDashboard();
 
     try {
-      dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
+      const dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
         headers: { accept: "application/json" },
       });
+
+      if (!dashboardResponse.ok) {
+        throw new Error("Connexion accept\u00e9e, mais les donn\u00e9es nationales sont indisponibles.");
+      }
+
+      nextDashboard = (await dashboardResponse.json()) as GeoArchivesDashboard;
     } catch {
-      throw new Error("API nationale injoignable. Vérifie l'URL API Vercel et le CORS Contabo.");
+      if (authenticatedSession.role !== "admin") {
+        throw new Error("API nationale injoignable. V\u00e9rifie l'URL API Vercel et le CORS Contabo.");
+      }
+
+      nextDashboard = emptyGeoArchivesDashboard("Les donn\u00e9es nationales ne sont pas encore disponibles. La gestion des comptes reste accessible.");
     }
 
-    if (!dashboardResponse.ok) {
-      throw new Error("Connexion acceptée, mais les données nationales sont indisponibles.");
-    }
-
-    const nextDashboard = (await dashboardResponse.json()) as GeoArchivesDashboard;
     setData(nextDashboard);
-    setSession(result.session);
+    setSession(authenticatedSession);
     setSelectedCode(nextDashboard.sites[0]?.code ?? "");
-    setActiveView(result.session.landingView);
+    setActiveView(authenticatedSession.landingView);
   }
 
   async function handleLogout() {
@@ -848,6 +663,57 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setSelectedCode("");
     setActiveView("Vue executive");
   }
+  const refreshUserAccounts = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await fetch("/api/users", { headers: { accept: "application/json" } });
+      const result = (await response.json()) as UserAccountsResponse | { message: string };
+
+      if (!response.ok || !("accounts" in result)) {
+        throw new Error("message" in result ? result.message : "Impossible de charger les comptes.");
+      }
+
+      setUserAccounts(result.accounts);
+      setUsersTableReady(result.tableReady);
+      setUsersMessage(result.message);
+    } catch (error) {
+      setUserAccounts([]);
+      setUsersTableReady(false);
+      setUsersMessage(error instanceof Error ? error.message : "Impossible de charger les comptes.");
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
+  async function handleCreateAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsCreatingAccount(true);
+    setAccountFormMessage(null);
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(accountForm),
+      });
+      const result = (await response.json()) as UserAccountsResponse | { message: string };
+
+      if (!response.ok || !("accounts" in result)) {
+        throw new Error("message" in result ? result.message : "Impossible de cr\u00e9er le compte.");
+      }
+
+      setUserAccounts(result.accounts);
+      setUsersTableReady(result.tableReady);
+      setUsersMessage(result.message);
+      setAccountForm({ ...defaultAccountForm });
+      setAccountFormMessage("Compte cr\u00e9\u00e9 et enregistr\u00e9 dans la base utilisateurs.");
+    } catch (error) {
+      setAccountFormMessage(error instanceof Error ? error.message : "Impossible de cr\u00e9er le compte.");
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  }
+
   async function submitCapture(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
@@ -991,6 +857,19 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     };
   }, [databaseUsable, flushPendingCaptures, isSaving, pendingCaptures]);
 
+  useEffect(() => {
+    if (session?.role !== "admin" || activeView !== "Gestion des comptes") return;
+
+    const timeout = window.setTimeout(() => {
+      void refreshUserAccounts();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeView, refreshUserAccounts, session?.role]);
+
+  const isAccountsView = activeView === "Gestion des comptes";
+  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
+
   if (!session) {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -1106,28 +985,18 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </div>
         </section>
 
+        {showWorkspaceFilters && (
         <section className="filters" aria-label="Filtres de recherche">
           <div className="region-filter">
             <div className="filter-label-row">
-              <span>Région</span>
-              {selectedRegions.length > 0 && <button onClick={clearRegionFilters} type="button">Réinitialiser</button>}
+              <span>{"R\u00e9gion"}</span>
+              {selectedRegion !== "Toutes" && <button onClick={() => setSelectedRegion("Toutes")} type="button">{"R\u00e9initialiser"}</button>}
             </div>
-            <div className="region-filter-box">
-              <div className="region-filter-summary">
-                <strong>{selectedRegions.length ? `${selectedRegions.length} sélectionnée(s)` : "Toutes les régions"}</strong>
-                <small>{selectedRegionSummary}</small>
-              </div>
-              <input aria-label="Rechercher une région ANStat" onChange={(event) => setRegionSearch(event.target.value)} placeholder="Rechercher une région..." type="search" value={regionSearch} />
-              <div className="region-checklist" role="group" aria-label="Sélection multiple des régions ANStat">
-                {filteredRegionOptions.map((item) => (
-                  <label className={selectedRegions.includes(item) ? "region-check active" : "region-check"} key={item}>
-                    <input checked={selectedRegions.includes(item)} onChange={() => toggleRegionFilter(item)} type="checkbox" />
-                    <span>{item}</span>
-                  </label>
-                ))}
-                {!filteredRegionOptions.length && <p className="empty-text">Aucune région trouvée.</p>}
-              </div>
-            </div>
+            <label className="region-filter-select-only">
+              <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)}>
+                {regionFilterOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
           </div>
           <label>Statut<select value={status} onChange={(event) => setStatus(event.target.value)}><option>Tous</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Risque<select value={risk} onChange={(event) => setRisk(event.target.value)}><option>Tous</option><option>Critique</option><option>Élevé</option><option>Modéré</option><option>Maîtrisé</option></select></label>
@@ -1135,6 +1004,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           <label>Mission<select value={missionPhase} onChange={(event) => setMissionPhase(event.target.value)}><option>Tous</option>{missionStatusFilter.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Recherche<input onChange={(event) => setQuery(event.target.value)} placeholder="Code, ville, direction..." type="search" value={query} /></label>
         </section>
+        )}
 
         {activeView === "Vue executive" && (
           <ExecutiveView
@@ -1150,7 +1020,22 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           />
         )}
 
-        {activeView !== "Vue executive" && (
+        {activeView === "Gestion des comptes" && (
+          <UserAccountsView
+            accountForm={accountForm}
+            accounts={userAccounts}
+            formMessage={accountFormMessage}
+            isCreating={isCreatingAccount}
+            isLoading={isLoadingUsers}
+            onChange={setAccountForm}
+            onRefresh={refreshUserAccounts}
+            onSubmit={handleCreateAccount}
+            tableMessage={usersMessage}
+            tableReady={usersTableReady}
+          />
+        )}
+
+        {activeView !== "Vue executive" && !isAccountsView && (
           <section className="metric-grid" aria-label="Indicateurs nationaux">
             <Metric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${totals.evaluated} évalués`} />
             <Metric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${totals.pages} pages`} />
@@ -1205,7 +1090,14 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
               <div className="section-head"><div><p className="panel-label">Registre national unique</p><h3>Fiches structurées des sites</h3></div></div>
               <div className="table-wrap"><table><thead><tr><th>Code</th><th>Site</th><th>Localisation</th><th>Niveau</th><th>Risque</th><th>Priorité</th><th>Avancement</th></tr></thead><tbody>{filteredSites.map((site) => { const territory = siteTerritoryMeta(site); return <tr key={site.code} onClick={() => setSelectedCode(site.code)}><td>{site.code}</td><td><strong>{site.name}</strong><span>{site.organization}</span></td><td>{site.city}, {site.region}</td><td><span className={`territory-chip ${territory.tone}`}>{territory.label}</span><small className="type-caption">{site.type}</small></td><td><RiskBadge value={site.risk} /></td><td>{site.priority}/100</td><td><div className="mini-progress"><div style={{ width: `${site.progress}%` }} /></div></td></tr>; })}</tbody></table>{!filteredSites.length && <p className="empty-text">Aucune fiche ne correspond aux critères retenus.</p>}</div>
             </div>
-            <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+            {session.role === "executive" ? (
+              <article className="capture-panel" aria-label="Saisie restreinte">
+                <div className="capture-head"><div><p className="panel-label">Saisie restreinte</p><h3>Collecte réservée aux agents</h3></div></div>
+                <p className="empty-text">Le profil exécutif peut consulter les fiches, mais ne peut pas créer ou modifier une remontée terrain.</p>
+              </article>
+            ) : (
+              <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+            )}
           </section>
         )}
 
@@ -1518,6 +1410,70 @@ function ExecutiveMetric({ detail, label, tone = "neutral", value }: { detail: s
   return <article className={`executive-metric ${tone}`}><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
 }
 
+function UserAccountsView({ accountForm, accounts, formMessage, isCreating, isLoading, onChange, onRefresh, onSubmit, tableMessage, tableReady }: { accountForm: AccountFormState; accounts: UserAccount[]; formMessage: string | null; isCreating: boolean; isLoading: boolean; onChange: (next: AccountFormState) => void; onRefresh: () => Promise<void>; onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>; tableMessage: string | null; tableReady: boolean }) {
+  const activeAccounts = accounts.filter((account) => account.status === "active").length;
+  const agentAccounts = accounts.filter((account) => account.role === "agent").length;
+  const executiveAccounts = accounts.filter((account) => account.role === "executive").length;
+
+  return (
+    <section className="account-admin-grid" aria-label="Administration des comptes">
+      <article className="account-admin-hero">
+        <div>
+          <p className="panel-label">{"Administration des acc\u00e8s"}</p>
+          <h3>{"Comptes agents et pilotage"}</h3>
+          <p>{"Cr\u00e9ez les acc\u00e8s nominatifs pour les agents terrain, les profils ex\u00e9cutifs et les administrateurs autoris\u00e9s. Les identifiants sont conserv\u00e9s dans la base MySQL."}</p>
+        </div>
+        <div className="account-admin-metrics">
+          <span><strong>{formatNumber(accounts.length)}</strong><small>Comptes</small></span>
+          <span><strong>{formatNumber(activeAccounts)}</strong><small>Actifs</small></span>
+          <span><strong>{formatNumber(agentAccounts)}</strong><small>Agents</small></span>
+          <span><strong>{formatNumber(executiveAccounts)}</strong><small>{"Ex\u00e9cutifs"}</small></span>
+        </div>
+      </article>
+
+      {!tableReady && (
+        <article className="account-schema-card">
+          <strong>{"Table utilisateurs \u00e0 cr\u00e9er"}</strong>
+          <p>{tableMessage ?? "Ex\u00e9cutez sql/004_create_users.sql une seule fois dans MySQL, puis reconnectez-vous avec l'admin d\u00e9fini dans le .env."}</p>
+        </article>
+      )}
+
+      <form className="account-form-card" onSubmit={onSubmit}>
+        <div className="section-head"><div><p className="panel-label">Nouveau compte</p><h3>{"Cr\u00e9er un acc\u00e8s"}</h3></div></div>
+        <label><span>Nom complet</span><input required value={accountForm.name} onChange={(event) => onChange({ ...accountForm, name: event.target.value })} placeholder="Agent Abidjan" /></label>
+        <label><span>Login ou email</span><input autoComplete="username" required value={accountForm.login} onChange={(event) => onChange({ ...accountForm, login: event.target.value })} placeholder="dac01@ceiba-analytics.com" /></label>
+        <label><span>{"R\u00f4le"}</span><select value={accountForm.role} onChange={(event) => onChange({ ...accountForm, role: event.target.value as AuthRole })}>{accountRoleOptions.map((role) => <option key={role} value={role}>{accountRoleLabels[role]}</option>)}</select></label>
+        <label><span>Mot de passe provisoire</span><input autoComplete="new-password" minLength={8} required type="password" value={accountForm.password} onChange={(event) => onChange({ ...accountForm, password: event.target.value })} placeholder="8 caracteres minimum" /></label>
+        {formMessage && <p className="form-message" role="status">{formMessage}</p>}
+        <button className="primary-button" disabled={!tableReady || isCreating} type="submit">{isCreating ? "Cr\u00e9ation..." : "Cr\u00e9er le compte"}</button>
+      </form>
+
+      <article className="account-list-card">
+        <div className="section-head"><div><p className="panel-label">Base utilisateurs</p><h3>{"Acc\u00e8s enregistr\u00e9s"}</h3></div><button className="secondary-button" disabled={isLoading} onClick={() => void onRefresh()} type="button">Actualiser</button></div>
+        <div className="table-wrap account-table-wrap">
+          <table>
+            <thead><tr><th>Utilisateur</th><th>{"R\u00f4le"}</th><th>Statut</th><th>{"Cr\u00e9ation"}</th><th>{"Derni\u00e8re connexion"}</th></tr></thead>
+            <tbody>{accounts.map((account) => (
+              <tr key={account.id}>
+                <td><strong>{account.name}</strong><span>{account.login}</span></td>
+                <td><span className={"account-role account-role-" + account.role}>{accountRoleLabels[account.role]}</span></td>
+                <td><span className={"account-status account-status-" + account.status}>{account.status === "active" ? "Actif" : "D\u00e9sactiv\u00e9"}</span></td>
+                <td>{formatAccountDate(account.createdAt)}<span>{account.createdBy ? "Par " + account.createdBy : "Cr\u00e9ation syst\u00e8me"}</span></td>
+                <td>{account.lastLoginAt ? formatAccountDate(account.lastLoginAt) : "Jamais"}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          {!accounts.length && <p className="empty-text">{isLoading ? "Chargement des comptes..." : "Aucun compte enregistr\u00e9 pour le moment."}</p>}
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function formatAccountDate(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
 function LoginScreen({ onLogin }: { onLogin: (login: string, password: string) => Promise<void> }) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -1584,7 +1540,7 @@ const captureSteps = [
   { id: "condition", title: "Conditions du site", icon: Building2, summary: "Risques bâtiment, sûreté et conservation" },
   { id: "capacity", title: "Capacité d'archives", icon: Archive, summary: "Volumes, dates extrêmes et catégories" },
   { id: "equipment", title: "Équipements", icon: ShieldCheck, summary: "Pré-requis opérationnels et checklist" },
-  { id: "geolocation", title: "Géolocalisation", icon: LocateFixed, summary: "GPS, précision et preuve terrain" },
+  { id: "geolocation", title: "G\u00e9olocalisation *", icon: LocateFixed, summary: "GPS, pr\u00e9cision et preuve terrain" },
   { id: "validation", title: "Validation", icon: CheckCircle2, summary: "Contrôle final avant publication" },
 ] as const;
 
@@ -1888,9 +1844,23 @@ function CapturePanel({
       case "geolocation":
         return (
           <div className="wizard-grid">
-            <Field label="Latitude"><input inputMode="decimal" value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} /></Field>
-            <Field label="Longitude"><input inputMode="decimal" value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} /></Field>
-            <Field label="Précision GPS (m)"><input inputMode="decimal" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
+            <article className="gps-guidance wide">
+              <div>
+                <strong>{"Capture des coordonn\u00e9es GPS dans les formulaires de collecte *"}</strong>
+                <p>{"Afin d'assurer la qualit\u00e9 et la fiabilit\u00e9 des donn\u00e9es collect\u00e9es, la capture GPS doit \u00eatre r\u00e9alis\u00e9e avec un appareil \u00e9quip\u00e9 d'un vrai r\u00e9cepteur GPS/GNSS."}</p>
+                <p>{"Pourquoi privil\u00e9gier un t\u00e9l\u00e9phone mobile ? Les smartphones offrent en g\u00e9n\u00e9ral une pr\u00e9cision entre 2 et 5 m\u00e8tres en ext\u00e9rieur, adapt\u00e9e pour localiser un b\u00e2timent, une parcelle ou un site d'archivage. \u00c0 l'inverse, un PC sans GPS peut produire des \u00e9carts de plusieurs centaines de m\u00e8tres, voire de plusieurs kilom\u00e8tres."}</p>
+              </div>
+              <ul>
+                <li>{"Utiliser de pr\u00e9f\u00e9rence un smartphone ou une tablette avec GPS."}</li>
+                <li>{"\u00c9viter la saisie depuis un PC, sauf s'il dispose d'un vrai r\u00e9cepteur GPS."}</li>
+                <li>{"V\u00e9rifier que la position correspond bien au site avant validation."}</li>
+                <li>{"Activer les services de localisation pendant la collecte."}</li>
+              </ul>
+              <p>{"Les coordonn\u00e9es GPS permettent de localiser pr\u00e9cis\u00e9ment les sites, d'am\u00e9liorer la tra\u00e7abilit\u00e9 des fiches et de faciliter les contr\u00f4les qualit\u00e9 terrain."}</p>
+            </article>
+            <Field label="Latitude *"><input inputMode="decimal" value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} /></Field>
+            <Field label="Longitude *"><input inputMode="decimal" value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} /></Field>
+            <Field label="Précision GPS (m) *"><input inputMode="decimal" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
             <Field label="Références photo"><input value={capture.photoReferencesText} onChange={(event) => update("photoReferencesText", event.target.value)} /></Field>
             <div className="gps-card wide">
               <div><strong>Capture assistée</strong><span>{gpsMessage ?? "Utilise la géolocalisation de l'appareil pour réduire les erreurs de saisie."}</span></div>

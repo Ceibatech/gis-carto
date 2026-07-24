@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as { login?: string; password?: string } | null;
-  const session = authenticateGeoArchivesUser(body?.login ?? "", body?.password ?? "");
+  const session = await authenticateGeoArchivesUser(body?.login ?? "", body?.password ?? "");
 
   if (!session) {
     return NextResponse.json({ message: "Identifiants invalides." }, { status: 401 });
