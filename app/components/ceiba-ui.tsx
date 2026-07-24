@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CircleHelp,
   Database,
-  FileText,
   Gauge,
   Landmark,
   LayoutDashboard,
@@ -87,6 +86,7 @@ export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, use
               key={item.id}
               className={`ceiba-nav-item ${active ? "active" : ""}`}
               type="button"
+              title={`${item.label} - ${item.caption}`}
               onClick={() => onNavigate(item.id)}
               aria-current={active ? "page" : undefined}
             >
@@ -94,7 +94,6 @@ export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, use
               {!collapsed && (
                 <span className="ceiba-nav-copy">
                   <strong>{item.label}</strong>
-                  <small>{item.caption}</small>
                 </span>
               )}
             </button>
@@ -135,9 +134,10 @@ type TopHeaderProps = {
   onCreateRecord: () => void;
   userName: string;
   showCreateAction?: boolean;
+  onOpenGuide?: () => void;
 };
 
-export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCreateRecord, userName, showCreateAction = true }: TopHeaderProps) {
+export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCreateRecord, userName, showCreateAction = true, onOpenGuide }: TopHeaderProps) {
   return (
     <header className="ceiba-topbar">
       <div>
@@ -163,6 +163,11 @@ export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCr
         <button type="button" className="icon-button" aria-label="Notifications">
           <Bell size={16} />
         </button>
+        {onOpenGuide && (
+          <button type="button" className="secondary-button" onClick={onOpenGuide}>
+            Guide d'utilisation
+          </button>
+        )}
         <div className="session-chip compact">
           <span>Connecte</span>
           <strong>{userName}</strong>
@@ -174,30 +179,16 @@ export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCr
 
 type PageHeaderProps = {
   title: string;
-  description: string;
-  onCreateRecord: () => void;
-  showCreateAction?: boolean;
+  description?: string;
 };
 
-export function PageHeader({ title, description, onCreateRecord, showCreateAction = true }: PageHeaderProps) {
+export function PageHeader({ title, description }: PageHeaderProps) {
   return (
     <section className="ceiba-page-hero">
       <div>
         <p className="eyebrow">Source de collecte</p>
         <h2>{title}</h2>
-        <p className="view-description">{description}</p>
-      </div>
-      <div className="ceiba-page-hero-actions">
-        {showCreateAction && (
-          <button type="button" className="primary-button" onClick={onCreateRecord}>
-            <Plus size={16} />
-            Creer une fiche
-          </button>
-        )}
-        <button type="button" className="secondary-button">
-          <FileText size={16} />
-          Exporter
-        </button>
+        {description && <p className="view-description">{description}</p>}
       </div>
     </section>
   );
@@ -206,20 +197,20 @@ export function PageHeader({ title, description, onCreateRecord, showCreateActio
 type StatCardProps = {
   label: string;
   value: number;
-  detail: string;
+  detail?: string;
   icon: LucideIcon;
   loading?: boolean;
 };
 
 export function StatCard({ label, value, detail, icon: Icon, loading }: StatCardProps) {
   return (
-    <article className="ceiba-stat-card" aria-busy={loading ? "true" : "false"}>
+    <article className="ceiba-stat-card" aria-busy={loading ? "true" : "false"} title={detail || label}>
       <div className="ceiba-stat-head">
         <span className="ceiba-stat-icon"><Icon size={16} /></span>
         <p>{label}</p>
       </div>
       {loading ? <div className="ceiba-skeleton ceiba-skeleton-lg" /> : <strong>{value}</strong>}
-      <small>{detail}</small>
+      {detail ? <small>{detail}</small> : null}
     </article>
   );
 }
@@ -236,7 +227,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 type EmptyStateProps = {
   title: string;
-  description: string;
+  description?: string;
   actionLabel?: string;
   onAction?: () => void;
 };
@@ -247,7 +238,7 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
       <CircleHelp size={20} />
       <div>
         <h3>{title}</h3>
-        <p>{description}</p>
+        {description ? <p>{description}</p> : null}
       </div>
       {actionLabel && onAction && (
         <button type="button" className="secondary-button" onClick={onAction}>

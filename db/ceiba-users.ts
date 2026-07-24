@@ -189,6 +189,140 @@ export async function createCeibaInventoryUserAccount(input: { login: string; na
   }
 }
 
+export async function updateCeibaInventoryUserAccount(
+  input: { id: string; role?: CeibaInventoryRole; status?: UserStatus },
+  actor: { login: string; name: string; role: string },
+) {
+  if (!isDatabaseConfigured()) {
+    throw new Error("DATABASE_URL n'est pas configuré pour mettre à jour les comptes CEIBA.");
+  }
+
+  if (!input.id.trim()) throw new Error("Identifiant utilisateur manquant.");
+  if (input.role && !isValidCeibaInventoryRole(input.role)) throw new Error("Role CEIBA invalide.");
+  if (input.status && input.status !== "active" && input.status !== "disabled") throw new Error("Statut utilisateur invalide.");
+
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query<CeibaUserRow[]>(
+      `select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+       from ceiba_inventory_users
+       where id = ?
+       limit 1`,
+      [input.id],
+    );
+
+    const current = rows[0];
+    if (!current) throw new Error("Compte CEIBA introuvable.");
+
+    const nextRole = input.role ?? current.role;
+    const nextStatus = input.status ?? current.status;
+
+    await enforceLastAdminGuard(connection, {
+      actorLogin: actor.login,
+      targetLogin: current.login,
+      currentRole: current.role,
+      nextRole,
+      currentStatus: current.status,
+      nextStatus,
+    });
+
+    await connection.execute(
+      `update ceiba_inventory_users
+       set role = ?, status = ?, updated_at = current_timestamp
+       where id = ?`,
+      [nextRole, nextStatus, input.id],
+    );
+
+    await connection.execute(
+      `insert into audit_logs (id, actor_name, actor_role, action, entity_type, entity_id, description, metadata)
+       values (?, ?, ?, 'ceiba_inventory_user_updated', 'ceiba_inventory_user', ?, ?, ?)`,
+      [
+        randomUUID(),
+        actor.name,
+        actor.role,
+        input.id,
+        `Compte CEIBA ${current.login} mis a jour`,
+        JSON.stringify({ previous: { role: current.role, status: current.status }, next: { role: nextRole, status: nextStatus } }),
+      ],
+    );
+
+    await connection.commit();
+    return await listCeibaInventoryUsers();
+  } catch (error) {
+    await connection.rollback();
+    if (isMissingUsersTableError(error)) throw new CeibaInventoryUsersTableMissingError();
+    throw error;
+  } finally {
+    connection.release();
+    await pool.end().catch(() => undefined);
+  }
+}
+
+export async function resetCeibaInventoryUserPassword(
+  input: { id: string; password: string },
+  actor: { login: string; name: string; role: string },
+) {
+  if (!isDatabaseConfigured()) {
+    throw new Error("DATABASE_URL n'est pas configuré pour reinitialiser les mots de passe CEIBA.");
+  }
+
+  if (!input.id.trim()) throw new Error("Identifiant utilisateur manquant.");
+  const password = input.password.trim();
+  if (password.length < 8) throw new Error("Le nouveau mot de passe doit contenir au moins 8 caracteres.");
+
+  const pool = getPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query<CeibaUserRow[]>(
+      `select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+       from ceiba_inventory_users
+       where id = ?
+       limit 1`,
+      [input.id],
+    );
+    const current = rows[0];
+    if (!current) throw new Error("Compte CEIBA introuvable.");
+
+    const passwordHash = await hashPassword(password);
+    await connection.execute(
+      `update ceiba_inventory_users
+       set password_hash = ?, updated_at = current_timestamp
+       where id = ?`,
+      [passwordHash, input.id],
+    );
+
+    await connection.execute(
+      `insert into audit_logs (id, actor_name, actor_role, action, entity_type, entity_id, description, metadata)
+       values (?, ?, ?, 'ceiba_inventory_password_reset', 'ceiba_inventory_user', ?, ?, ?)`,
+      [
+        randomUUID(),
+        actor.name,
+        actor.role,
+        input.id,
+        `Mot de passe CEIBA reinitialise pour ${current.login}`,
+        JSON.stringify({ login: current.login }),
+      ],
+    );
+
+    await connection.commit();
+    return { ok: true };
+  } catch (error) {
+    await connection.rollback();
+    if (isMissingUsersTableError(error)) throw new CeibaInventoryUsersTableMissingError();
+    throw error;
+  } finally {
+    connection.release();
+    await pool.end().catch(() => undefined);
+  }
+}
+
 function toUserAccount(row: CeibaUserRow): CeibaInventoryUserAccount {
   return {
     createdAt: toIso(row.created_at),
@@ -235,6 +369,34 @@ async function writeAccountAudit(connection: PoolConnection, actor: { login: str
       JSON.stringify({ login, role }),
     ],
   );
+}
+
+async function enforceLastAdminGuard(
+  connection: PoolConnection,
+  input: {
+    actorLogin: string;
+    targetLogin: string;
+    currentRole: CeibaInventoryRole;
+    nextRole: CeibaInventoryRole;
+    currentStatus: UserStatus;
+    nextStatus: UserStatus;
+  },
+) {
+  const isSelfTarget = input.actorLogin.trim().toLowerCase() === input.targetLogin.trim().toLowerCase();
+  if (!isSelfTarget) return;
+
+  const removesAdminRole = input.currentRole === "admin" && input.nextRole !== "admin";
+  const disablesCurrentAdmin = input.currentRole === "admin" && input.currentStatus === "active" && input.nextStatus === "disabled";
+  if (!removesAdminRole && !disablesCurrentAdmin) return;
+
+  const [rows] = await connection.query<Array<RowDataPacket & { total: number }>>(
+    `select count(*) as total from ceiba_inventory_users where role = 'admin' and status = 'active'`,
+  );
+
+  const activeAdminCount = Number(rows[0]?.total ?? 0);
+  if (activeAdminCount <= 1) {
+    throw new Error("Operation refusee: vous ne pouvez pas supprimer votre dernier acces administrateur.");
+  }
 }
 
 function isMissingUsersTableError(error: unknown) {

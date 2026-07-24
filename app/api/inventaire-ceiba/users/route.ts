@@ -1,10 +1,9 @@
 import type { NextRequest } from "next/server";
-import { createCeibaInventoryUserAccount, listCeibaInventoryUsers } from "../../../../db/ceiba-users";
+import { createCeibaInventoryUserAccount, listCeibaInventoryUsers, resetCeibaInventoryUserPassword, updateCeibaInventoryUserAccount } from "../../../../db/ceiba-users";
 import { isDatabaseConfigured } from "../../../../db";
 import type { CeibaInventoryRole } from "../../../../lib/ceiba-inventory-auth-types";
+import { getInventoryActorFromRequest, requireInventoryPermission } from "../../../../lib/inventory-authz";
 import { normalizeGeoArchivesApiBaseUrl } from "../../../../lib/api-url";
-import { ceibaInventoryAuthCookieName, verifyCeibaInventorySession } from "../../../../lib/ceiba-inventory-auth";
-import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../../lib/geoarchives-auth";
 import { corsJson, corsPreflight } from "../../_cors";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +16,15 @@ export async function GET(request: NextRequest) {
   const proxied = await proxyIfRemote(request);
   if (proxied) return proxied;
 
-  const actor = requireCeibaAdminActor(request);
-  if (!actor) return corsJson(request, { message: "Accès administrateur CEIBA requis." }, { status: 403 });
+  const actor = getInventoryActorFromRequest(request);
+  if (!requireInventoryPermission(actor, "inventory.users.manage")) {
+    return corsJson(request, { message: "Acces refuse: permission inventory.users.manage requise." }, { status: 403 });
+  }
+
+  const safeActor = actor;
+  if (!safeActor) {
+    return corsJson(request, { message: "Acces CEIBA requis." }, { status: 403 });
+  }
 
   try {
     return corsJson(request, await listCeibaInventoryUsers());
@@ -31,8 +37,15 @@ export async function POST(request: NextRequest) {
   const proxied = await proxyIfRemote(request);
   if (proxied) return proxied;
 
-  const actor = requireCeibaAdminActor(request);
-  if (!actor) return corsJson(request, { message: "Accès administrateur CEIBA requis." }, { status: 403 });
+  const actor = getInventoryActorFromRequest(request);
+  if (!requireInventoryPermission(actor, "inventory.users.manage")) {
+    return corsJson(request, { message: "Acces refuse: permission inventory.users.manage requise." }, { status: 403 });
+  }
+
+  const safeActor = actor;
+  if (!safeActor) {
+    return corsJson(request, { message: "Acces CEIBA requis." }, { status: 403 });
+  }
 
   try {
     const body = (await request.json()) as { login?: unknown; name?: unknown; password?: unknown; role?: unknown };
@@ -43,7 +56,7 @@ export async function POST(request: NextRequest) {
         password: String(body.password ?? ""),
         role: String(body.role ?? "operator") as CeibaInventoryRole,
       },
-      actor,
+      { login: safeActor.login, name: safeActor.name, role: safeActor.ceibaRole },
     );
 
     return corsJson(request, result, { status: 201 });
@@ -52,14 +65,59 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function requireCeibaAdminActor(request: NextRequest) {
-  const rootAdmin = verifyAuthSession(request.cookies.get(geoArchivesAuthCookieName)?.value);
-  if (rootAdmin?.role === "admin") {
-    return rootAdmin;
+export async function PATCH(request: NextRequest) {
+  const proxied = await proxyIfRemote(request);
+  if (proxied) return proxied;
+
+  const actor = getInventoryActorFromRequest(request);
+  if (!requireInventoryPermission(actor, "inventory.users.manage")) {
+    return corsJson(request, { message: "Acces refuse: permission inventory.users.manage requise." }, { status: 403 });
   }
 
-  const ceibaAdmin = verifyCeibaInventorySession(request.cookies.get(ceibaInventoryAuthCookieName)?.value);
-  return ceibaAdmin?.role === "admin" ? ceibaAdmin : null;
+  const safeActor = actor;
+  if (!safeActor) {
+    return corsJson(request, { message: "Acces CEIBA requis." }, { status: 403 });
+  }
+
+  try {
+    const body = (await request.json()) as {
+      action?: unknown;
+      id?: unknown;
+      role?: unknown;
+      status?: unknown;
+      password?: unknown;
+    };
+
+    const action = String(body.action ?? "").trim();
+    const id = String(body.id ?? "").trim();
+
+    if (action === "update") {
+      const result = await updateCeibaInventoryUserAccount(
+        {
+          id,
+          role: body.role ? String(body.role) as CeibaInventoryRole : undefined,
+          status: body.status ? String(body.status) as "active" | "disabled" : undefined,
+        },
+        { login: safeActor.login, name: safeActor.name, role: safeActor.ceibaRole },
+      );
+      return corsJson(request, result);
+    }
+
+    if (action === "reset-password") {
+      const result = await resetCeibaInventoryUserPassword(
+        {
+          id,
+          password: String(body.password ?? ""),
+        },
+        { login: safeActor.login, name: safeActor.name, role: safeActor.ceibaRole },
+      );
+      return corsJson(request, result);
+    }
+
+    return corsJson(request, { message: "Action PATCH invalide." }, { status: 400 });
+  } catch (error) {
+    return corsJson(request, { message: error instanceof Error ? error.message : "Operation utilisateur impossible." }, { status: 400 });
+  }
 }
 
 async function proxyIfRemote(request: NextRequest) {

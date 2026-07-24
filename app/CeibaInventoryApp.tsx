@@ -142,13 +142,14 @@ export default function CeibaInventoryApp({
   const [showUserDrawer, setShowUserDrawer] = useState(false);
   const [toast, setToast] = useState<UiToast | null>(null);
   const [isUnsaved, setIsUnsaved] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const draftStorageKey = "ceiba-inventory-draft";
 
   const isAdmin = session?.role === "admin";
-  const isSupervisor = session?.role === "supervisor";
   const canSubmitInventory = session?.role === "admin" || session?.role === "operator";
   const isQuestionnaireMode = mode === "questionnaire";
+  const visibleSection = isQuestionnaireMode ? "new-record" : activeSection;
 
   const communeSuggestions = useMemo(() => {
     const values = new Set<string>();
@@ -465,68 +466,17 @@ export default function CeibaInventoryApp({
           onSearchChange={setGlobalSearch}
           onCreateRecord={() => goToSection("new-record")}
           showCreateAction={canSubmitInventory}
+          onOpenGuide={() => setShowGuide(true)}
         />
 
         {toast && <p className={`ceiba-toast ${toast.tone}`}>{toast.message}</p>}
 
         <PageHeader
-          title="Formulaire MCLU / Guichet unique du foncier"
-          description="Saisie du formulaire guichet foncier MCLU et suivi d'activite par commune, statut et date de creation."
-          onCreateRecord={() => goToSection("new-record")}
-          showCreateAction={canSubmitInventory}
+          title="Formulaire MCLU — Guichet unique du foncier"
+          description={isQuestionnaireMode ? "Saisie directe du questionnaire." : undefined}
         />
 
-        {!isQuestionnaireMode && isSupervisor && (
-          <section className="ceiba-panel" id="supervision">
-            <div className="ceiba-panel-head">
-              <div>
-                <p className="panel-label">Supervision dashboard</p>
-                <h3>Espace lecture et pilotage des indicateurs CEIBA</h3>
-              </div>
-            </div>
-            <div className="ceiba-access-model-grid">
-              <article className="ceiba-access-model-card">
-                <h4>Mission du profil</h4>
-                <p>Suivre les volumes, les communes actives et les dossiers a traiter sans modifier les donnees.</p>
-              </article>
-              <article className="ceiba-access-model-card">
-                <h4>Permissions</h4>
-                <p>Lecture seule: consultation dashboard et inventaire detaille, sans creation de compte ni saisie de fiche.</p>
-              </article>
-              <article className="ceiba-access-model-card">
-                <h4>Actions recommandees</h4>
-                <p>Utiliser les filtres periode/commune/statut puis partager les arbitrages avec les administrateurs CEIBA.</p>
-              </article>
-            </div>
-          </section>
-        )}
-
-        {!isQuestionnaireMode && isAdmin && (
-          <section className="ceiba-panel" id="settings">
-            <div className="ceiba-panel-head">
-              <div>
-                <p className="panel-label">Pilotage des acces</p>
-                <h3>Parcours admin metier CEIBA</h3>
-              </div>
-            </div>
-            <div className="ceiba-access-model-grid">
-              <article className="ceiba-access-model-card">
-                <h4>Etape 1: creer les comptes</h4>
-                <p>L'administrateur CEIBA cree les comptes des agents depuis la section Utilisateurs CEIBA.</p>
-              </article>
-              <article className="ceiba-access-model-card">
-                <h4>Etape 2: attribuer le profil</h4>
-                <p>Agent operateur pour la saisie terrain. Administrateur CEIBA pour supervision dashboard et gestion des acces.</p>
-              </article>
-              <article className="ceiba-access-model-card">
-                <h4>Etape 3: connexion et exploitation</h4>
-                <p>Les agents se connectent, saisissent le questionnaire d'inventaire et les profils de supervision suivent les indicateurs.</p>
-              </article>
-            </div>
-          </section>
-        )}
-
-        {!isQuestionnaireMode && <section className="ceiba-panel" id="overview">
+        {!isQuestionnaireMode && visibleSection === "overview" && <section className="ceiba-panel" id="overview">
           <div className="ceiba-panel-head">
             <div>
               <p className="panel-label">Vue d'ensemble</p>
@@ -564,10 +514,10 @@ export default function CeibaInventoryApp({
           </div>
 
           <div className="ceiba-kpi-grid" aria-label="Indicateurs inventaire CEIBA">
-            <StatCard icon={FilePlus2} label="Total des fiches" value={dashboard.totalRecords} detail="Registre CEIBA cumule" />
-            <StatCard icon={Clock3} label="Fiches creees aujourd'hui" value={dashboard.todayRecords} detail="Production quotidienne" />
-            <StatCard icon={Building2} label="Communes couvertes" value={dashboard.uniqueCommunes} detail="Territoires suivis" />
-            <StatCard icon={Gauge} label="Dossiers a traiter" value={dashboard.newRecords + dashboard.reviewedRecords} detail="Nouveau + en revue" />
+            <StatCard icon={FilePlus2} label="Total des fiches" value={dashboard.totalRecords} />
+            <StatCard icon={Clock3} label="Aujourd'hui" value={dashboard.todayRecords} />
+            <StatCard icon={Building2} label="Communes" value={dashboard.uniqueCommunes} />
+            <StatCard icon={Gauge} label="A traiter" value={dashboard.newRecords + dashboard.reviewedRecords} />
           </div>
 
           <div className="ceiba-analytics-grid">
@@ -590,13 +540,12 @@ export default function CeibaInventoryApp({
                 </div>
               ) : (
                 <EmptyState
-                  title="Aucune donnee filtree"
-                  description="Elargissez la periode ou la commune pour afficher la repartition des statuts."
+                  title="Aucune donnée disponible"
                 />
               )}
             </article>
 
-            <article className="ceiba-panel-sub" id="communes">
+            <article className="ceiba-panel-sub">
               <div className="ceiba-panel-sub-head">
                 <h3>Communes les plus actives</h3>
                 <UsersRound size={16} />
@@ -616,14 +565,11 @@ export default function CeibaInventoryApp({
               ) : (
                 <EmptyState
                   title="Aucune commune active"
-                  description="Les communes apparaitront apres les premieres saisies filtrees."
-                  actionLabel="Nouvelle fiche"
-                  onAction={() => goToSection("new-record")}
                 />
               )}
             </article>
 
-            <article className="ceiba-panel-sub" id="activities">
+            <article className="ceiba-panel-sub">
               <div className="ceiba-panel-sub-head">
                 <h3>Dernieres fiches enregistrees</h3>
                 <Clock3 size={16} />
@@ -642,15 +588,14 @@ export default function CeibaInventoryApp({
                 </ul>
               ) : (
                 <EmptyState
-                  title="Aucune fiche recente"
-                  description="Aucune fiche ne correspond aux filtres en cours."
+                  title="Aucune fiche récente"
                 />
               )}
             </article>
           </div>
         </section>}
 
-        {!isQuestionnaireMode && isAdmin && (
+        {!isQuestionnaireMode && visibleSection === "users" && isAdmin && (
           <section className="ceiba-panel" id="users">
             <div className="ceiba-panel-head">
               <div>
@@ -732,10 +677,7 @@ export default function CeibaInventoryApp({
               </table>
               {!filteredAccounts.length && (
                 <EmptyState
-                  title={isLoadingAccounts ? "Chargement des utilisateurs" : "Aucun utilisateur CEIBA"}
-                  description="Aucun compte ne correspond aux filtres appliques."
-                  actionLabel="Ajouter un utilisateur"
-                  onAction={() => setShowUserDrawer(true)}
+                  title={isLoadingAccounts ? "Chargement..." : "Aucun utilisateur trouvé"}
                 />
               )}
             </div>
@@ -765,13 +707,12 @@ export default function CeibaInventoryApp({
           </section>
         )}
 
-        {canSubmitInventory ? <section className="ceiba-panel" id="new-record">
+        {(visibleSection === "new-record" || isQuestionnaireMode) && (canSubmitInventory ? <section className="ceiba-panel" id="new-record">
           <div className="ceiba-panel-head">
             <div>
               <p className="panel-label">Nouvelle fiche</p>
               <h3>Saisie fonciere structuree</h3>
             </div>
-            <p className="view-description">Les champs obligatoires utilisent un asterisque rouge. La sauvegarde conserve le schema SQL existant.</p>
           </div>
 
           <FormStepper
@@ -948,12 +889,11 @@ export default function CeibaInventoryApp({
           <section className="ceiba-panel" id="new-record">
             <EmptyState
               title="Profil supervision en lecture seule"
-              description="Ce compte superviseur consulte les indicateurs et le suivi inventaire, sans saisie de questionnaire."
             />
           </section>
-        )}
+        ))}
 
-        <section className="ceiba-panel" id="inventory">
+        {visibleSection === "inventory" && <section className="ceiba-panel" id="inventory">
           <div className="ceiba-panel-head">
             <div>
               <p className="panel-label">Inventaire foncier</p>
@@ -977,14 +917,92 @@ export default function CeibaInventoryApp({
             </table>
             {!filteredOverviewRecords.length && (
               <EmptyState
-                title="Aucune fiche a afficher"
-                description="Modifiez les filtres ou creez une nouvelle fiche pour alimenter le registre."
-                actionLabel="Creer une fiche"
-                onAction={() => goToSection("new-record")}
+                title="Aucune donnée disponible"
               />
             )}
           </div>
-        </section>
+        </section>}
+
+        {!isQuestionnaireMode && visibleSection === "communes" && (
+          <section className="ceiba-panel" id="communes">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Communes</p>
+                <h3>Communes les plus actives</h3>
+              </div>
+            </div>
+            {activityByCommune.length ? (
+              <div className="bar-list">
+                {activityByCommune.map((item) => (
+                  <div className="bar-row" key={item.commune}>
+                    <span>{item.commune}</span>
+                    <div className="bar-track"><div style={{ width: `${Math.max(12, (item.count / activityByCommune[0].count) * 100)}%` }} /></div>
+                    <strong>{item.count}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyState title="Aucune commune active" />}
+          </section>
+        )}
+
+        {!isQuestionnaireMode && visibleSection === "activities" && (
+          <section className="ceiba-panel" id="activities">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Activites</p>
+                <h3>Repartition et dernieres fiches</h3>
+              </div>
+            </div>
+            <div className="ceiba-analytics-grid">
+              <article className="ceiba-panel-sub">
+                <div className="ceiba-panel-sub-head"><h3>Par statut</h3><BarChart3 size={16} /></div>
+                {recordsByStatus.some((item) => item.count > 0) ? (
+                  <div className="bar-list">
+                    {recordsByStatus.map((item) => (
+                      <div className="bar-row" key={item.status}>
+                        <span>{item.status}</span>
+                        <div className="bar-track"><div style={{ width: `${Math.max(item.count > 0 ? 12 : 0, filteredOverviewRecords.length ? (item.count / filteredOverviewRecords.length) * 100 : 0)}%` }} /></div>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : <EmptyState title="Aucune donnée disponible" />}
+              </article>
+              <article className="ceiba-panel-sub">
+                <div className="ceiba-panel-sub-head"><h3>Dernieres fiches</h3><Clock3 size={16} /></div>
+                {filteredOverviewRecords.length ? (
+                  <ul className="ceiba-activity-list">
+                    {filteredOverviewRecords.slice(0, 8).map((record) => (
+                      <li key={record.id}><div><strong>{record.lastName} {record.firstNames}</strong><small>{record.commune}</small></div><StatusBadge status={record.status} /></li>
+                    ))}
+                  </ul>
+                ) : <EmptyState title="Aucune fiche récente" />}
+              </article>
+            </div>
+          </section>
+        )}
+
+        {!isQuestionnaireMode && visibleSection === "settings" && isAdmin && (
+          <section className="ceiba-panel" id="settings">
+            <EmptyState title="Guide d'utilisation disponible" description="Utilisez l'action Guide d'utilisation en haut de page." />
+          </section>
+        )}
+
+        {showGuide && (
+          <div className="ceiba-drawer-backdrop open" aria-hidden="false" onClick={() => setShowGuide(false)}>
+            <aside className="ceiba-drawer" role="dialog" aria-modal="true" aria-label="Guide d'utilisation" onClick={(event) => event.stopPropagation()}>
+              <div className="ceiba-drawer-head">
+                <h3>Guide d'utilisation</h3>
+                <button type="button" className="icon-button" onClick={() => setShowGuide(false)} aria-label="Fermer">x</button>
+              </div>
+              <div className="ceiba-drawer-form">
+                <p className="capture-helper">1. Creer les acces dans Utilisateurs.</p>
+                <p className="capture-helper">2. Les agents utilisent Nouvelle fiche.</p>
+                <p className="capture-helper">3. Les superviseurs consultent Vue d'ensemble.</p>
+              </div>
+            </aside>
+          </div>
+        )}
       </main>
     </div>
   );

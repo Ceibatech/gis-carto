@@ -598,6 +598,19 @@ function readStoredCaptureQueue() {
   }
 }
 
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const body = await response.text();
+  if (!body.trim()) {
+    return { message: "Réponse API vide." } as T;
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    return { message: `Réponse API invalide (HTTP ${response.status}).` } as T;
+  }
+}
+
 export default function GeoArchivesApp({ initialData, initialSession }: { initialData: GeoArchivesDashboard; initialSession: AuthSession | null }) {
   const [data, setData] = useState(initialData);
   const [session, setSession] = useState<AuthSession | null>(initialSession);
@@ -862,11 +875,11 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       throw new Error("Connexion impossible. V\u00e9rifie le d\u00e9ploiement Vercel.");
     }
 
-    const result = (await response.json()) as LoginResponse;
+    const result = await readJsonResponse<LoginResponse>(response);
 
     if (!response.ok || !("session" in result)) {
       const apiMessage = "message" in result ? result.message ?? "" : "";
-      throw new Error(apiMessage || "Connexion impossible");
+      throw new Error(apiMessage || `Connexion impossible (HTTP ${response.status})`);
     }
 
     const authenticatedSession = result.session;
@@ -881,7 +894,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         throw new Error("Connexion accept\u00e9e, mais les donn\u00e9es nationales sont indisponibles.");
       }
 
-      nextDashboard = (await dashboardResponse.json()) as GeoArchivesDashboard;
+      nextDashboard = await readJsonResponse<GeoArchivesDashboard>(dashboardResponse);
     } catch {
       if (authenticatedSession.role !== "admin") {
         throw new Error("API nationale injoignable. V\u00e9rifie l'URL API Vercel et le CORS Contabo.");
@@ -907,7 +920,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setIsLoadingUsers(true);
     try {
       const response = await fetch("/api/users", { headers: { accept: "application/json" } });
-      const result = (await response.json()) as UserAccountsResponse | { message: string };
+      const result = await readJsonResponse<UserAccountsResponse | { message: string }>(response);
 
       if (!response.ok || !("accounts" in result)) {
         const apiMessage = "message" in result ? result.message ?? "" : "";
@@ -937,7 +950,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(accountForm),
       });
-      const result = (await response.json()) as UserAccountsResponse | { message: string };
+      const result = await readJsonResponse<UserAccountsResponse | { message: string }>(response);
 
       if (!response.ok || !("accounts" in result)) {
         const apiMessage = "message" in result ? result.message ?? "" : "";
@@ -1039,7 +1052,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const next = (await response.json()) as GeoArchivesDashboard | { message?: string };
+    const next = await readJsonResponse<GeoArchivesDashboard | { message?: string }>(response);
 
     if (!response.ok) {
       throw new Error("message" in next ? (next.message ?? "Publication impossible") : "Publication impossible");
