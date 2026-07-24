@@ -38,6 +38,245 @@ type AccountFormState = {
   role: AuthRole;
 };
 
+type CaptureFormState = {
+  code: string;
+  name: string;
+  organization: string;
+  region: string;
+  district: string;
+  department: string;
+  subPrefecture: string;
+  commune: string;
+  city: string;
+  address: string;
+  accessLandmarks: string;
+  accessibility: string;
+  roadCondition: string;
+  lastMileCondition: string;
+  travelTimeMinutes: string;
+  networkQuality: string;
+  buildingCondition: string;
+  storageCondition: string;
+  waterRiskLevel: string;
+  securityRiskLevel: string;
+  seasonalConstraints: string;
+  surveyNotes: string;
+  photoReferencesText: string;
+  type: string;
+  status: SiteStatusLabel;
+  meters: string;
+  storageCapacityMl: string;
+  boxes: string;
+  files: string;
+  pages: string;
+  totalAgents: string;
+  archiveRoomsCount: string;
+  documentCategoriesText: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  hasInventory: boolean;
+  hasElectricity: boolean;
+  hasInternet: boolean;
+  hasAccessControl: boolean;
+  hasFireDetection: boolean;
+  checklistVehicleAccess: boolean;
+  checklistLoadingArea: boolean;
+  checklistSiteSignage: boolean;
+  checklistArchivesSeparated: boolean;
+  checklistShelvingAvailable: boolean;
+  checklistHumidityObserved: boolean;
+  checklistPestObserved: boolean;
+  checklistFireExtinguisher: boolean;
+  checklistBackupPower: boolean;
+  checklistImmediateRiskReported: boolean;
+  confidentiality: DashboardSite["confidentiality"];
+  latitude: string;
+  longitude: string;
+  gpsAccuracyMeters: string;
+  gpsCapturedAt: string;
+  lead: string;
+  respondentRole: string;
+  respondentEmail: string;
+  phone: string;
+  nextStep: string;
+};
+
+const captureDraftStorageKey = "geoarchives-capture-draft-v2";
+const captureQueueStorageKey = "geoarchives-capture-queue-v2";
+const compactModeStorageKey = "geoarchives-compact-mode-v1";
+
+const accessibilityOptions = [
+  "Accessible",
+  "Accès limité",
+  "Accès difficile",
+  "Site isolé",
+  "Accès restreint",
+];
+
+const roadConditionOptions = ["Bonne", "Dégradée", "Très dégradée", "Saisonnière", "Piste rurale"];
+const networkQualityOptions = ["Bonne", "Moyenne", "Faible", "Très faible", "Aucune couverture"];
+const buildingConditionOptions = ["Bon état", "État moyen", "Fragile", "Très dégradé"];
+const storageConditionOptions = ["Adapté", "Acceptable", "Saturé", "Inadapté"];
+const riskLevelOptions = ["Faible", "Modéré", "Élevé", "Critique"];
+
+const statuses: SiteStatusLabel[] = [
+  "Non évalué",
+  "Évaluation planifiée",
+  "Évaluation réalisée",
+  "Mobilisation en cours",
+  "Traitement en cours",
+  "Numérisation en cours",
+  "Contrôle qualité",
+  "Traitement terminé",
+  "Risque élevé",
+  "Inaccessible",
+];
+
+const statusProgress: Record<SiteStatusLabel, number> = {
+  "Non évalué": 0,
+  "Évaluation planifiée": 10,
+  "Évaluation réalisée": 30,
+  "Mobilisation en cours": 45,
+  "Traitement en cours": 62,
+  "Numérisation en cours": 76,
+  "Contrôle qualité": 88,
+  "Traitement terminé": 100,
+  "Risque élevé": 20,
+  Inaccessible: 5,
+};
+
+const siteTypes = [
+  "Direction centrale",
+  "Direction régionale",
+  "Direction départementale",
+  "Agence rattachée",
+  "Dépôt d'archives",
+  "Local d'archives",
+  "Centre temporaire",
+  "Site CEIBA",
+  "Unité mobile",
+];
+
+const confidentialityLevels: DashboardSite["confidentiality"][] = [
+  "Faible",
+  "Interne",
+  "Confidentiel",
+  "Critique",
+];
+
+const abidjanCitySuggestions = [
+  "Abobo Baoulé",
+  "Angré",
+  "Attinguié",
+  "Akoupé-Zeudji",
+  "Anyama-Adjamé",
+  "Bingerville",
+  "Brofodoumé",
+  "Ebimpé",
+  "Songon-Agban",
+  "Songon-Kassemblé",
+  "Vridi",
+  "Zone 4",
+];
+
+function getRgphDistrict(district: string) {
+  if (district === "Abidjan") {
+    return rgphDistricts.find((item) => item.district === abidjanDistrictName) ?? rgphDistricts[0];
+  }
+
+  return rgphDistricts.find((item) => item.district === district) ?? rgphDistricts[0];
+}
+
+function isAbidjanDistrict(district: string) {
+  return getRgphDistrict(district)?.district === abidjanDistrictName;
+}
+
+function regionOptionsForDistrict(district: string) {
+  const selectedDistrict = getRgphDistrict(district);
+  if (!selectedDistrict) return [];
+  return selectedDistrict.regionLabel ? [selectedDistrict.regionLabel] : selectedDistrict.regions;
+}
+
+function getRgphRegion(district: string, region: string) {
+  const selectedDistrict = getRgphDistrict(district);
+  return selectedDistrict?.regionItems?.find((item) => item.nom === region) ?? selectedDistrict?.regionItems?.[0] ?? null;
+}
+
+function getRgphDepartment(district: string, region: string, department: string) {
+  const selectedRegion = getRgphRegion(district, region);
+  return selectedRegion?.departments.find((item) => item.nom === department) ?? selectedRegion?.departments[0] ?? null;
+}
+
+function departmentOptionsForLocation(district: string, region: string) {
+  if (isAbidjanDistrict(district)) return [abidjanDepartment];
+  return getRgphRegion(district, region)?.departments.map((item) => item.nom) ?? [];
+}
+
+function subPrefectureOptionsForLocation(district: string, region: string, department: string) {
+  if (isAbidjanDistrict(district)) return abidjanSubPrefectures.map((item) => item.nom);
+  return getRgphDepartment(district, region, department)?.subPrefectures.map((item) => item.nom) ?? [];
+}
+
+function communesForAbidjanSubPrefecture(subPrefecture: string) {
+  return abidjanSubPrefectures.find((item) => item.nom === subPrefecture)?.communes ?? [];
+}
+
+function abidjanSubPrefectureForCommune(commune: string) {
+  return abidjanSubPrefectures.find((item) => item.communes.includes(commune))?.nom ?? abidjanUrbanSubPrefecture;
+}
+
+function communeOptionsForLocation(district: string, region: string, department: string, subPrefecture: string) {
+  if (isAbidjanDistrict(district)) return communesForAbidjanSubPrefecture(subPrefecture);
+  return subPrefecture ? [subPrefecture] : [];
+}
+
+function localitySuggestionsForLocation(district: string, region: string, department: string, subPrefecture: string, commune: string) {
+  const suggestions = isAbidjanDistrict(district)
+    ? [commune, ...abidjanCitySuggestions]
+    : [commune, subPrefecture, department, region].filter(Boolean);
+  return Array.from(new Set(suggestions)).filter(Boolean);
+}
+
+function locationDefaultsForSubPrefecture(district: string, region: string, department: string, subPrefecture: string) {
+  const commune = communeOptionsForLocation(district, region, department, subPrefecture)[0] ?? "";
+  return { region, department, subPrefecture, commune };
+}
+
+function locationDefaultsForDepartment(district: string, region: string, department: string) {
+  const subPrefecture = subPrefectureOptionsForLocation(district, region, department)[0] ?? "";
+  return locationDefaultsForSubPrefecture(district, region, department, subPrefecture);
+}
+
+function locationDefaultsForRegion(district: string, region: string) {
+  if (isAbidjanDistrict(district)) {
+    return locationDefaultsForSubPrefecture(district, abidjanRegionLabel, abidjanDepartment, abidjanUrbanSubPrefecture);
+  }
+
+  const department = departmentOptionsForLocation(district, region)[0] ?? "";
+  return locationDefaultsForDepartment(district, region, department);
+}
+
+function locationDefaultsForDistrict(district: string) {
+  const region = regionOptionsForDistrict(district)[0] ?? "";
+  return locationDefaultsForRegion(district, region);
+}
+
+function captureSyncMeta(status: CaptureSyncStatus) {
+  switch (status) {
+    case "waiting":
+      return { label: "En attente d'envoi", tone: "waiting" };
+    case "syncing":
+      return { label: "Synchronisation en cours", tone: "syncing" };
+    case "sent":
+      return { label: "Envoyée", tone: "sent" };
+    case "failed":
+      return { label: "Échec de l'envoi - réessayer", tone: "failed" };
+    case "offlineSaved":
+    default:
+      return { label: "Enregistrée hors ligne", tone: "offline" };
+  }
+}
+
 type NavigationItem = {
   view: string;
   label: string;
@@ -626,7 +865,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     const result = (await response.json()) as LoginResponse;
 
     if (!response.ok || !("session" in result)) {
-      throw new Error("message" in result ? result.message : "Connexion impossible");
+      const apiMessage = "message" in result ? result.message ?? "" : "";
+      throw new Error(apiMessage || "Connexion impossible");
     }
 
     const authenticatedSession = result.session;
@@ -670,7 +910,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       const result = (await response.json()) as UserAccountsResponse | { message: string };
 
       if (!response.ok || !("accounts" in result)) {
-        throw new Error("message" in result ? result.message : "Impossible de charger les comptes.");
+        const apiMessage = "message" in result ? result.message ?? "" : "";
+        throw new Error(apiMessage || "Impossible de charger les comptes.");
       }
 
       setUserAccounts(result.accounts);
@@ -699,7 +940,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       const result = (await response.json()) as UserAccountsResponse | { message: string };
 
       if (!response.ok || !("accounts" in result)) {
-        throw new Error("message" in result ? result.message : "Impossible de cr\u00e9er le compte.");
+        const apiMessage = "message" in result ? result.message ?? "" : "";
+        throw new Error(apiMessage || "Impossible de cr\u00e9er le compte.");
       }
 
       setUserAccounts(result.accounts);
