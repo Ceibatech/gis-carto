@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
 import type { InventoryActor, InventoryPermission } from "../../lib/inventory-rbac";
 import {
@@ -72,6 +73,7 @@ function has(permissions: InventoryPermission[], permission: InventoryPermission
 }
 
 export default function UserInventoryWorkspace({ actor, dashboard, view }: Props) {
+  const searchParams = useSearchParams();
   const [online, setOnline] = useState(true);
   const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
   const [banner, setBanner] = useState<string | null>(null);
@@ -90,6 +92,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
   const canEditAll = has(actor.permissions, "inventory.record.update_all");
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
+  const isOverviewTab = searchParams.get("tab") === "overview";
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -265,7 +268,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
     setActiveStep(stepDefs[index - 1].id);
   }
 
-  const activeKey = view === "registre" ? "records" : "new";
+  const activeKey = view === "registre" ? "records" : (isOverviewTab ? "overview" : "new");
 
   return (
     <div className="inventory-layout">
@@ -285,7 +288,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
 
         {banner && <div className="inventory-banner">{banner}</div>}
 
-        {view === "dashboard" && has(actor.permissions, "inventory.dashboard.view") && (
+        {view === "dashboard" && isOverviewTab && has(actor.permissions, "inventory.dashboard.view") && (
           <section className="ceiba-panel">
             <div className="ceiba-kpi-grid">
               <article className="ceiba-stat-card"><p>Total des fiches</p><strong>{dashboard.totalRecords}</strong></article>

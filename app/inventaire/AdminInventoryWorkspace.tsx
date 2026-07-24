@@ -161,7 +161,7 @@ export default function AdminInventoryWorkspace({
               <button type="button" className="primary-button" onClick={() => setDrawerOpen(true)}>Ajouter un utilisateur</button>
             </div>
 
-            {!tableReady && <EmptyState title="Table utilisateurs indisponible" description={tableMessage || "Initialiser la table CEIBA utilisateurs."} />}
+            {!tableReady && <EmptyState title="Comptes CEIBA indisponibles" description={tableMessage || "Verifier la connexion API ou la configuration base de donnees CEIBA."} />}
 
             <div className="ceiba-filter-row">
               <label>
@@ -241,6 +241,9 @@ export default function AdminInventoryWorkspace({
                   ))}
                 </tbody>
               </table>
+              {!filteredAccounts.length && tableReady && (
+                <EmptyState title="Aucun utilisateur" description="Utilisez le bouton Ajouter un utilisateur pour creer le premier compte." />
+              )}
             </div>
 
             <UserDrawer open={drawerOpen} title="Ajouter un utilisateur" onClose={() => setDrawerOpen(false)}>
