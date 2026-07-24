@@ -2445,6 +2445,795 @@ body {
   font-family: "Inter", "Segoe UI", sans-serif;
 }
 
+.ceiba-app-shell {
+  display: grid;
+  grid-template-columns: 282px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.ceiba-sidebar {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(74, 131, 114, 0.28), transparent 40%),
+    linear-gradient(180deg, #0f2f28, #143b32 48%, #183f35);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e8f2ed;
+  display: grid;
+  gap: 14px;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100vh;
+  padding: 18px 14px;
+  position: sticky;
+  top: 0;
+}
+
+.ceiba-sidebar.collapsed {
+  width: 78px;
+}
+
+.ceiba-sidebar-brand {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-height: 48px;
+}
+
+.ceiba-sidebar-toggle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  color: #eff8f2;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.ceiba-nav {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+}
+
+.ceiba-nav-item {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #d9ece4;
+  display: flex;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.ceiba-nav-item:hover,
+.ceiba-nav-item.active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.ceiba-nav-icon {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.ceiba-nav-copy {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.ceiba-nav-copy strong {
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.ceiba-nav-copy small {
+  color: #afcac0;
+  font-size: 0.72rem;
+}
+
+.ceiba-sidebar-footer {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.ceiba-sidebar-footer-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.ceiba-main {
+  display: grid;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 1440px;
+  padding: 18px 20px 30px;
+  width: 100%;
+}
+
+.ceiba-topbar {
+  align-items: center;
+  background: rgba(250, 252, 251, 0.85);
+  border: 1px solid #d7e1dc;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(24, 57, 47, 0.06);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.ceiba-topbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ceiba-searchbox {
+  align-items: center;
+  background: #f3f8f5;
+  border: 1px solid #cedbd5;
+  border-radius: 11px;
+  display: inline-flex;
+  gap: 8px;
+  min-width: 280px;
+  padding: 8px 10px;
+}
+
+.ceiba-searchbox input {
+  background: transparent;
+  border: 0;
+  min-width: 200px;
+  outline: 0;
+}
+
+.ceiba-page-hero {
+  align-items: end;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(241, 248, 245, 0.86));
+  border: 1px solid #d2e1da;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(15, 48, 40, 0.07);
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.ceiba-page-hero h2 {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.ceiba-page-hero-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.ceiba-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 254, 252, 0.88));
+  border: 1px solid #d6e4dd;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(17, 52, 43, 0.06);
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.ceiba-panel-head {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.ceiba-filter-row {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ceiba-filter-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 144px;
+}
+
+.ceiba-filter-row span {
+  color: #6a7f76;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ceiba-filter-row input,
+.ceiba-filter-row select,
+.ceiba-form-grid input,
+.ceiba-form-grid select,
+.ceiba-form-grid textarea,
+.ceiba-drawer-form input,
+.ceiba-drawer-form select {
+  background: #f8fbf9;
+  border: 1px solid #cedbd4;
+  border-radius: 11px;
+  min-height: 40px;
+  padding: 9px 11px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.ceiba-filter-row input:focus,
+.ceiba-filter-row select:focus,
+.ceiba-form-grid input:focus,
+.ceiba-form-grid select:focus,
+.ceiba-form-grid textarea:focus,
+.ceiba-drawer-form input:focus,
+.ceiba-drawer-form select:focus,
+.ceiba-searchbox:focus-within {
+  border-color: #2f7c63;
+  box-shadow: 0 0 0 3px rgba(49, 130, 104, 0.18);
+  outline: 0;
+}
+
+.ceiba-kpi-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ceiba-stat-card {
+  background: linear-gradient(180deg, #ffffff, #f4f9f6);
+  border: 1px solid #d6e4dc;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  min-height: 124px;
+  padding: 12px;
+}
+
+.ceiba-stat-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.ceiba-stat-head p {
+  color: #5e756c;
+  font-size: 0.86rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.ceiba-stat-icon {
+  align-items: center;
+  background: #e6f3ed;
+  border-radius: 9px;
+  color: #1f7259;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.ceiba-stat-card strong {
+  color: #193229;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.ceiba-stat-card small {
+  color: #6d8279;
+}
+
+.ceiba-skeleton {
+  animation: pulse 1.2s ease infinite;
+  background: linear-gradient(90deg, #e8f1ed 20%, #d9e7df 50%, #e8f1ed 80%);
+  border-radius: 10px;
+}
+
+.ceiba-skeleton.ceiba-skeleton-lg {
+  height: 35px;
+  width: 90px;
+}
+
+.ceiba-analytics-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ceiba-panel-sub {
+  border: 1px solid #d7e4de;
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.ceiba-panel-sub-head {
+  align-items: center;
+  color: #264339;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ceiba-panel-sub-head h3 {
+  font-size: 1rem;
+}
+
+.ceiba-activity-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ceiba-activity-list li {
+  align-items: center;
+  border: 1px solid #dce8e2;
+  border-radius: 11px;
+  display: flex;
+  justify-content: space-between;
+  padding: 9px;
+}
+
+.ceiba-activity-list small {
+  color: #6f857c;
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.ceiba-status-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.ceiba-status-badge.success {
+  background: #e4f4ec;
+  color: #195d46;
+}
+
+.ceiba-status-badge.warning {
+  background: #fff3dd;
+  color: #94631a;
+}
+
+.ceiba-status-badge.danger {
+  background: #fde8e5;
+  color: #9f3327;
+}
+
+.ceiba-empty-state {
+  align-items: center;
+  background: #f5faf7;
+  border: 1px dashed #c6dbd1;
+  border-radius: 12px;
+  color: #4f6660;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 84px;
+  padding: 11px;
+}
+
+.ceiba-empty-state h3 {
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+.ceiba-empty-state p {
+  margin: 0;
+}
+
+.ceiba-technical-alert {
+  align-items: start;
+  background: #fff6ea;
+  border: 1px solid #f2d0a5;
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr auto;
+  padding: 12px;
+}
+
+.ceiba-technical-icon {
+  align-items: center;
+  background: #ffdca9;
+  border-radius: 8px;
+  color: #93561b;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.ceiba-technical-copy h3 {
+  font-size: 1rem;
+}
+
+.ceiba-technical-copy p {
+  color: #6e593b;
+  margin: 4px 0 0;
+}
+
+.ceiba-stepper {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.ceiba-step {
+  align-items: center;
+  background: #f6faf8;
+  border: 1px solid #d5e2dc;
+  border-radius: 11px;
+  display: flex;
+  gap: 7px;
+  justify-content: flex-start;
+  min-height: 46px;
+  padding: 8px;
+  text-align: left;
+}
+
+.ceiba-step span {
+  align-items: center;
+  background: #dceee6;
+  border-radius: 999px;
+  color: #1e5a46;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.ceiba-step strong {
+  font-size: 0.82rem;
+}
+
+.ceiba-step.active {
+  background: #e9f7f1;
+  border-color: #8ebca9;
+}
+
+.ceiba-form-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.ceiba-form-section {
+  border: 1px solid #d8e5de;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ceiba-form-section-head {
+  align-items: center;
+  background: #f8fcf9;
+  border: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.ceiba-form-section-head h3 {
+  font-size: 1.02rem;
+  margin-bottom: 2px;
+}
+
+.ceiba-form-section-head p {
+  color: #677f75;
+  margin: 0;
+}
+
+.ceiba-form-section-head .chevron {
+  display: inline-block;
+  font-size: 1rem;
+  transition: transform 160ms ease;
+}
+
+.ceiba-form-section-head .chevron.open {
+  transform: rotate(180deg);
+}
+
+.ceiba-form-section-body {
+  padding: 12px;
+}
+
+.ceiba-form-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ceiba-form-grid label,
+.ceiba-drawer-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.ceiba-form-grid label span,
+.ceiba-drawer-form label span {
+  color: #2d453c;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.ceiba-form-grid label em {
+  color: #ba3026;
+  font-style: normal;
+}
+
+.ceiba-form-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.ceiba-form-grid textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.ceiba-validation-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ceiba-validation-grid article {
+  background: #f5faf7;
+  border: 1px solid #d4e4dc;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.ceiba-validation-grid h4 {
+  font-size: 0.94rem;
+  margin: 0 0 6px;
+}
+
+.ceiba-validation-grid ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.ceiba-sticky-actions {
+  align-items: center;
+  background: rgba(246, 251, 248, 0.92);
+  border: 1px solid #d4e2db;
+  border-radius: 12px;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px;
+  position: sticky;
+}
+
+.ceiba-drawer-backdrop {
+  background: rgba(9, 24, 19, 0.38);
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  transition: opacity 180ms ease;
+  z-index: 40;
+}
+
+.ceiba-drawer-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ceiba-drawer {
+  background: #fdfefe;
+  border-left: 1px solid #d5e1db;
+  box-shadow: -20px 0 45px rgba(9, 28, 21, 0.2);
+  display: grid;
+  gap: 10px;
+  height: 100%;
+  margin-left: auto;
+  max-width: 420px;
+  padding: 14px;
+  width: 100%;
+}
+
+.ceiba-drawer-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ceiba-drawer-form {
+  display: grid;
+  gap: 10px;
+}
+
+.ceiba-drawer-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ceiba-toast {
+  border-radius: 11px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 9px 11px;
+}
+
+.ceiba-toast.success {
+  background: #e9f8ef;
+  border: 1px solid #b8dfc6;
+  color: #1d6a4f;
+}
+
+.ceiba-toast.error {
+  background: #feece9;
+  border: 1px solid #f0b8b0;
+  color: #9f2f24;
+}
+
+.ceiba-toast.info {
+  background: #edf4fd;
+  border: 1px solid #bfd7f8;
+  color: #255ca0;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ceiba-app-shell .ghost-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #ccd9d2;
+  border-radius: 10px;
+  color: #2c4a40;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 11px;
+}
+
+.ceiba-app-shell .icon-button {
+  align-items: center;
+  background: #f4faf7;
+  border: 1px solid #d2e1d9;
+  border-radius: 10px;
+  color: #33564b;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.ceiba-app-shell .primary-button,
+.ceiba-app-shell .secondary-button,
+.ceiba-app-shell .ghost-button,
+.ceiba-app-shell .icon-button {
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.ceiba-app-shell .primary-button:hover,
+.ceiba-app-shell .secondary-button:hover,
+.ceiba-app-shell .ghost-button:hover,
+.ceiba-app-shell .icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.session-chip.compact {
+  min-width: 136px;
+}
+
+@media (max-width: 1220px) {
+  .ceiba-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ceiba-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ceiba-stepper {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .ceiba-app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .ceiba-sidebar {
+    height: auto;
+    position: static;
+  }
+
+  .ceiba-sidebar.collapsed {
+    width: auto;
+  }
+
+  .ceiba-main {
+    padding: 14px;
+  }
+
+  .ceiba-topbar,
+  .ceiba-page-hero,
+  .ceiba-panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ceiba-searchbox {
+    min-width: 240px;
+  }
+
+  .ceiba-form-grid,
+  .ceiba-validation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ceiba-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ceiba-nav-item {
+    min-height: 52px;
+  }
+
+  .ceiba-stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .ceiba-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ceiba-searchbox {
+    min-width: 100%;
+  }
+
+  .ceiba-topbar-actions,
+  .ceiba-page-hero-actions,
+  .ceiba-filter-row {
+    width: 100%;
+  }
+
+  .ceiba-filter-row label {
+    min-width: 100%;
+  }
+}
+
 h1,
 h2,
 h3,

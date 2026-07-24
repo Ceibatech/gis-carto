@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { createCeibaInventoryUserAccount, listCeibaInventoryUsers } from "../../../../db/ceiba-users";
+import { isDatabaseConfigured } from "../../../../db";
 import type { CeibaInventoryRole } from "../../../../lib/ceiba-inventory-auth-types";
+import { normalizeGeoArchivesApiBaseUrl } from "../../../../lib/api-url";
 import { ceibaInventoryAuthCookieName, verifyCeibaInventorySession } from "../../../../lib/ceiba-inventory-auth";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../../lib/geoarchives-auth";
 import { corsJson, corsPreflight } from "../../_cors";
@@ -12,6 +14,9 @@ export function OPTIONS(request: Request) {
 }
 
 export async function GET(request: NextRequest) {
+  const proxied = await proxyIfRemote(request);
+  if (proxied) return proxied;
+
   const actor = requireCeibaAdminActor(request);
   if (!actor) return corsJson(request, { message: "Accès administrateur CEIBA requis." }, { status: 403 });
 
@@ -23,6 +28,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const proxied = await proxyIfRemote(request);
+  if (proxied) return proxied;
+
   const actor = requireCeibaAdminActor(request);
   if (!actor) return corsJson(request, { message: "Accès administrateur CEIBA requis." }, { status: 403 });
 
@@ -52,4 +60,35 @@ function requireCeibaAdminActor(request: NextRequest) {
 
   const ceibaAdmin = verifyCeibaInventorySession(request.cookies.get(ceibaInventoryAuthCookieName)?.value);
   return ceibaAdmin?.role === "admin" ? ceibaAdmin : null;
+}
+
+async function proxyIfRemote(request: NextRequest) {
+  if (isDatabaseConfigured()) return null;
+
+  const baseUrl = normalizeGeoArchivesApiBaseUrl(process.env.GEOARCHIVES_API_BASE_URL);
+  if (!baseUrl) return null;
+
+  const targetUrl = `${baseUrl}/api/inventaire-ceiba/users`;
+  const method = request.method.toUpperCase();
+  const payload = method === "POST" ? await request.text() : undefined;
+
+  const response = await fetch(targetUrl, {
+    method,
+    headers: {
+      accept: "application/json",
+      "content-type": request.headers.get("content-type") ?? "application/json",
+      cookie: request.headers.get("cookie") ?? "",
+    },
+    body: payload,
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  return new Response(text, {
+    status: response.status,
+    headers: {
+      "content-type": response.headers.get("content-type") ?? "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }
