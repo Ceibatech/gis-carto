@@ -1,5 +1,7 @@
-﻿import type { CaptureSiteInput } from "../../../lib/geoarchives-types";
+﻿import type { NextRequest } from "next/server";
+import type { CaptureSiteInput } from "../../../lib/geoarchives-types";
 import { createCapturedSite, getGeoArchivesDashboard } from "../../../db/geoarchives";
+import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../lib/geoarchives-auth";
 import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +10,12 @@ export function OPTIONS(request: Request) {
   return corsPreflight(request);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const session = verifyAuthSession(request.cookies.get(geoArchivesAuthCookieName)?.value);
+  if (!session) {
+    return corsJson(request, { message: "Session GeoArchives requise pour publier une fiche." }, { status: 401 });
+  }
+
   try {
     const input = (await request.json()) as CaptureSiteInput;
     validateSiteInput(input);

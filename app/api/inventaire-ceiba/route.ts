@@ -3,7 +3,8 @@ import { createCeibaInventoryRecord, getCeibaInventoryDashboard } from "../../..
 import { isDatabaseConfigured } from "../../../db";
 import { normalizeGeoArchivesApiBaseUrl } from "../../../lib/api-url";
 import { getInventoryActorFromRequest, requireAnyInventoryPermission, requireInventoryPermission } from "../../../lib/inventory-authz";
-import type { CeibaInventoryDashboard, CeibaInventoryInput } from "../../../lib/ceiba-inventory-types";
+import { filterCeibaDashboardForActor } from "../../../lib/ceiba-inventory-visibility";
+import type { CeibaInventoryInput } from "../../../lib/ceiba-inventory-types";
 import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   const rawDashboard = await getCeibaInventoryDashboard();
-  const dashboard = filterDashboardForActor(rawDashboard, safeActor.login, requireInventoryPermission(safeActor, "inventory.record.read_all"));
-  return corsJson(request, dashboard);
+  return corsJson(request, filterCeibaDashboardForActor(rawDashboard, safeActor));
 }
 
 export async function POST(request: NextRequest) {
@@ -46,45 +46,11 @@ export async function POST(request: NextRequest) {
     validateCeibaInventoryInput(input);
     await createCeibaInventoryRecord(input, actor.login);
     const dashboard = await getCeibaInventoryDashboard();
-    return corsJson(request, dashboard, { status: 201 });
+    return corsJson(request, filterCeibaDashboardForActor(dashboard, actor), { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Impossible d'enregistrer la fiche CEIBA";
     return corsJson(request, { message }, { status: 400 });
   }
-}
-
-function filterDashboardForActor(dashboard: CeibaInventoryDashboard, login: string, canReadAll: boolean): CeibaInventoryDashboard {
-  if (canReadAll) return dashboard;
-
-  const ownRecords = dashboard.recentRecords.filter((record) => record.createdBy?.toLowerCase() === login.toLowerCase());
-  const byStatus = ownRecords.reduce(
-    (acc, record) => {
-      if (record.status === "Nouveau") acc.newRecords += 1;
-      if (record.status === "En revue") acc.reviewedRecords += 1;
-      if (record.status === "Traité") acc.processedRecords += 1;
-      if (record.status === "Bloqué") acc.blockedRecords += 1;
-      return acc;
-    },
-    { newRecords: 0, reviewedRecords: 0, processedRecords: 0, blockedRecords: 0 },
-  );
-
-  const uniqueCommunes = new Set(ownRecords.map((record) => record.commune).filter(Boolean));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayRecords = ownRecords.filter((record) => new Date(record.createdAt).getTime() >= today.getTime()).length;
-
-  return {
-    ...dashboard,
-    recentRecords: ownRecords,
-    totalRecords: ownRecords.length,
-    todayRecords,
-    uniqueCommunes: uniqueCommunes.size,
-    newRecords: byStatus.newRecords,
-    reviewedRecords: byStatus.reviewedRecords,
-    processedRecords: byStatus.processedRecords,
-    blockedRecords: byStatus.blockedRecords,
-    activityByCommune: dashboard.activityByCommune.filter((item) => uniqueCommunes.has(item.commune)),
-  };
 }
 
 function validateCeibaInventoryInput(input: CeibaInventoryInput) {
@@ -115,7 +81,7 @@ async function proxyIfRemote(request: NextRequest) {
 
   const targetUrl = `${baseUrl}/api/inventaire-ceiba`;
   const method = request.method.toUpperCase();
-  const payload = method === "POST" ? await request.text() : undefined;
+  const payload = method === "GET" || method === "HEAD" ? undefined : await request.text();
 
   const response = await fetch(targetUrl, {
     method,

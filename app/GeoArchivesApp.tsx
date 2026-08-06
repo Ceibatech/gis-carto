@@ -887,6 +887,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
     try {
       const dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
+        credentials: "include",
         headers: { accept: "application/json" },
       });
 
@@ -1049,6 +1050,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const publishCapture = useCallback(async (payload: CaptureSiteInput) => {
     const response = await fetch(geoArchivesApiUrl("/api/sites", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });

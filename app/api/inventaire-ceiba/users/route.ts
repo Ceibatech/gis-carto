@@ -128,7 +128,7 @@ async function proxyIfRemote(request: NextRequest) {
 
   const targetUrl = `${baseUrl}/api/inventaire-ceiba/users`;
   const method = request.method.toUpperCase();
-  const payload = method === "POST" ? await request.text() : undefined;
+  const payload = method === "GET" || method === "HEAD" ? undefined : await request.text();
 
   const response = await fetch(targetUrl, {
     method,

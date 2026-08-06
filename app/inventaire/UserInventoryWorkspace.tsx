@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
@@ -169,19 +169,23 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
     localStorage.setItem(queueKey, JSON.stringify(queue));
   }, [queue, queueKey]);
 
+  // syncPending lit la file via une ref: la version precedente capturait le
+  // `queue` du rendu, donc les brouillons restaures depuis localStorage
+  // n'etaient jamais repris au chargement, et le bilan final etait calcule
+  // sur l'etat d'avant la boucle.
+  const queueRef = useRef(queue);
   useEffect(() => {
-    if (online) {
-      void syncPending();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [online]);
+    queueRef.current = queue;
+  }, [queue]);
 
-  async function syncPending() {
-    const pending = queue.filter((item) => item.status === "queued" || item.status === "failed");
+  const syncPending = useCallback(async () => {
+    const pending = queueRef.current.filter((item) => item.status === "queued" || item.status === "failed");
     if (!pending.length) return;
 
     setSyncState("syncing");
     setQueue((current) => current.map((item) => (item.status === "queued" || item.status === "failed") ? { ...item, status: "syncing" } : item));
+
+    let hasFailure = false;
 
     for (const item of pending) {
       try {
@@ -193,14 +197,25 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
         if (!response.ok) throw new Error("Echec synchronisation");
         setQueue((current) => current.map((entry) => entry.localId === item.localId ? { ...entry, status: "synced", serverCreatedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : entry));
       } catch {
+        hasFailure = true;
         setQueue((current) => current.map((entry) => entry.localId === item.localId ? { ...entry, status: "failed", updatedAt: new Date().toISOString() } : entry));
       }
     }
 
-    const hasFailure = queue.some((item) => item.status === "failed");
     setSyncState(hasFailure ? "failed" : "synced");
     setBanner(hasFailure ? "Certaines fiches n'ont pas pu etre synchronisees." : "Synchronisation terminee.");
-  }
+  }, []);
+
+  // Se declenche aussi quand la file passe de vide a non vide, ce qui couvre
+  // les brouillons restaures apres le premier rendu. On n'observe que les
+  // elements "queued": relancer sur "failed" boucherait en boucle de retry.
+  const hasQueuedDrafts = queue.some((item) => item.status === "queued");
+
+  useEffect(() => {
+    if (online && hasQueuedDrafts) {
+      void syncPending();
+    }
+  }, [hasQueuedDrafts, online, syncPending]);
 
   function queueCurrentDraft() {
     const timestamp = new Date().toISOString();
