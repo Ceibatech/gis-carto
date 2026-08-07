@@ -11,7 +11,13 @@ services:
     # exact dans le selecteur Render au moment de creer le service, au cas
     # ou il aurait change.
     region: virginia
-    buildCommand: npm ci && npm run build:contabo
+    # --include=dev est necessaire: Render force NODE_ENV=production des la
+    # phase d'installation, ce qui fait sauter tout devDependencies (dont
+    # @tailwindcss/postcss et typescript) sans ce drapeau. next build en a
+    # besoin; l'omission ne casse rien au runtime, seule l'installation est
+    # concernee (NODE_ENV=production reste actif pour le process demarre par
+    # startCommand, cf envVars ci-dessous).
+    buildCommand: npm ci --include=dev && npm run build:contabo
     startCommand: npm run start:contabo
     healthCheckPath: /api/geoarchives
     envVars:
