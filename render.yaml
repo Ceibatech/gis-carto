@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: mulcv-geoarchives-api
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci && npm run build:contabo
+    startCommand: npm run start:contabo
+    healthCheckPath: /api/geoarchives
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render fournit PORT automatiquement: ne pas le fixer ici, le lire
+      # via process.env.PORT (deja fait par scripts/start-contabo.mjs).
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: disabled
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: GEOARCHIVES_ALLOWED_ORIGINS
+        sync: false
+      - key: GEOARCHIVES_AUTH_SECRET
+        generateValue: true
+      - key: GEOARCHIVES_ADMIN_LOGIN
+        sync: false
+      - key: GEOARCHIVES_ADMIN_PASSWORD
+        sync: false
+      - key: GEOARCHIVES_ADMIN_NAME
+        sync: false
+      - key: GEOARCHIVES_EXECUTIVE_LOGIN
+        sync: false
+      - key: GEOARCHIVES_EXECUTIVE_PASSWORD
+        sync: false
+      - key: GEOARCHIVES_EXECUTIVE_NAME
+        sync: false
+      - key: GEOARCHIVES_AGENT_ACCOUNTS
+        sync: false
+      - key: CEIBA_INVENTORY_ADMIN_LOGIN
+        sync: false
+      - key: CEIBA_INVENTORY_ADMIN_PASSWORD
+        sync: false
+      - key: CEIBA_INVENTORY_ADMIN_NAME
+        sync: false
+      - key: CEIBA_INVENTORY_SESSION_MAX_AGE_SECONDS
+        value: "43200"
+
+# Notes de bascule:
+#
+# - healthCheckPath pointe vers /api/geoarchives, qui repond desormais 401
+#   sans session (comportement attendu depuis le durcissement des routes).
+#   Render considere tout code HTTP retourne par le process comme un service
+#   vivant pour le health check par defaut; verifier ce comportement au
+#   premier deploiement plutot que de le supposer.
+#
+# - GEOARCHIVES_AUTH_SECRET doit etre IDENTIQUE entre ce service Render et le
+#   front Vercel (variable du meme nom cote Vercel): les sessions sont
+#   signees d'un cote et verifiees de l'autre via lib/geoarchives-server-proxy.ts.
+#   generateValue: true ne convient qu'au premier deploiement solo; copier la
+#   valeur generee vers Vercel avant d'ouvrir l'acces aux utilisateurs.
+#
+# - DATABASE_URL n'est pas dans render.yaml (sync: false): a saisir a la main
+#   dans le tableau de bord Render, jamais commite. Format cPanel typique:
+#   mysql://compte_utilisateur:MOTDEPASSE@srvXXX.hebergeur.com:3306/compte_base
+#
+# - DATABASE_SSL=disabled est necessaire si le MySQL cible ne supporte pas
+#   TLS (verifie via SHOW VARIABLES LIKE 'have_ssl' dans phpMyAdmin). Le
+#   trafic MySQL circule alors en clair sur l'internet public.
+#
+# - Avant le premier deploiement, autoriser les IP sortantes de ce service
+#   (Render: Settings > Outbound IPs, disponibles une fois le service cree)
+#   dans Remote MySQL cote cPanel. Ne jamais autoriser "%".

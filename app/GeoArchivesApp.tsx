@@ -15,7 +15,6 @@ import type {
 } from "../lib/geoarchives-types";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse } from "../lib/geoarchives-auth-types";
-import { geoArchivesApiUrl } from "../lib/api-url";
 import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
 
 type Assessment = {
@@ -886,8 +885,11 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     let nextDashboard = emptyGeoArchivesDashboard();
 
     try {
-      const dashboardResponse = await fetch(geoArchivesApiUrl("/api/geoarchives", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
-        credentials: "include",
+      // Toujours en meme origine: le serveur Next relaie vers le backend
+      // distant si besoin (voir lib/geoarchives-server-proxy.ts). Un appel
+      // direct au backend depuis le navigateur ne recevrait pas le cookie
+      // de session, pose sur le domaine de ce front.
+      const dashboardResponse = await fetch("/api/geoarchives", {
         headers: { accept: "application/json" },
       });
 
@@ -1048,9 +1050,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   }
 
   const publishCapture = useCallback(async (payload: CaptureSiteInput) => {
-    const response = await fetch(geoArchivesApiUrl("/api/sites", process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL), {
+    const response = await fetch("/api/sites", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });

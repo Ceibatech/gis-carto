@@ -68,8 +68,6 @@ export async function listGeoArchiveUsers(): Promise<UserAccountsResponse> {
     }
 
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -93,8 +91,6 @@ export async function findActiveGeoArchiveUserByLogin(login: string): Promise<Ge
   } catch (error) {
     if (isMissingUsersTableError(error)) return null;
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -106,8 +102,6 @@ export async function touchGeoArchiveUserLogin(id: string) {
     await pool.execute("update geoarchive_users set last_login_at = current_timestamp where id = ?", [id]);
   } catch (error) {
     if (!isMissingUsersTableError(error)) throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -136,8 +130,6 @@ export async function upsertBootstrapGeoArchiveUser(account: { login: string; na
   } catch (error) {
     if (isMissingUsersTableError(error)) return false;
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -193,7 +185,6 @@ export async function createGeoArchiveUserAccount(input: { login: string; name: 
     throw error;
   } finally {
     connection.release();
-    await pool.end().catch(() => undefined);
   }
 }
 

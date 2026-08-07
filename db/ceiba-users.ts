@@ -73,8 +73,6 @@ export async function listCeibaInventoryUsers(): Promise<CeibaInventoryUserAccou
     }
 
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -98,8 +96,6 @@ export async function findActiveCeibaInventoryUserByLogin(login: string): Promis
   } catch (error) {
     if (isMissingUsersTableError(error)) return null;
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -111,8 +107,6 @@ export async function touchCeibaInventoryUserLogin(id: string) {
     await pool.execute("update ceiba_inventory_users set last_login_at = current_timestamp where id = ?", [id]);
   } catch (error) {
     if (!isMissingUsersTableError(error)) throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -141,8 +135,6 @@ export async function upsertBootstrapCeibaInventoryUser(account: { login: string
   } catch (error) {
     if (isMissingUsersTableError(error)) return false;
     throw error;
-  } finally {
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -185,7 +177,6 @@ export async function createCeibaInventoryUserAccount(input: { login: string; na
     throw error;
   } finally {
     connection.release();
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -258,7 +249,6 @@ export async function updateCeibaInventoryUserAccount(
     throw error;
   } finally {
     connection.release();
-    await pool.end().catch(() => undefined);
   }
 }
 
@@ -319,7 +309,6 @@ export async function resetCeibaInventoryUserPassword(
     throw error;
   } finally {
     connection.release();
-    await pool.end().catch(() => undefined);
   }
 }
 

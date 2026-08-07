@@ -108,10 +108,8 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
     return emptyCeibaInventoryDashboard(false, false, "DATABASE_URL n'est pas configuré pour l'inventaire CEIBA.");
   }
 
-  let pool: ReturnType<typeof getPool> | null = null;
-
   try {
-    pool = getPool();
+    const pool = getPool();
     const [summaryRows] = await pool.query<SummaryRow[]>(`
       select
         count(*) as total_records,
@@ -178,66 +176,60 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
   } catch (error) {
     const message = error instanceof Error ? error.message : "Table ceiba_inventory_forms indisponible.";
     return emptyCeibaInventoryDashboard(true, false, message.includes("ceiba_inventory_forms") ? "Exécutez sql/005_create_ceiba_inventory.sql dans MySQL pour activer l'inventaire CEIBA." : message);
-  } finally {
-    await pool?.end().catch(() => undefined);
   }
 }
 
 export async function createCeibaInventoryRecord(input: CeibaInventoryInput, createdBy: string | null) {
   const pool = getPool();
 
-  try {
-    await pool.execute(
-      `insert into ceiba_inventory_forms (
-      id,
-      guichet_number,
-      ddu_number,
-      classification_reference,
-      ilot_number,
-      lot_number,
-      surface_area,
-      land_title_number,
-      housing_estate,
-      commune,
-      case_nature,
-      last_name,
-      first_names,
-      address,
-      phone,
-      email,
-      contact_person,
-      contact_mobile,
-      status,
-      notes,
-      created_by
-    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
-      [
-        randomUUID(),
-        cleanText(input.guichetNumber) || null,
-        cleanText(input.dduNumber) || null,
-        cleanText(input.classificationReference) || null,
-        cleanText(input.ilotNumber) || null,
-        cleanText(input.lotNumber) || null,
-        cleanText(input.surfaceArea) || null,
-        cleanText(input.landTitleNumber) || null,
-        cleanText(input.housingEstate) || null,
-        cleanText(input.commune),
-        cleanText(input.caseNature),
-        cleanText(input.lastName),
-        cleanText(input.firstNames),
-        cleanText(input.address) || null,
-        cleanText(input.phone) || null,
-        cleanText(input.email) || null,
-        cleanText(input.contactPerson) || null,
-        cleanText(input.contactMobile) || null,
-        statusValues[input.status],
-        cleanText(input.notes) || null,
-        createdBy,
-      ],
-    );
-  } finally {
-    await pool.end().catch(() => undefined);
-  }
+  await pool.execute(
+    `insert into ceiba_inventory_forms (
+    id,
+    guichet_number,
+    ddu_number,
+    classification_reference,
+    ilot_number,
+    lot_number,
+    surface_area,
+    land_title_number,
+    housing_estate,
+    commune,
+    case_nature,
+    last_name,
+    first_names,
+    address,
+    phone,
+    email,
+    contact_person,
+    contact_mobile,
+    status,
+    notes,
+    created_by
+  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+    [
+      randomUUID(),
+      cleanText(input.guichetNumber) || null,
+      cleanText(input.dduNumber) || null,
+      cleanText(input.classificationReference) || null,
+      cleanText(input.ilotNumber) || null,
+      cleanText(input.lotNumber) || null,
+      cleanText(input.surfaceArea) || null,
+      cleanText(input.landTitleNumber) || null,
+      cleanText(input.housingEstate) || null,
+      cleanText(input.commune),
+      cleanText(input.caseNature),
+      cleanText(input.lastName),
+      cleanText(input.firstNames),
+      cleanText(input.address) || null,
+      cleanText(input.phone) || null,
+      cleanText(input.email) || null,
+      cleanText(input.contactPerson) || null,
+      cleanText(input.contactMobile) || null,
+      statusValues[input.status],
+      cleanText(input.notes) || null,
+      createdBy,
+    ],
+  );
 }
 
 function cleanText(value: string) {

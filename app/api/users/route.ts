@@ -2,6 +2,7 @@
 import { createGeoArchiveUserAccount, listGeoArchiveUsers } from "../../../db/users";
 import type { AuthRole } from "../../../lib/geoarchives-auth-types";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../lib/geoarchives-auth";
+import { proxyToRemoteApi } from "../../../lib/geoarchives-server-proxy";
 import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ export function OPTIONS(request: Request) {
 }
 
 export async function GET(request: NextRequest) {
+  const proxied = await proxyToRemoteApi(request, "/api/users");
+  if (proxied) return proxied;
+
   const session = requireAdminSession(request);
   if (!session) return corsJson(request, { message: "Accès administrateur requis." }, { status: 403 });
 
@@ -22,6 +26,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const proxied = await proxyToRemoteApi(request, "/api/users");
+  if (proxied) return proxied;
+
   const session = requireAdminSession(request);
   if (!session) return corsJson(request, { message: "Accès administrateur requis." }, { status: 403 });
 

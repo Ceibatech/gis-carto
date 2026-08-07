@@ -187,10 +187,8 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
     return emptyDashboard(false, false, null);
   }
 
-  let pool: ReturnType<typeof getPool> | null = null;
-
   try {
-    pool = getPool();
+    const pool = getPool();
     const [siteRows] = await pool.query<SiteRow[]>(`
       select
         s.id,
@@ -401,8 +399,6 @@ export async function getGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
       false,
       `Le service de pilotage est en cours d'ouverture. ${message}`,
     );
-  } finally {
-    await pool?.end().catch(() => undefined);
   }
 }
 
@@ -604,7 +600,6 @@ export async function createCapturedSite(input: CaptureSiteInput) {
     throw error;
   } finally {
     connection.release();
-    await pool.end().catch(() => undefined);
   }
 }
 

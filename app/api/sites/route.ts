@@ -2,6 +2,7 @@
 import type { CaptureSiteInput } from "../../../lib/geoarchives-types";
 import { createCapturedSite, getGeoArchivesDashboard } from "../../../db/geoarchives";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../lib/geoarchives-auth";
+import { proxyToRemoteApi } from "../../../lib/geoarchives-server-proxy";
 import { corsJson, corsPreflight } from "../_cors";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ export function OPTIONS(request: Request) {
 }
 
 export async function POST(request: NextRequest) {
+  const proxied = await proxyToRemoteApi(request, "/api/sites");
+  if (proxied) return proxied;
+
   const session = verifyAuthSession(request.cookies.get(geoArchivesAuthCookieName)?.value);
   if (!session) {
     return corsJson(request, { message: "Session GeoArchives requise pour publier une fiche." }, { status: 401 });
