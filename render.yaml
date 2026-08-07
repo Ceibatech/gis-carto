@@ -3,7 +3,14 @@ services:
     name: mulcv-geoarchives-api
     runtime: node
     plan: starter
-    region: frankfurt
+    # Base MySQL cPanel (GoDaddy) localisee a Ashburn, Virginie, USA
+    # (ipinfo.io sur l'IP partagee: AS26496 GoDaddy.com, Ashburn VA).
+    # Virginia est la region Render la plus proche disponible: chaque
+    # requete au pool MySQL (getPool()) reste alors dans le meme hub reseau
+    # est-americain plutot que de traverser l'Atlantique. Verifier le slug
+    # exact dans le selecteur Render au moment de creer le service, au cas
+    # ou il aurait change.
+    region: virginia
     buildCommand: npm ci && npm run build:contabo
     startCommand: npm run start:contabo
     healthCheckPath: /api/geoarchives
