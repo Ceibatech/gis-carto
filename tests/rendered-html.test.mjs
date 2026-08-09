@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { databaseCodeMaxLength, makeDatabaseCode } from "../lib/database-code.js";
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -39,13 +40,15 @@ test("server-renders GeoArchives login shell", async () => {
 });
 
 test("keeps the database contract on MySQL tables", async () => {
-  const [sql, packageJson, dbIndex, app, auth, envExample] = await Promise.all([
+  const [sql, packageJson, dbIndex, geoarchivesDb, app, auth, envExample, serverProxy] = await Promise.all([
     readFile(new URL("../sql/001_create_schema.sql", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/geoarchives.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/GeoArchivesApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/geoarchives-auth.ts", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../lib/geoarchives-server-proxy.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(sql, /CREATE TABLE IF NOT EXISTS archive_sites/i);
@@ -68,6 +71,31 @@ test("keeps the database contract on MySQL tables", async () => {
   assert.match(auth, /GEOARCHIVES_AGENT_ACCOUNTS/);
   assert.match(auth, /unwrapQuotedEnvValue/);
   assert.match(app, /deriveCaptureScores/);
+  assert.match(
+    geoarchivesDb,
+    /insert into administrative_territories[\s\S]*?on duplicate key update/i,
+  );
+  const siteUpsert = geoarchivesDb.match(/insert into archive_sites[\s\S]*?on duplicate key update/i)?.[0];
+  assert.ok(siteUpsert, "L'enregistrement des fiches doit rester idempotent.");
+  assert.equal(siteUpsert.match(/\?/g)?.length, 40, "L'UPSERT archive_sites doit fournir exactement 40 valeurs.");
+  assert.match(
+    serverProxy,
+    /GEOARCHIVES_API_BASE_URL\s*\?\?\s*process\.env\.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL/,
+  );
   assert.doesNotMatch(app, /PostgreSQL|migrations|db:seed|lance le seed/i);
   assert.doesNotMatch(app, /<label>[^<]*<input value=\{capture\.(risk|priority|progress)\}/i);
+});
+
+test("keeps generated MySQL codes within VARCHAR(40)", () => {
+  const parentId = "6a832e5e-1423-4932-b9bc-9081abcdef01";
+
+  for (const prefix of ["ORG", "DISTRICT", "REGION", "DEPARTMENT", "SUB_PREFECTURE", "COMMUNE"]) {
+    const code = makeDatabaseCode(prefix, `${parentId}-Abobo`);
+    assert.ok(code.length <= databaseCodeMaxLength, `${prefix} produit un code trop long: ${code}`);
+  }
+
+  assert.equal(
+    makeDatabaseCode("DEPARTMENT", `${parentId}-Abobo`),
+    "DEPARTMENT-6A832E5E-1423-4932-B9BC-9081A",
+  );
 });

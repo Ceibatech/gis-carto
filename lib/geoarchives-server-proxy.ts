@@ -20,7 +20,9 @@ import { normalizeGeoArchivesApiBaseUrl } from "./api-url";
 export async function proxyToRemoteApi(request: NextRequest, remotePath: string): Promise<Response | null> {
   if (isDatabaseConfigured()) return null;
 
-  const baseUrl = normalizeGeoArchivesApiBaseUrl(process.env.GEOARCHIVES_API_BASE_URL);
+  const baseUrl = normalizeGeoArchivesApiBaseUrl(
+    process.env.GEOARCHIVES_API_BASE_URL ?? process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL,
+  );
   if (!baseUrl) return null;
 
   const method = request.method.toUpperCase();

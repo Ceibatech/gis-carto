@@ -8,6 +8,7 @@ import type {
   MissionPlanItem,
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
+import { makeDatabaseCode } from "../lib/database-code";
 import { getPool, isDatabaseConfigured } from "./index";
 
 const statusLabels: Record<string, SiteStatusLabel> = {
@@ -409,38 +410,34 @@ export async function createCapturedSite(input: CaptureSiteInput) {
 
   const pool = getPool();
   const connection = await pool.getConnection();
-  const organizationCode = makeCode("ORG", input.organization);
+  const organizationCode = makeDatabaseCode("ORG", input.organization);
   const siteCode = input.code.trim().toUpperCase();
   const mapPoint = coordinatesToMap(input.latitude ?? null, input.longitude ?? null);
 
   try {
     await connection.beginTransaction();
 
-    const [existingOrganizations] = await connection.query<IdRow[]>(
+    const proposedOrganizationId = randomUUID();
+    await connection.execute(
+      `insert into organizations (id, code, name, ministry, organization_type)
+       values (?, ?, ?, 'MULCV', ?)
+       on duplicate key update
+         name = values(name),
+         organization_type = values(organization_type),
+         updated_at = current_timestamp`,
+      [proposedOrganizationId, organizationCode, input.organization.trim(), "structure"],
+    );
+    const [persistedOrganizations] = await connection.query<IdRow[]>(
       "select id from organizations where code = ? limit 1",
       [organizationCode],
     );
-    const organizationId = existingOrganizations[0]?.id ?? randomUUID();
-
-    if (existingOrganizations.length) {
-      await connection.execute(
-        "update organizations set name = ?, organization_type = ?, updated_at = current_timestamp where id = ?",
-        [input.organization.trim(), "structure", organizationId],
-      );
-    } else {
-      await connection.execute(
-        "insert into organizations (id, code, name, ministry, organization_type) values (?, ?, ?, 'MULCV', ?)",
-        [organizationId, organizationCode, input.organization.trim(), "structure"],
-      );
+    const organizationId = persistedOrganizations[0]?.id;
+    if (!organizationId) {
+      throw new Error("Impossible de retrouver l'organisation enregistrée.");
     }
 
     const territoryId = await ensureAdministrativeTerritoryChain(connection, input);
 
-    const [existingSites] = await connection.query<IdRow[]>(
-      "select id from archive_sites where code = ? limit 1",
-      [siteCode],
-    );
-    const siteId = existingSites[0]?.id ?? randomUUID();
     const siteValues = [
       input.name.trim(),
       organizationId,
@@ -482,24 +479,67 @@ export async function createCapturedSite(input: CaptureSiteInput) {
       input.nextStep.trim(),
     ];
 
-    if (existingSites.length) {
-      await connection.execute(
-        `update archive_sites set
-          name = ?, organization_id = ?, territory_id = ?, site_type = ?, status = ?, district = ?, region = ?, department = ?, sub_prefecture = ?, commune = ?, city = ?, address = ?,
-          latitude = ?, longitude = ?, map_x = ?, map_y = ?, access_landmarks = ?, accessibility = ?, total_agents = ?, archive_rooms_count = ?, storage_capacity_ml = ?, linear_meters = ?, estimated_boxes = ?, estimated_files = ?, estimated_pages = ?,
-          document_categories = ?, date_range_start = ?, date_range_end = ?, confidentiality = ?, has_inventory = ?, has_electricity = ?, has_internet = ?, has_access_control = ?, has_fire_detection = ?, risk_score = ?, priority_score = ?, progress_percent = ?, next_action = ?, updated_at = current_timestamp
-        where id = ?`,
-        [...siteValues, siteId],
-      );
-    } else {
-      await connection.execute(
-        `insert into archive_sites (
-          id, code, name, organization_id, territory_id, site_type, status, district, region, department, sub_prefecture, commune, city, address,
-          latitude, longitude, map_x, map_y, access_landmarks, accessibility, total_agents, archive_rooms_count, storage_capacity_ml, linear_meters, estimated_boxes, estimated_files, estimated_pages,
-          document_categories, date_range_start, date_range_end, confidentiality, has_inventory, has_electricity, has_internet, has_access_control, has_fire_detection, risk_score, priority_score, progress_percent, next_action
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [siteId, siteCode, ...siteValues],
-      );
+    const proposedSiteId = randomUUID();
+    await connection.execute(
+      `insert into archive_sites (
+        id, code, name, organization_id, territory_id, site_type, status, district, region, department, sub_prefecture, commune, city, address,
+        latitude, longitude, map_x, map_y, access_landmarks, accessibility, total_agents, archive_rooms_count, storage_capacity_ml, linear_meters, estimated_boxes, estimated_files, estimated_pages,
+        document_categories, date_range_start, date_range_end, confidentiality, has_inventory, has_electricity, has_internet, has_access_control, has_fire_detection, risk_score, priority_score, progress_percent, next_action
+      ) values (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      )
+      on duplicate key update
+        name = values(name),
+        organization_id = values(organization_id),
+        territory_id = values(territory_id),
+        site_type = values(site_type),
+        status = values(status),
+        district = values(district),
+        region = values(region),
+        department = values(department),
+        sub_prefecture = values(sub_prefecture),
+        commune = values(commune),
+        city = values(city),
+        address = values(address),
+        latitude = values(latitude),
+        longitude = values(longitude),
+        map_x = values(map_x),
+        map_y = values(map_y),
+        access_landmarks = values(access_landmarks),
+        accessibility = values(accessibility),
+        total_agents = values(total_agents),
+        archive_rooms_count = values(archive_rooms_count),
+        storage_capacity_ml = values(storage_capacity_ml),
+        linear_meters = values(linear_meters),
+        estimated_boxes = values(estimated_boxes),
+        estimated_files = values(estimated_files),
+        estimated_pages = values(estimated_pages),
+        document_categories = values(document_categories),
+        date_range_start = values(date_range_start),
+        date_range_end = values(date_range_end),
+        confidentiality = values(confidentiality),
+        has_inventory = values(has_inventory),
+        has_electricity = values(has_electricity),
+        has_internet = values(has_internet),
+        has_access_control = values(has_access_control),
+        has_fire_detection = values(has_fire_detection),
+        risk_score = values(risk_score),
+        priority_score = values(priority_score),
+        progress_percent = values(progress_percent),
+        next_action = values(next_action),
+        updated_at = current_timestamp`,
+      [proposedSiteId, siteCode, ...siteValues],
+    );
+    const [persistedSites] = await connection.query<IdRow[]>(
+      "select id from archive_sites where code = ? limit 1",
+      [siteCode],
+    );
+    const siteId = persistedSites[0]?.id;
+    if (!siteId) {
+      throw new Error("Impossible de retrouver la fiche enregistrée.");
     }
 
     const [existingContacts] = await connection.query<IdRow[]>(
@@ -627,17 +667,6 @@ function toIsoDate(value: string | Date) {
   return new Date(value).toISOString();
 }
 
-function makeCode(prefix: string, value: string) {
-  const slug = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 30)
-    .toUpperCase();
-  return `${prefix}-${slug || "MULCV"}`;
-}
-
 function coordinatesToMap(latitude: number | null, longitude: number | null) {
   if (latitude === null || longitude === null) return { x: 50, y: 50 };
 
@@ -690,21 +719,25 @@ async function ensureTerritory(
   name: string,
   parentId: string | null,
 ) {
-  const code = makeCode(type.toUpperCase(), `${parentId ?? "ROOT"}-${name}`);
-  const [existing] = await connection.query<TerritoryRow[]>(
+  const code = makeDatabaseCode(type.toUpperCase(), `${parentId ?? "ROOT"}-${name}`);
+  const proposedId = randomUUID();
+  await connection.execute(
+    `insert into administrative_territories (id, code, name, type, parent_id)
+     values (?, ?, ?, ?, ?)
+     on duplicate key update
+       name = values(name),
+       type = values(type),
+       parent_id = values(parent_id)`,
+    [proposedId, code, name, type, parentId],
+  );
+  const [persisted] = await connection.query<TerritoryRow[]>(
     "select id, name, type, parent_id from administrative_territories where code = ? limit 1",
     [code],
   );
 
-  if (existing.length) {
-    return existing[0].id;
+  if (!persisted[0]?.id) {
+    throw new Error(`Impossible de retrouver le territoire ${name}.`);
   }
 
-  const id = randomUUID();
-  await connection.execute(
-    "insert into administrative_territories (id, code, name, type, parent_id) values (?, ?, ?, ?, ?)",
-    [id, code, name, type, parentId],
-  );
-
-  return id;
+  return persisted[0].id;
 }
