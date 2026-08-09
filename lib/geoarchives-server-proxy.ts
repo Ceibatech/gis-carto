@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { isDatabaseConfigured } from "../db";
-import { normalizeGeoArchivesApiBaseUrl } from "./api-url";
+import { configuredGeoArchivesApiBaseUrl } from "./api-url";
 
 // Relais serveur-a-serveur vers l'API GeoArchives distante (Render/Contabo)
 // quand ce deploiement n'a pas d'acces direct a MySQL (front Vercel seul).
@@ -20,10 +20,9 @@ import { normalizeGeoArchivesApiBaseUrl } from "./api-url";
 export async function proxyToRemoteApi(request: NextRequest, remotePath: string): Promise<Response | null> {
   if (isDatabaseConfigured()) return null;
 
-  const baseUrl = normalizeGeoArchivesApiBaseUrl(
-    process.env.GEOARCHIVES_API_BASE_URL ?? process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL,
-  );
-  if (!baseUrl) return null;
+  const baseUrl = configuredGeoArchivesApiBaseUrl();
+  const requestUrl = new URL(request.url);
+  if (requestUrl.host === new URL(baseUrl).host) return null;
 
   const method = request.method.toUpperCase();
   const payload = method === "GET" || method === "HEAD" ? undefined : await request.text();

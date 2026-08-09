@@ -40,12 +40,13 @@ test("server-renders GeoArchives login shell", async () => {
 });
 
 test("keeps the database contract on MySQL tables", async () => {
-  const [sql, packageJson, dbIndex, geoarchivesDb, app, auth, envExample, serverProxy] = await Promise.all([
+  const [sql, packageJson, dbIndex, geoarchivesDb, app, apiUrl, auth, envExample, serverProxy] = await Promise.all([
     readFile(new URL("../sql/001_create_schema.sql", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/geoarchives.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/GeoArchivesApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/api-url.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/geoarchives-auth.ts", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../lib/geoarchives-server-proxy.ts", import.meta.url), "utf8"),
@@ -79,9 +80,10 @@ test("keeps the database contract on MySQL tables", async () => {
   assert.ok(siteUpsert, "L'enregistrement des fiches doit rester idempotent.");
   assert.equal(siteUpsert.match(/\?/g)?.length, 40, "L'UPSERT archive_sites doit fournir exactement 40 valeurs.");
   assert.match(
-    serverProxy,
-    /GEOARCHIVES_API_BASE_URL\s*\?\?\s*process\.env\.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL/,
+    apiUrl,
+    /defaultGeoArchivesApiBaseUrl\s*=\s*"https:\/\/api\.geoarchiv\.ceiba-analytics\.com"/,
   );
+  assert.match(serverProxy, /requestUrl\.host\s*===\s*new URL\(baseUrl\)\.host/);
   assert.doesNotMatch(app, /PostgreSQL|migrations|db:seed|lance le seed/i);
   assert.doesNotMatch(app, /<label>[^<]*<input value=\{capture\.(risk|priority|progress)\}/i);
 });

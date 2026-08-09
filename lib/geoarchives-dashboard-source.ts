@@ -1,21 +1,16 @@
 import { cookies } from "next/headers";
+import { isDatabaseConfigured } from "../db";
 import { getGeoArchivesDashboard } from "../db/geoarchives";
-import { geoArchivesApiUrl, normalizeGeoArchivesApiBaseUrl } from "./api-url";
+import { configuredGeoArchivesApiBaseUrl, geoArchivesApiUrl } from "./api-url";
 import { geoArchivesAuthCookieName } from "./geoarchives-auth";
 import type { GeoArchivesDashboard } from "./geoarchives-types";
 
-function configuredApiBaseUrl() {
-  return normalizeGeoArchivesApiBaseUrl(
-    process.env.GEOARCHIVES_API_BASE_URL ?? process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL,
-  );
-}
-
 export async function getInitialGeoArchivesDashboard(): Promise<GeoArchivesDashboard> {
-  const apiBaseUrl = configuredApiBaseUrl();
-
-  if (!apiBaseUrl) {
+  if (isDatabaseConfigured()) {
     return getGeoArchivesDashboard();
   }
+
+  const apiBaseUrl = configuredGeoArchivesApiBaseUrl();
 
   // L'API distante exige desormais une session: sans ce cookie, le rendu
   // serveur Vercel recevrait un 401 et retomberait sur un dashboard vide.
