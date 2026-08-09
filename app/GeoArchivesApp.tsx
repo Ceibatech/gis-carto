@@ -414,7 +414,7 @@ const defaultCapture: CaptureFormState = {
   accessibility: accessibilityOptions[0],
   roadCondition: roadConditionOptions[0],
   lastMileCondition: roadConditionOptions[0],
-  travelTimeMinutes: "0",
+  travelTimeMinutes: "00:00",
   networkQuality: networkQualityOptions[1],
   buildingCondition: buildingConditionOptions[1],
   storageCondition: storageConditionOptions[1],
@@ -498,7 +498,7 @@ function deriveCaptureScores(capture: CaptureFormState) {
   const meters = toNumber(capture.meters);
   const boxes = toNumber(capture.boxes);
   const pages = toNumber(capture.pages);
-  const travelTime = toNumber(capture.travelTimeMinutes);
+  const travelTime = toMinutes(capture.travelTimeMinutes);
   const volumePressure = Math.min(18, meters / 20 + boxes / 180 + pages / 50000);
   const logisticsPressure =
     scoreOf(capture.accessibility, { Accessible: 0, "Accès limité": 4, "Accès difficile": 8, "Site isolé": 12, "Accès restreint": 10 }) +
@@ -991,10 +991,10 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       progress: derivedScores.progress,
       totalAgents: toNumber(capture.totalAgents),
       archiveRoomsCount: toNumber(capture.archiveRoomsCount),
-      dateRangeStart: capture.dateRangeStart.trim() ? toNumber(capture.dateRangeStart) : null,
-      dateRangeEnd: capture.dateRangeEnd.trim() ? toNumber(capture.dateRangeEnd) : null,
+      dateRangeStart: toYear(capture.dateRangeStart),
+      dateRangeEnd: toYear(capture.dateRangeEnd),
       documentCategories: capture.documentCategoriesText.split(",").map((item) => item.trim()).filter(Boolean),
-      travelTimeMinutes: toNumber(capture.travelTimeMinutes),
+      travelTimeMinutes: toMinutes(capture.travelTimeMinutes),
       photoReferences: capture.photoReferencesText.split(",").map((item) => item.trim()).filter(Boolean),
       gpsAccuracyMeters: capture.gpsAccuracyMeters.trim() ? toNumber(capture.gpsAccuracyMeters) : null,
       gpsCapturedAt: capture.gpsCapturedAt || null,
@@ -1148,7 +1148,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </div>
         </header>
         <section className="agent-form-frame">
-          <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+          <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} onValidationError={setFormMessage} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
         </section>
       </main>
     );
@@ -1354,7 +1354,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
                 <p className="empty-text">Le profil exécutif peut consulter les fiches, mais ne peut pas créer ou modifier une remontée terrain.</p>
               </article>
             ) : (
-              <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+              <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} onValidationError={setFormMessage} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
             )}
           </section>
         )}
@@ -1802,6 +1802,90 @@ const captureSteps = [
   { id: "validation", title: "Validation", icon: CheckCircle2, summary: "Contrôle final avant publication" },
 ] as const;
 
+function captureCompletionIssue(capture: CaptureFormState): { message: string; stepIndex: number } | null {
+  const requiredFields = [
+    { label: "Code site", stepIndex: 0, value: capture.code },
+    { label: "Nom du site", stepIndex: 0, value: capture.name },
+    { label: "Organisation", stepIndex: 0, value: capture.organization },
+    { label: "District", stepIndex: 1, value: capture.district },
+    { label: "Région", stepIndex: 1, value: capture.region },
+    { label: "Département", stepIndex: 1, value: capture.department },
+    { label: "Sous-préfecture", stepIndex: 1, value: capture.subPrefecture },
+    { label: "Commune", stepIndex: 1, value: capture.commune },
+    { label: "Ville ou localité", stepIndex: 1, value: capture.city },
+    { label: "Nom du répondant", stepIndex: 2, value: capture.lead },
+    { label: "Fonction du répondant", stepIndex: 2, value: capture.respondentRole },
+    { label: "État de la route", stepIndex: 3, value: capture.roadCondition },
+    { label: "Derniers kilomètres", stepIndex: 3, value: capture.lastMileCondition },
+    { label: "Temps d'accès", stepIndex: 3, value: toTimeInputValue(capture.travelTimeMinutes) },
+    { label: "Qualité réseau", stepIndex: 3, value: capture.networkQuality },
+    { label: "État du bâtiment", stepIndex: 4, value: capture.buildingCondition },
+    { label: "Espaces d'archives", stepIndex: 4, value: capture.storageCondition },
+    { label: "Latitude GPS", stepIndex: 7, value: capture.latitude },
+    { label: "Longitude GPS", stepIndex: 7, value: capture.longitude },
+    { label: "Précision GPS", stepIndex: 7, value: capture.gpsAccuracyMeters },
+  ];
+  const missingField = requiredFields.find((field) => !String(field.value).trim());
+  if (missingField) {
+    return {
+      message: `Complétez « ${missingField.label} » avant de lancer la synchronisation.`,
+      stepIndex: missingField.stepIndex,
+    };
+  }
+
+  const latitude = Number(capture.latitude.replace(",", "."));
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    return { message: "Vérifiez la latitude GPS avant de lancer la synchronisation.", stepIndex: 7 };
+  }
+
+  const longitude = Number(capture.longitude.replace(",", "."));
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return { message: "Vérifiez la longitude GPS avant de lancer la synchronisation.", stepIndex: 7 };
+  }
+
+  const gpsAccuracy = Number(capture.gpsAccuracyMeters.replace(",", "."));
+  if (!Number.isFinite(gpsAccuracy) || gpsAccuracy < 0) {
+    return { message: "Vérifiez la précision GPS avant de lancer la synchronisation.", stepIndex: 7 };
+  }
+
+  const startDate = toDateInputValue(capture.dateRangeStart);
+  const endDate = toDateInputValue(capture.dateRangeEnd);
+  if (Boolean(startDate) !== Boolean(endDate)) {
+    return { message: "Renseignez les deux dates extrêmes avant de lancer la synchronisation.", stepIndex: 5 };
+  }
+  if (startDate && endDate && startDate > endDate) {
+    return { message: "La date extrême de début doit précéder la date de fin.", stepIndex: 5 };
+  }
+
+  return null;
+}
+
+function Field({ children, label, wide }: { children: ReactNode; label: string; wide?: boolean }) {
+  return <label className={wide ? "wizard-field wide" : "wizard-field"}><span>{label}</span>{children}</label>;
+}
+
+function ToggleCard({
+  checked,
+  detail,
+  field,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  detail: string;
+  field: BooleanCaptureKey;
+  label: string;
+  onChange: (key: BooleanCaptureKey, value: boolean) => void;
+}) {
+  return (
+    <label className={checked ? "toggle-card active" : "toggle-card"}>
+      <input checked={checked} onChange={(event) => onChange(field, event.target.checked)} type="checkbox" />
+      <span className="toggle-icon" aria-hidden="true">{checked ? <Check size={16} /> : <Circle size={16} />}</span>
+      <span><strong>{label}</strong><small>{detail}</small></span>
+    </label>
+  );
+}
+
 function CapturePanel({
   capture,
   captureSyncStatus,
@@ -1813,6 +1897,7 @@ function CapturePanel({
   onChange,
   onFlushPending,
   onSubmit,
+  onValidationError,
   pendingCount,
   rgphRegions,
 }: {
@@ -1826,6 +1911,7 @@ function CapturePanel({
   onChange: (next: CaptureFormState) => void;
   onFlushPending: () => Promise<void>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onValidationError: (message: string | null) => void;
   pendingCount: number;
   rgphRegions: string[];
 }) {
@@ -1947,6 +2033,18 @@ function CapturePanel({
     setActiveStepIndex((index) => Math.max(index - 1, 0));
   }
 
+  function submitCompletedCapture(event: FormEvent<HTMLFormElement>) {
+    const issue = captureCompletionIssue(capture);
+    if (issue) {
+      event.preventDefault();
+      setActiveStepIndex(issue.stepIndex);
+      onValidationError(issue.message);
+      return;
+    }
+
+    onSubmit(event);
+  }
+
   function captureGps() {
     if (!navigator.geolocation) {
       setGpsMessage("GPS indisponible sur ce navigateur.");
@@ -1967,21 +2065,6 @@ function CapturePanel({
       },
       () => setGpsMessage("Position GPS non disponible ou autorisation refusée."),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
-    );
-  }
-
-  function Field({ children, label, wide }: { children: ReactNode; label: string; wide?: boolean }) {
-    return <label className={wide ? "wizard-field wide" : "wizard-field"}><span>{label}</span>{children}</label>;
-  }
-
-  function ToggleCard({ detail, field, label }: { detail: string; field: BooleanCaptureKey; label: string }) {
-    const checked = Boolean(capture[field]);
-    return (
-      <label className={checked ? "toggle-card active" : "toggle-card"}>
-        <input checked={checked} onChange={(event) => updateBoolean(field, event.target.checked)} type="checkbox" />
-        <span className="toggle-icon" aria-hidden="true">{checked ? <Check size={16} /> : <Circle size={16} />}</span>
-        <span><strong>{label}</strong><small>{detail}</small></span>
-      </label>
     );
   }
 
@@ -2039,8 +2122,8 @@ function CapturePanel({
           <div className="wizard-grid">
             <Field label="Nom du répondant"><input required value={capture.lead} onChange={(event) => update("lead", event.target.value)} /></Field>
             <Field label="Fonction"><input required value={capture.respondentRole} onChange={(event) => update("respondentRole", event.target.value)} /></Field>
-            <Field label="Téléphone"><input inputMode="tel" value={capture.phone} onChange={(event) => update("phone", event.target.value)} /></Field>
-            <Field label="Email"><input inputMode="email" value={capture.respondentEmail} onChange={(event) => update("respondentEmail", event.target.value)} /></Field>
+            <Field label="Téléphone"><input inputMode="tel" type="tel" value={capture.phone} onChange={(event) => update("phone", event.target.value)} /></Field>
+            <Field label="Email"><input inputMode="email" type="email" value={capture.respondentEmail} onChange={(event) => update("respondentEmail", event.target.value)} /></Field>
           </div>
         );
       case "access":
@@ -2049,7 +2132,7 @@ function CapturePanel({
             <Field label="Accessibilité"><select value={capture.accessibility} onChange={(event) => update("accessibility", event.target.value)}>{accessibilityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="État de la route"><select value={capture.roadCondition} onChange={(event) => update("roadCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Derniers kilomètres"><select value={capture.lastMileCondition} onChange={(event) => update("lastMileCondition", event.target.value)}>{roadConditionOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
-            <Field label="Temps d'accès (min)"><input inputMode="numeric" value={capture.travelTimeMinutes} onChange={(event) => update("travelTimeMinutes", event.target.value)} /></Field>
+            <Field label="Temps d'accès (min)"><input step="60" type="time" value={toTimeInputValue(capture.travelTimeMinutes)} onChange={(event) => update("travelTimeMinutes", event.target.value)} /></Field>
             <Field label="Qualité réseau"><select value={capture.networkQuality} onChange={(event) => update("networkQuality", event.target.value)}>{networkQualityOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
             <Field label="Contraintes saisonnières"><input value={capture.seasonalConstraints} onChange={(event) => update("seasonalConstraints", event.target.value)} /></Field>
           </div>
@@ -2067,36 +2150,36 @@ function CapturePanel({
       case "capacity":
         return (
           <div className="wizard-grid">
-            <Field label="Capacité estimée (ml)"><input inputMode="decimal" value={capture.storageCapacityMl} onChange={(event) => update("storageCapacityMl", event.target.value)} /></Field>
-            <Field label="Mètres linéaires"><input inputMode="decimal" value={capture.meters} onChange={(event) => update("meters", event.target.value)} /></Field>
-            <Field label="Boîtes"><input inputMode="numeric" value={capture.boxes} onChange={(event) => update("boxes", event.target.value)} /></Field>
-            <Field label="Dossiers"><input inputMode="numeric" value={capture.files} onChange={(event) => update("files", event.target.value)} /></Field>
-            <Field label="Pages"><input inputMode="numeric" value={capture.pages} onChange={(event) => update("pages", event.target.value)} /></Field>
-            <Field label="Nombre de salles"><input inputMode="numeric" value={capture.archiveRoomsCount} onChange={(event) => update("archiveRoomsCount", event.target.value)} /></Field>
-            <Field label="Nombre d'agents"><input inputMode="numeric" value={capture.totalAgents} onChange={(event) => update("totalAgents", event.target.value)} /></Field>
-            <Field label="Dates extrêmes début"><input inputMode="numeric" value={capture.dateRangeStart} onChange={(event) => update("dateRangeStart", event.target.value)} /></Field>
-            <Field label="Dates extrêmes fin"><input inputMode="numeric" value={capture.dateRangeEnd} onChange={(event) => update("dateRangeEnd", event.target.value)} /></Field>
+            <Field label="Capacité estimée (ml)"><input inputMode="decimal" min="0" step="any" type="number" value={capture.storageCapacityMl} onChange={(event) => update("storageCapacityMl", event.target.value)} /></Field>
+            <Field label="Mètres linéaires"><input inputMode="decimal" min="0" step="any" type="number" value={capture.meters} onChange={(event) => update("meters", event.target.value)} /></Field>
+            <Field label="Boîtes"><input inputMode="numeric" min="0" step="1" type="number" value={capture.boxes} onChange={(event) => update("boxes", event.target.value)} /></Field>
+            <Field label="Dossiers"><input inputMode="numeric" min="0" step="1" type="number" value={capture.files} onChange={(event) => update("files", event.target.value)} /></Field>
+            <Field label="Pages"><input inputMode="numeric" min="0" step="1" type="number" value={capture.pages} onChange={(event) => update("pages", event.target.value)} /></Field>
+            <Field label="Nombre de salles"><input inputMode="numeric" min="0" step="1" type="number" value={capture.archiveRoomsCount} onChange={(event) => update("archiveRoomsCount", event.target.value)} /></Field>
+            <Field label="Nombre d'agents"><input inputMode="numeric" min="0" step="1" type="number" value={capture.totalAgents} onChange={(event) => update("totalAgents", event.target.value)} /></Field>
+            <Field label="Dates extrêmes début"><input max={toDateInputValue(capture.dateRangeEnd) || undefined} type="date" value={toDateInputValue(capture.dateRangeStart)} onChange={(event) => update("dateRangeStart", event.target.value)} /></Field>
+            <Field label="Dates extrêmes fin"><input min={toDateInputValue(capture.dateRangeStart) || undefined} type="date" value={toDateInputValue(capture.dateRangeEnd)} onChange={(event) => update("dateRangeEnd", event.target.value)} /></Field>
             <Field label="Catégories documentaires" wide><input value={capture.documentCategoriesText} onChange={(event) => update("documentCategoriesText", event.target.value)} /></Field>
           </div>
         );
       case "equipment":
         return (
           <div className="toggle-grid">
-            <ToggleCard field="hasInventory" label="Inventaire disponible" detail="Repérage documentaire exploitable" />
-            <ToggleCard field="hasElectricity" label="Électricité disponible" detail="Alimentation stable sur site" />
-            <ToggleCard field="hasInternet" label="Internet disponible" detail="Connexion opérationnelle" />
-            <ToggleCard field="hasAccessControl" label="Contrôle d'accès" detail="Accès sécurisé aux fonds" />
-            <ToggleCard field="hasFireDetection" label="Détection incendie" detail="Dispositif de prévention présent" />
-            <ToggleCard field="checklistVehicleAccess" label="Accès véhicule confirmé" detail="Arrivée et évacuation possibles" />
-            <ToggleCard field="checklistLoadingArea" label="Zone de chargement" detail="Manipulation sécurisée" />
-            <ToggleCard field="checklistSiteSignage" label="Signalisation visible" detail="Site identifiable rapidement" />
-            <ToggleCard field="checklistArchivesSeparated" label="Archives séparées" detail="Fonds isolés des bureaux" />
-            <ToggleCard field="checklistShelvingAvailable" label="Rayonnages disponibles" detail="Stockage non posé au sol" />
-            <ToggleCard field="checklistHumidityObserved" label="Humidité observée" detail="Point d'alerte conservation" />
-            <ToggleCard field="checklistPestObserved" label="Nuisibles observés" detail="Point d'alerte sanitaire" />
-            <ToggleCard field="checklistFireExtinguisher" label="Extincteurs présents" detail="Première réponse incendie" />
-            <ToggleCard field="checklistBackupPower" label="Énergie de secours" detail="Continuité minimale" />
-            <ToggleCard field="checklistImmediateRiskReported" label="Risque immédiat" detail="Escalade requise" />
+            <ToggleCard checked={capture.hasInventory} field="hasInventory" label="Inventaire disponible" detail="Repérage documentaire exploitable" onChange={updateBoolean} />
+            <ToggleCard checked={capture.hasElectricity} field="hasElectricity" label="Électricité disponible" detail="Alimentation stable sur site" onChange={updateBoolean} />
+            <ToggleCard checked={capture.hasInternet} field="hasInternet" label="Internet disponible" detail="Connexion opérationnelle" onChange={updateBoolean} />
+            <ToggleCard checked={capture.hasAccessControl} field="hasAccessControl" label="Contrôle d'accès" detail="Accès sécurisé aux fonds" onChange={updateBoolean} />
+            <ToggleCard checked={capture.hasFireDetection} field="hasFireDetection" label="Détection incendie" detail="Dispositif de prévention présent" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistVehicleAccess} field="checklistVehicleAccess" label="Accès véhicule confirmé" detail="Arrivée et évacuation possibles" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistLoadingArea} field="checklistLoadingArea" label="Zone de chargement" detail="Manipulation sécurisée" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistSiteSignage} field="checklistSiteSignage" label="Signalisation visible" detail="Site identifiable rapidement" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistArchivesSeparated} field="checklistArchivesSeparated" label="Archives séparées" detail="Fonds isolés des bureaux" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistShelvingAvailable} field="checklistShelvingAvailable" label="Rayonnages disponibles" detail="Stockage non posé au sol" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistHumidityObserved} field="checklistHumidityObserved" label="Humidité observée" detail="Point d'alerte conservation" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistPestObserved} field="checklistPestObserved" label="Nuisibles observés" detail="Point d'alerte sanitaire" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistFireExtinguisher} field="checklistFireExtinguisher" label="Extincteurs présents" detail="Première réponse incendie" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistBackupPower} field="checklistBackupPower" label="Énergie de secours" detail="Continuité minimale" onChange={updateBoolean} />
+            <ToggleCard checked={capture.checklistImmediateRiskReported} field="checklistImmediateRiskReported" label="Risque immédiat" detail="Escalade requise" onChange={updateBoolean} />
           </div>
         );
       case "geolocation":
@@ -2116,9 +2199,9 @@ function CapturePanel({
               </ul>
               <p>{"Les coordonn\u00e9es GPS permettent de localiser pr\u00e9cis\u00e9ment les sites, d'am\u00e9liorer la tra\u00e7abilit\u00e9 des fiches et de faciliter les contr\u00f4les qualit\u00e9 terrain."}</p>
             </article>
-            <Field label="Latitude *"><input inputMode="decimal" value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} /></Field>
-            <Field label="Longitude *"><input inputMode="decimal" value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} /></Field>
-            <Field label="Précision GPS (m) *"><input inputMode="decimal" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
+            <Field label="Latitude *"><input inputMode="decimal" max="90" min="-90" step="any" type="number" value={capture.latitude} onChange={(event) => update("latitude", event.target.value)} /></Field>
+            <Field label="Longitude *"><input inputMode="decimal" max="180" min="-180" step="any" type="number" value={capture.longitude} onChange={(event) => update("longitude", event.target.value)} /></Field>
+            <Field label="Précision GPS (m) *"><input inputMode="decimal" min="0" step="any" type="number" value={capture.gpsAccuracyMeters} onChange={(event) => update("gpsAccuracyMeters", event.target.value)} /></Field>
             <Field label="Références photo"><input value={capture.photoReferencesText} onChange={(event) => update("photoReferencesText", event.target.value)} /></Field>
             <div className="gps-card wide">
               <div><strong>Capture assistée</strong><span>{gpsMessage ?? "Utilise la géolocalisation de l'appareil pour réduire les erreurs de saisie."}</span></div>
@@ -2141,7 +2224,7 @@ function CapturePanel({
   }
 
   return (
-    <form className="wizard-panel" onSubmit={onSubmit}>
+    <form className="wizard-panel" onSubmit={submitCompletedCapture}>
       <div className="wizard-topline">
         <div>
           <p className="panel-label">Remontée terrain</p>
@@ -2269,6 +2352,39 @@ function SiteDetail({ site }: { site: DashboardSite }) {
       <div className="next-step"><span>Prochaine action</span><p>{site.nextStep}</p></div>
     </aside>
   );
+}
+
+function toTimeInputValue(value: string) {
+  const normalized = String(value).trim();
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(normalized)) return normalized;
+  if (!normalized) return "";
+
+  const totalMinutes = Math.max(0, Math.min(1439, Math.round(toNumber(normalized))));
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function toMinutes(value: string) {
+  const normalized = String(value).trim();
+  const timeParts = /^(\d{1,2}):([0-5]\d)$/.exec(normalized);
+  if (!timeParts) return toNumber(normalized);
+  return Number(timeParts[1]) * 60 + Number(timeParts[2]);
+}
+
+function toDateInputValue(value: string) {
+  const normalized = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+  if (/^\d{4}$/.test(normalized)) return `${normalized}-01-01`;
+  return "";
+}
+
+function toYear(value: string) {
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+
+  const year = Number(normalized.slice(0, 4));
+  return Number.isInteger(year) && year > 0 ? year : null;
 }
 
 function toNumber(value: string) {
