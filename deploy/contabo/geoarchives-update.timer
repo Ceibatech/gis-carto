@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for GeoArchives updates every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=geoarchives-update.service
+
+[Install]
+WantedBy=timers.target

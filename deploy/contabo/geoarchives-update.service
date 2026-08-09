@@ -1,0 +1,20 @@
+[Unit]
+Description=Deploy GeoArchives updates from GitHub
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/var/www/gis-carto/.git
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=HOME=/root
+EnvironmentFile=/etc/geoarchives-api.env
+Environment=GEOARCHIVES_APP_DIR=/var/www/gis-carto
+Environment=GEOARCHIVES_DEPLOY_BRANCH=codex/fix-low-connectivity-form
+Environment=GEOARCHIVES_HEALTH_URL=http://127.0.0.1:4201/api/users
+ExecStart=/usr/bin/bash /var/www/gis-carto/deploy/contabo/geoarchives-update.sh
+TimeoutStartSec=20min
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6

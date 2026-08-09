@@ -211,3 +211,46 @@ Dans le navigateur:
 
 
 Note: apres connexion avec `GEOARCHIVES_ADMIN_LOGIN`, les agents se creent depuis `Gestion des comptes`.
+
+## 11. Mises a jour automatiques depuis GitHub
+
+Le minuteur fourni verifie GitHub toutes les cinq minutes. Il suit uniquement la
+branche configuree, refuse les modifications locales et les mises a jour non
+lineaires, construit l'application avant de redemarrer le service, puis controle
+l'API locale. Vercel reste deploye manuellement.
+
+Pour le serveur de production actuel (branche
+`codex/fix-low-connectivity-form`, API locale sur le port `4201`), faire une seule
+fois en root:
+
+```bash
+cd /var/www/gis-carto
+git fetch origin
+git merge --ff-only origin/codex/fix-low-connectivity-form
+
+cp deploy/contabo/geoarchives-update.service /etc/systemd/system/
+cp deploy/contabo/geoarchives-update.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now geoarchives-update.timer
+systemctl start geoarchives-update.service
+```
+
+Verifier le minuteur et le dernier deploiement:
+
+```bash
+systemctl status geoarchives-update.timer --no-pager
+systemctl list-timers geoarchives-update.timer --no-pager
+journalctl -u geoarchives-update.service -n 80 --no-pager
+```
+
+Le premier lancement memorise simplement le commit deja en production si l'API
+repond correctement. Les lancements suivants ne reconstruisent que lorsqu'un
+nouveau commit apparait sur la branche distante. Pour changer plus tard de
+branche ou de port, modifier les variables `GEOARCHIVES_DEPLOY_BRANCH` et
+`GEOARCHIVES_HEALTH_URL` dans
+`/etc/systemd/system/geoarchives-update.service`, puis executer:
+
+```bash
+systemctl daemon-reload
+systemctl restart geoarchives-update.timer
+```
