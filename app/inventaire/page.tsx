@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function InventairePage() {
   const actor = await getInventoryActorFromServerCookies();
   if (!actor) {
-    redirect("/inventaire/login");
+    redirect("/?next=/inventaire");
   }
 
   if (!hasInventoryPermission(actor.permissions, "inventory.dashboard.view")) {

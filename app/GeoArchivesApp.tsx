@@ -910,6 +910,11 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setSession(authenticatedSession);
     setSelectedCode(nextDashboard.sites[0]?.code ?? "");
     setActiveView(authenticatedSession.landingView);
+
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next === "/inventaire") {
+      window.location.assign(next);
+    }
   }
 
   async function handleLogout() {
