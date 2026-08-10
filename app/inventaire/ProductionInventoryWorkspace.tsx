@@ -15,9 +15,19 @@ function csvCell(value: string | number) {
   return `"${String(value).replaceAll('"', '""')}"`;
 }
 
+const statusPalette = [
+  { key: "newRecords", label: "Nouveau", color: "#2675b9" },
+  { key: "reviewedRecords", label: "En revue", color: "#e99828" },
+  { key: "processedRecords", label: "Traite", color: "#168260" },
+  { key: "blockedRecords", label: "Bloque", color: "#c84c4c" },
+] as const;
+
 export default function ProductionInventoryWorkspace({ actor, dashboard, operatorPerformance }: Props) {
   const processedTotal = operatorPerformance.reduce((sum, item) => sum + item.processedRecords, 0);
   const totalBoxes = operatorPerformance.reduce((sum, item) => sum + item.totalRecords, 0);
+  const statusTotal = dashboard.newRecords + dashboard.reviewedRecords + dashboard.processedRecords + dashboard.blockedRecords;
+  const circumference = 2 * Math.PI * 42;
+  let cumulativeLength = 0;
 
   function downloadReport() {
     const rows = [
@@ -70,6 +80,59 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
           <article><span>Production operateurs</span><strong>{totalBoxes}</strong><small>{operatorPerformance.length} operateur(s)</small></article>
           <article><span>Dossiers traites</span><strong>{processedTotal}</strong><small>{dashboard.processedRecords} valides au total</small></article>
           <article><span>En attente</span><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong><small>{dashboard.blockedRecords} bloque(s)</small></article>
+        </section>
+
+        <section className="production-bi-grid">
+          <article className="ceiba-panel production-chart-panel">
+            <div className="ceiba-panel-head">
+              <div><p className="panel-label">Etat du portefeuille</p><h3>Repartition des fiches</h3></div>
+              <span className="production-date">{statusTotal} fiches</span>
+            </div>
+            <div className="status-chart-layout">
+              <div className="status-donut" role="img" aria-label={`Repartition de ${statusTotal} fiches par statut`}>
+                <svg viewBox="0 0 110 110" aria-hidden="true">
+                  <circle className="status-donut-track" cx="55" cy="55" r="42" />
+                  {statusPalette.map((status) => {
+                    const value = dashboard[status.key];
+                    const length = statusTotal ? (value / statusTotal) * circumference : 0;
+                    const dashOffset = -cumulativeLength;
+                    cumulativeLength += length;
+                    return <circle key={status.key} className="status-donut-segment" cx="55" cy="55" r="42" stroke={status.color} strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={dashOffset} />;
+                  })}
+                </svg>
+                <div><strong>{statusTotal}</strong><span>fiches</span></div>
+              </div>
+              <div className="status-chart-legend">
+                {statusPalette.map((status) => {
+                  const value = dashboard[status.key];
+                  const percentage = statusTotal ? Math.round((value / statusTotal) * 100) : 0;
+                  return <div key={status.key}><i style={{ background: status.color }} /><span>{status.label}</span><strong>{value}</strong><small>{percentage}%</small></div>;
+                })}
+              </div>
+            </div>
+          </article>
+
+          <article className="ceiba-panel production-chart-panel">
+            <div className="ceiba-panel-head">
+              <div><p className="panel-label">Comparatif operateurs</p><h3>Volume et traitement</h3></div>
+              <span className="production-date">Par fiche creee</span>
+            </div>
+            <div className="operator-chart" role="img" aria-label="Production comparee par operateur">
+              {operatorPerformance.slice(0, 8).map((item) => {
+                const total = item.totalRecords || 1;
+                const completed = Math.round((item.processedRecords / total) * 100);
+                const pending = Math.round(((item.newRecords + item.reviewedRecords) / total) * 100);
+                const blocked = Math.max(0, 100 - completed - pending);
+                return <div className="operator-chart-row" key={item.login}>
+                  <div className="operator-chart-name" title={item.name}>{item.name}</div>
+                  <div className="operator-chart-bar"><i className="operator-chart-completed" style={{ width: `${completed}%` }} /><i className="operator-chart-pending" style={{ width: `${pending}%` }} /><i className="operator-chart-blocked" style={{ width: `${blocked}%` }} /></div>
+                  <strong>{item.totalRecords}</strong>
+                </div>;
+              })}
+              {!operatorPerformance.length && <div className="ceiba-empty-state"><p>Aucune donnee de production pour le moment.</p></div>}
+            </div>
+            <div className="operator-chart-key"><span><i className="operator-chart-completed" /> Traite</span><span><i className="operator-chart-pending" /> En attente</span><span><i className="operator-chart-blocked" /> Bloque</span></div>
+          </article>
         </section>
 
         <section className="ceiba-panel operator-performance-panel">
