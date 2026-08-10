@@ -1,6 +1,8 @@
 ﻿export type AuthRole = "admin" | "executive" | "agent";
+export type UserStartApplication = "geoarchives" | "inventory";
 
 export type AuthSession = {
+  startApplication: UserStartApplication;
   role: AuthRole;
   login: string;
   name: string;
@@ -10,6 +12,7 @@ export type AuthSession = {
 };
 
 export type UserAccount = {
+  startApplication: UserStartApplication;
   id: string;
   login: string;
   email: string | null;

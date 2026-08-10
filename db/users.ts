@@ -1,6 +1,6 @@
 ﻿import { randomUUID } from "node:crypto";
 import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import type { AuthRole, AuthSession, UserAccount, UserAccountsResponse } from "../lib/geoarchives-auth-types";
+import type { AuthRole, AuthSession, UserAccount, UserAccountsResponse, UserStartApplication } from "../lib/geoarchives-auth-types";
 import { hashPassword } from "../lib/password-hash";
 import { getPool, isDatabaseConfigured } from "./index";
 
@@ -12,6 +12,7 @@ type UserRow = RowDataPacket & {
   email: string | null;
   full_name: string;
   role: AuthRole;
+  start_application: UserStartApplication;
   password_hash: string;
   status: UserStatus;
   created_by: string | null;
@@ -48,7 +49,7 @@ export async function listGeoArchiveUsers(): Promise<UserAccountsResponse> {
   const pool = getPool();
   try {
     const [rows] = await pool.query<UserRow[]>(`
-      select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+      select id, login, email, full_name, role, start_application, password_hash, status, created_by, last_login_at, created_at
       from geoarchive_users
       order by field(role, 'admin', 'executive', 'agent'), full_name asc, login asc
     `);
@@ -80,7 +81,7 @@ export async function findActiveGeoArchiveUserByLogin(login: string): Promise<Ge
   const pool = getPool();
   try {
     const [rows] = await pool.query<UserRow[]>(
-      `select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+      `select id, login, email, full_name, role, start_application, password_hash, status, created_by, last_login_at, created_at
        from geoarchive_users
        where lower(login) = ? and status = 'active'
        limit 1`,
@@ -133,7 +134,7 @@ export async function upsertBootstrapGeoArchiveUser(account: { login: string; na
   }
 }
 
-export async function createGeoArchiveUserAccount(input: { login: string; name: string; password: string; role: AuthRole }, actor: AuthSession) {
+export async function createGeoArchiveUserAccount(input: { login: string; name: string; password: string; role: AuthRole; startApplication?: UserStartApplication }, actor: AuthSession) {
   if (!isDatabaseConfigured()) {
     throw new Error("DATABASE_URL n'est pas configuré pour enregistrer les comptes utilisateurs.");
   }
@@ -141,10 +142,12 @@ export async function createGeoArchiveUserAccount(input: { login: string; name: 
   const login = normalizeLogin(input.login);
   const name = input.name.trim();
   const password = input.password.trim();
+  const startApplication = input.startApplication ?? "geoarchives";
 
   if (!login) throw new Error("Le login du compte est obligatoire.");
   if (!name) throw new Error("Le nom du compte est obligatoire.");
   if (!isValidUserRole(input.role)) throw new Error("Le rôle demandé n'est pas valide.");
+  if (!isValidUserStartApplication(startApplication)) throw new Error("L'application de démarrage demandée n'est pas valide.");
   if (password.length < 8) throw new Error("Le mot de passe provisoire doit contenir au moins 8 caractères.");
 
   const pool = getPool();
@@ -156,9 +159,9 @@ export async function createGeoArchiveUserAccount(input: { login: string; name: 
     const passwordHash = await hashPassword(password);
 
     await connection.execute(
-      `insert into geoarchive_users (id, login, email, full_name, role, password_hash, status, created_by)
-       values (?, ?, ?, ?, ?, ?, 'active', ?)`,
-      [id, login, emailFromLogin(login), name, input.role, passwordHash, actor.login],
+      `insert into geoarchive_users (id, login, email, full_name, role, start_application, password_hash, status, created_by)
+       values (?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+      [id, login, emailFromLogin(login), name, input.role, startApplication, passwordHash, actor.login],
     );
 
     await writeAccountAudit(connection, actor, id, login, input.role);
@@ -174,6 +177,7 @@ export async function createGeoArchiveUserAccount(input: { login: string; name: 
         login,
         name,
         role: input.role,
+        startApplication,
         status: "active" as const,
       },
       list: await listGeoArchiveUsers(),
@@ -198,8 +202,13 @@ function toUserAccount(row: UserRow): UserAccount {
     login: row.login,
     name: row.full_name,
     role: row.role,
+    startApplication: row.start_application ?? "geoarchives",
     status: row.status,
   };
+}
+
+function isValidUserStartApplication(value: unknown): value is UserStartApplication {
+  return value === "geoarchives" || value === "inventory";
 }
 
 function toUserWithPassword(row: UserRow): GeoArchiveUserWithPassword {

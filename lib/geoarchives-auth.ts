@@ -4,7 +4,7 @@ import {
   touchGeoArchiveUserLogin,
   upsertBootstrapGeoArchiveUser,
 } from "../db/users";
-import type { AuthRole, AuthSession } from "./geoarchives-auth-types";
+import type { AuthRole, AuthSession, UserStartApplication } from "./geoarchives-auth-types";
 import { verifyPasswordHash } from "./password-hash";
 
 export const geoArchivesAuthCookieName = "geoarchives_session";
@@ -126,7 +126,7 @@ function signature(payload: string) {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-function createSession(account: { login: string; name: string; role: AuthRole }): AuthSession {
+function createSession(account: { login: string; name: string; role: AuthRole; startApplication?: UserStartApplication }): AuthSession {
   const issuedAt = Date.now();
   return {
     expiresAt: issuedAt + sessionMaxAgeSeconds() * 1000,
@@ -135,6 +135,7 @@ function createSession(account: { login: string; name: string; role: AuthRole })
     login: account.login,
     name: account.name,
     role: account.role,
+    startApplication: account.startApplication ?? "geoarchives",
   };
 }
 
@@ -151,7 +152,7 @@ export async function authenticateGeoArchivesUser(login: string, password: strin
   const dbUser = await findActiveGeoArchiveUserByLogin(normalizedLogin);
   if (dbUser && await verifyPasswordHash(password, dbUser.passwordHash)) {
     await touchGeoArchiveUserLogin(dbUser.id).catch(() => undefined);
-    return createSession({ login: dbUser.login, name: dbUser.name, role: dbUser.role });
+    return createSession({ login: dbUser.login, name: dbUser.name, role: dbUser.role, startApplication: dbUser.startApplication });
   }
 
   const account = configuredAccounts().find((item) => safeEqualText(item.login.toLowerCase(), normalizedLogin));
@@ -179,6 +180,7 @@ export function verifyAuthSession(token?: string | null): AuthSession | null {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as AuthSession;
     if (!session.role || !session.login || !session.expiresAt || session.expiresAt <= Date.now()) return null;
     if (session.role !== "admin" && session.role !== "agent" && session.role !== "executive") return null;
+    if (session.startApplication !== "geoarchives" && session.startApplication !== "inventory") return { ...session, startApplication: "geoarchives" };
     return session;
   } catch {
     return null;

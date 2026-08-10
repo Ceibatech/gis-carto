@@ -1,6 +1,6 @@
 ﻿import type { NextRequest } from "next/server";
 import { createGeoArchiveUserAccount, listGeoArchiveUsers } from "../../../db/users";
-import type { AuthRole } from "../../../lib/geoarchives-auth-types";
+import type { AuthRole, UserStartApplication } from "../../../lib/geoarchives-auth-types";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../../../lib/geoarchives-auth";
 import { proxyToRemoteApi } from "../../../lib/geoarchives-server-proxy";
 import { corsJson, corsPreflight } from "../_cors";
@@ -33,13 +33,14 @@ export async function POST(request: NextRequest) {
   if (!session) return corsJson(request, { message: "Accès administrateur requis." }, { status: 403 });
 
   try {
-    const body = (await request.json()) as { login?: unknown; name?: unknown; password?: unknown; role?: unknown };
+    const body = (await request.json()) as { login?: unknown; name?: unknown; password?: unknown; role?: unknown; startApplication?: unknown };
     const result = await createGeoArchiveUserAccount(
       {
         login: String(body.login ?? ""),
         name: String(body.name ?? ""),
         password: String(body.password ?? ""),
         role: String(body.role ?? "agent") as AuthRole,
+        startApplication: String(body.startApplication ?? "geoarchives") as UserStartApplication,
       },
       session,
     );

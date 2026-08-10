@@ -26,6 +26,7 @@ npm run dev
 - Pour une base deja en production, executer seulement `sql/004_create_users.sql` une fois.
 - Le premier administrateur peut etre amorce via `.env` avec `GEOARCHIVES_ADMIN_LOGIN`, `GEOARCHIVES_ADMIN_PASSWORD` et `GEOARCHIVES_ADMIN_NAME`.
 - Ensuite, les comptes agents et executifs se creent dans l'application via `Gestion des comptes`.
+- Pour une base existante, executer `sql/009_add_user_start_application.sql` une seule fois afin de choisir si chaque compte ouvre le portail GeoArchives ou l'Inventaire CEIBA apres connexion.
 
 ## Inventaire CEIBA
 

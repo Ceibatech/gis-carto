@@ -14,7 +14,7 @@ import type {
   SiteStatusLabel,
 } from "../lib/geoarchives-types";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
-import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse } from "../lib/geoarchives-auth-types";
+import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse, UserStartApplication } from "../lib/geoarchives-auth-types";
 import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
 
 type Assessment = {
@@ -35,6 +35,7 @@ type AccountFormState = {
   name: string;
   password: string;
   role: AuthRole;
+  startApplication: UserStartApplication;
 };
 
 type CaptureFormState = {
@@ -287,6 +288,7 @@ const defaultAccountForm: AccountFormState = {
   name: "",
   password: "",
   role: "agent",
+  startApplication: "geoarchives",
 };
 
 const accountRoleOptions: AuthRole[] = ["agent", "executive", "admin"];
@@ -912,8 +914,9 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setActiveView(authenticatedSession.landingView);
 
     const next = new URLSearchParams(window.location.search).get("next");
-    if (next === "/inventaire") {
-      window.location.assign(next);
+    const destination = next === "/inventaire" || authenticatedSession.startApplication === "inventory" ? "/inventaire" : null;
+    if (destination) {
+      window.location.assign(destination);
     }
   }
 
@@ -1706,6 +1709,7 @@ function UserAccountsView({ accountForm, accounts, formMessage, isCreating, isLo
         <label><span>Nom complet</span><input required value={accountForm.name} onChange={(event) => onChange({ ...accountForm, name: event.target.value })} placeholder="Agent Abidjan" /></label>
         <label><span>Login ou email</span><input autoComplete="username" required value={accountForm.login} onChange={(event) => onChange({ ...accountForm, login: event.target.value })} placeholder="dac01@ceiba-analytics.com" /></label>
         <label><span>{"R\u00f4le"}</span><select value={accountForm.role} onChange={(event) => onChange({ ...accountForm, role: event.target.value as AuthRole })}>{accountRoleOptions.map((role) => <option key={role} value={role}>{accountRoleLabels[role]}</option>)}</select></label>
+        <label><span>Application au démarrage</span><select value={accountForm.startApplication} onChange={(event) => onChange({ ...accountForm, startApplication: event.target.value as UserStartApplication })}><option value="geoarchives">Portail GeoArchives</option><option value="inventory">Inventaire CEIBA</option></select></label>
         <label><span>Mot de passe provisoire</span><input autoComplete="new-password" minLength={8} required type="password" value={accountForm.password} onChange={(event) => onChange({ ...accountForm, password: event.target.value })} placeholder="8 caracteres minimum" /></label>
         {formMessage && <p className="form-message" role="status">{formMessage}</p>}
         <button className="primary-button" disabled={!tableReady || isCreating} type="submit">{isCreating ? "Cr\u00e9ation..." : "Cr\u00e9er le compte"}</button>
@@ -1715,11 +1719,12 @@ function UserAccountsView({ accountForm, accounts, formMessage, isCreating, isLo
         <div className="section-head"><div><p className="panel-label">Base utilisateurs</p><h3>{"Acc\u00e8s enregistr\u00e9s"}</h3></div><button className="secondary-button" disabled={isLoading} onClick={() => void onRefresh()} type="button">Actualiser</button></div>
         <div className="table-wrap account-table-wrap">
           <table>
-            <thead><tr><th>Utilisateur</th><th>{"R\u00f4le"}</th><th>Statut</th><th>{"Cr\u00e9ation"}</th><th>{"Derni\u00e8re connexion"}</th></tr></thead>
+            <thead><tr><th>Utilisateur</th><th>{"R\u00f4le"}</th><th>Application</th><th>Statut</th><th>{"Cr\u00e9ation"}</th><th>{"Derni\u00e8re connexion"}</th></tr></thead>
             <tbody>{accounts.map((account) => (
               <tr key={account.id}>
                 <td><strong>{account.name}</strong><span>{account.login}</span></td>
                 <td><span className={"account-role account-role-" + account.role}>{accountRoleLabels[account.role]}</span></td>
+                <td>{account.startApplication === "inventory" ? "Inventaire CEIBA" : "GeoArchives"}</td>
                 <td><span className={"account-status account-status-" + account.status}>{account.status === "active" ? "Actif" : "D\u00e9sactiv\u00e9"}</span></td>
                 <td>{formatAccountDate(account.createdAt)}<span>{account.createdBy ? "Par " + account.createdBy : "Cr\u00e9ation syst\u00e8me"}</span></td>
                 <td>{account.lastLoginAt ? formatAccountDate(account.lastLoginAt) : "Jamais"}</td>

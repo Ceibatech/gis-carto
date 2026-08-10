@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS geoarchive_users (
   email VARCHAR(190) NULL,
   full_name VARCHAR(190) NOT NULL,
   role ENUM('admin', 'executive', 'agent') NOT NULL DEFAULT 'agent',
+  start_application ENUM('geoarchives', 'inventory') NOT NULL DEFAULT 'geoarchives',
   password_hash VARCHAR(255) NOT NULL,
   status ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
   created_by VARCHAR(190) NULL,
