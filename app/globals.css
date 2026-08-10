@@ -5572,30 +5572,91 @@ h4 {
 }
 
 .inventory-check-card {
-  background: #f3f8f7;
-  border: 1px solid #cde3dc;
+  background: #f8fbfa;
+  border: 1px solid #d5e5df;
   border-radius: 6px;
   display: grid;
-  gap: 8px;
-  max-width: 480px;
-  padding: 14px;
+  gap: 10px;
+  max-width: 560px;
+  padding: 16px;
 }
 
-.inventory-check-card p {
-  align-items: center;
-  color: #254a47;
-  display: flex;
-  font-weight: 600;
-  gap: 8px;
+.inventory-validation-section {
+  min-height: 0;
+}
+
+.inventory-check-card > div {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.inventory-check-card > div p {
+  color: #24434b;
+  font-size: 0.88rem;
+  font-weight: 800;
   margin: 0;
 }
 
-.inventory-check-card p::before {
-  background: #d29a30;
+.inventory-check-card > div span {
+  color: #60727b;
+  font-size: 0.76rem;
+}
+
+.inventory-validation-item {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d9e4e1;
+  border-radius: 6px;
+  color: #26454b;
+  display: flex;
+  gap: 10px;
+  min-height: 58px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.inventory-validation-item:hover {
+  border-color: #8fbfb5;
+  box-shadow: 0 4px 12px rgba(25, 84, 75, 0.09);
+}
+
+.inventory-validation-item > span {
+  align-items: center;
+  background: #fff2d4;
   border-radius: 50%;
-  content: "";
-  height: 8px;
-  width: 8px;
+  color: #8a5a0e;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.inventory-validation-item strong {
+  display: grid;
+  flex: 1;
+  font-size: 0.82rem;
+  gap: 3px;
+}
+
+.inventory-validation-item strong small {
+  color: #7a8790;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.inventory-validation-item em {
+  color: #267366;
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.inventory-validation-item.complete > span {
+  background: #daf2e8;
+  color: #1f7656;
 }
 
 .inventory-sticky-actions {

@@ -152,9 +152,9 @@ export function FormStepper({
   );
 }
 
-export function FormSection({ title, children }: { title: string; children: ReactNode }) {
+export function FormSection({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <section className="inventory-form-section">
+    <section className={`inventory-form-section ${className}`}>
       <p className="inventory-section-kicker">Etape de la fiche</p>
       <h3>{title}</h3>
       <div className="inventory-form-grid">{children}</div>

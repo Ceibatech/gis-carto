@@ -420,11 +420,27 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
               )}
 
               {activeStep === "validation" && (
-                <FormSection title="Verification et validation">
+                <FormSection title="Verification et validation" className="inventory-validation-section">
                   <article className="inventory-check-card">
-                    <p>{form.commune ? "Commune renseignee" : "Commune manquante"}</p>
-                    <p>{form.caseNature ? "Nature du dossier renseignee" : "Nature du dossier manquante"}</p>
-                    <p>{form.lastName && form.firstNames ? "Demandeur renseigne" : "Demandeur incomplet"}</p>
+                    <div>
+                      <p>Controle avant soumission</p>
+                      <span>Verifiez les informations essentielles de la fiche.</span>
+                    </div>
+                    <button type="button" className={`inventory-validation-item ${form.commune ? "complete" : "missing"}`} onClick={() => setActiveStep("localisation")}>
+                      <span>{form.commune ? "OK" : "!"}</span>
+                      <strong>Commune<small>{form.commune ? "Renseignee" : "A completer"}</small></strong>
+                      <em>Localisation</em>
+                    </button>
+                    <button type="button" className={`inventory-validation-item ${form.caseNature ? "complete" : "missing"}`} onClick={() => setActiveStep("dossier")}>
+                      <span>{form.caseNature ? "OK" : "!"}</span>
+                      <strong>Nature du dossier<small>{form.caseNature ? "Renseignee" : "A completer"}</small></strong>
+                      <em>Dossier</em>
+                    </button>
+                    <button type="button" className={`inventory-validation-item ${form.lastName && form.firstNames ? "complete" : "missing"}`} onClick={() => setActiveStep("demandeur")}>
+                      <span>{form.lastName && form.firstNames ? "OK" : "!"}</span>
+                      <strong>Demandeur<small>{form.lastName && form.firstNames ? "Renseigne" : "A completer"}</small></strong>
+                      <em>Demandeur</em>
+                    </button>
                   </article>
                 </FormSection>
               )}
