@@ -26,9 +26,12 @@ const stepMeta: Record<string, { description: string; Icon: typeof FileText }> =
 export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activeKey: string }) {
   return (
     <aside className="inventory-sidebar" aria-label="Navigation administrateur">
-      <div className="inventory-brand">
-        <strong>CEIBA Admin</strong>
-        <small>Acces et gouvernance</small>
+      <div className="inventory-brand inventory-brand-admin">
+        <span className="inventory-brand-mark" aria-hidden="true">C</span>
+        <div>
+          <strong>CEIBA Admin</strong>
+          <small>Acces et gouvernance</small>
+        </div>
       </div>
       <nav>
         {items.map((item) => (
@@ -37,6 +40,7 @@ export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activ
           </Link>
         ))}
       </nav>
+      <Link className="inventory-portal-link" href="/">Retour au portail</Link>
     </aside>
   );
 }
@@ -45,8 +49,11 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
   return (
     <aside className="inventory-sidebar" aria-label="Navigation metier">
       <div className="inventory-brand">
-        <strong>Inventaire CEIBA</strong>
-        <small>Operations terrain</small>
+        <span className="inventory-brand-mark" aria-hidden="true">C</span>
+        <div>
+          <strong>Inventaire CEIBA</strong>
+          <small>Operations terrain</small>
+        </div>
       </div>
       <nav>
         {items.map((item) => (
@@ -55,6 +62,7 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
           </Link>
         ))}
       </nav>
+      <Link className="inventory-portal-link" href="/">Retour au portail</Link>
     </aside>
   );
 }

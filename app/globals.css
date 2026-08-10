@@ -5128,66 +5128,116 @@ h4 {
 /* Inventory split workspace */
 .inventory-layout {
   background:
-    linear-gradient(90deg, rgba(22, 103, 86, 0.045) 1px, transparent 1px),
-    linear-gradient(rgba(22, 103, 86, 0.045) 1px, transparent 1px),
-    #eef3f4;
-  background-size: 28px 28px;
+    radial-gradient(circle at 100% 0, rgba(68, 195, 164, 0.12), transparent 31rem),
+    linear-gradient(90deg, rgba(22, 103, 86, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(22, 103, 86, 0.04) 1px, transparent 1px),
+    #f1f5f4;
+  background-size: auto, 28px 28px, 28px 28px, auto;
   display: grid;
-  gap: 22px;
-  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0;
+  grid-template-columns: 288px minmax(0, 1fr);
   min-height: 100vh;
-  padding: 18px;
+  padding: 0;
 }
 
 .inventory-sidebar {
-  background: #ffffff;
-  border: 1px solid #e4ebf0;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(18, 35, 52, 0.05);
+  align-content: start;
+  background:
+    linear-gradient(160deg, rgba(50, 202, 166, 0.12), transparent 17rem),
+    #103c4b;
+  border: 0;
+  border-radius: 0 24px 24px 0;
+  box-shadow: 12px 0 32px rgba(11, 42, 52, 0.14);
   display: grid;
-  gap: 14px;
-  height: fit-content;
-  padding: 14px;
+  gap: 30px;
+  min-height: 100vh;
+  padding: 32px 20px 22px;
   position: sticky;
-  top: 16px;
+  top: 0;
 }
 
 .inventory-brand {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.inventory-brand > div {
   display: grid;
   gap: 4px;
 }
 
+.inventory-brand-mark {
+  align-items: center;
+  background: #d7f3e9;
+  border-radius: 10px;
+  color: #115d59;
+  display: inline-flex;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
 .inventory-brand strong {
-  color: #123654;
-  font-size: 0.95rem;
+  color: #ffffff;
+  font-size: 1.02rem;
 }
 
 .inventory-brand small {
-  color: #5a738a;
+  color: #a6c4c8;
+  font-size: 0.76rem;
+}
+
+.inventory-sidebar nav {
+  display: grid;
+  gap: 7px;
 }
 
 .inventory-nav-item {
-  border: 1px solid #e3ebf1;
-  border-radius: 10px;
-  color: #1d3f5e;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #d2e1e3;
   display: block;
-  font-size: 0.9rem;
-  padding: 9px 10px;
+  font-size: 0.88rem;
+  padding: 11px 12px;
   text-decoration: none;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.inventory-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: translateX(3px);
 }
 
 .inventory-nav-item.active {
-  background: #ebf4ff;
-  border-color: #bbd8ff;
-  color: #0f4b9c;
+  background: #e5f6f0;
+  border-color: #e5f6f0;
+  color: #135657;
   font-weight: 700;
 }
+
+.inventory-portal-link {
+  align-self: end;
+  border-top: 1px solid rgba(213, 240, 237, 0.17);
+  color: #a6c4c8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 16px 12px 0;
+  text-decoration: none;
+}
+
+.inventory-portal-link:hover { color: #ffffff; }
 
 .inventory-main {
   display: grid;
   gap: 18px;
   margin: 0 auto;
   max-width: 1200px;
+  padding: 30px 34px 42px;
   width: 100%;
 }
 
@@ -5685,8 +5735,24 @@ h4 {
   }
 
   .inventory-sidebar {
+    align-items: center;
+    border-radius: 0 0 20px 20px;
+    gap: 18px;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 0;
+    padding: 18px 22px;
     position: static;
   }
+
+  .inventory-sidebar nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .inventory-nav-item { flex: 0 0 auto; }
+
+  .inventory-portal-link { display: none; }
 
   .inventory-form-grid {
     grid-template-columns: 1fr;
@@ -5698,7 +5764,10 @@ h4 {
 }
 
 @media (max-width: 560px) {
-  .inventory-layout { padding: 10px; }
+  .inventory-layout { padding: 0; }
+  .inventory-sidebar { align-items: start; grid-template-columns: 1fr; padding: 18px; }
+  .inventory-sidebar nav { margin: 0 -4px; padding: 0 4px; width: calc(100% + 8px); }
+  .inventory-main { padding: 18px 14px 28px; }
   .inventory-header-card { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px; }
   .inventory-status-row { flex-wrap: wrap; }
   .inventory-stepper { overflow-x: auto; }
