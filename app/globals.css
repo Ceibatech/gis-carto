@@ -5297,6 +5297,41 @@ h4 {
   grid-column: 1 / -1;
 }
 
+.inventory-form-grid label {
+  color: #24415a;
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.inventory-form-grid input,
+.inventory-form-grid select,
+.inventory-form-grid textarea {
+  background: #ffffff;
+  border: 1px solid #9fb6c9;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #142b40;
+  font: inherit;
+  min-height: 42px;
+  padding: 9px 10px;
+  width: 100%;
+}
+
+.inventory-form-grid textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.inventory-form-grid input:focus,
+.inventory-form-grid select:focus,
+.inventory-form-grid textarea:focus {
+  border-color: #2f7eea;
+  box-shadow: 0 0 0 3px rgba(47, 126, 234, 0.16);
+  outline: none;
+}
+
 .inventory-check-card {
   background: #f8fbfe;
   border: 1px solid #e1ebf3;
