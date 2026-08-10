@@ -5,12 +5,12 @@ import { geoArchivesAuthCookieName, verifyAuthSession } from "./geoarchives-auth
 import { buildInventoryActor, hasAnyInventoryPermission, hasInventoryPermission, type InventoryActor, type InventoryPermission } from "./inventory-rbac";
 
 function fromCookieValues(ceibaCookie?: string | null, geoCookie?: string | null): InventoryActor | null {
-  const rootAdmin = verifyAuthSession(geoCookie);
-  if (rootAdmin?.role === "admin") {
+  const geoArchivesSession = verifyAuthSession(geoCookie);
+  if (geoArchivesSession) {
     return buildInventoryActor({
-      login: rootAdmin.login,
-      name: rootAdmin.name,
-      role: "root-admin",
+      login: geoArchivesSession.login,
+      name: geoArchivesSession.name,
+      role: geoArchivesSession.role === "admin" ? "root-admin" : geoArchivesSession.role === "executive" ? "supervisor" : "operator",
     });
   }
 

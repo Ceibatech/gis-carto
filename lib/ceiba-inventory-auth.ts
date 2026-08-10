@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { findActiveCeibaInventoryUserByLogin, touchCeibaInventoryUserLogin, upsertBootstrapCeibaInventoryUser } from "../db/ceiba-users";
 import type { CeibaInventoryRole, CeibaInventorySession } from "./ceiba-inventory-auth-types";
+import { authenticateGeoArchivesUser } from "./geoarchives-auth";
 import { verifyPasswordHash } from "./password-hash";
 
 export const ceibaInventoryAuthCookieName = "ceiba_inventory_session";
@@ -63,6 +64,15 @@ export async function authenticateCeibaInventoryUser(login: string, password: st
   if (dbUser && await verifyPasswordHash(password, dbUser.passwordHash)) {
     await touchCeibaInventoryUserLogin(dbUser.id).catch(() => undefined);
     return createSession({ login: dbUser.login, name: dbUser.name, role: dbUser.role });
+  }
+
+  const geoArchivesUser = await authenticateGeoArchivesUser(normalizedLogin, password);
+  if (geoArchivesUser) {
+    return createSession({
+      login: geoArchivesUser.login,
+      name: geoArchivesUser.name,
+      role: geoArchivesUser.role === "admin" ? "admin" : geoArchivesUser.role === "executive" ? "supervisor" : "operator",
+    });
   }
 
   const admin = configuredAdminAccount();
