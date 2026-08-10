@@ -5814,6 +5814,32 @@ h4 {
   gap: 18px;
 }
 
+.production-brief {
+  align-items: center;
+  background: #103c4b;
+  border: 1px solid #0c5260;
+  border-radius: 8px;
+  color: #ffffff;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 22px 24px;
+}
+
+.production-brief > div:first-child { display: grid; gap: 4px; }
+.production-brief p { color: #a6d8d0; font-size: 0.72rem; font-weight: 800; margin: 0; text-transform: uppercase; }
+.production-brief strong { font-size: 1.2rem; }
+.production-brief span { color: #d6e8e5; font-size: 0.85rem; }
+.production-brief-actions { display: flex; gap: 10px; }
+.production-brief-actions button { align-items: center; display: inline-flex; gap: 7px; white-space: nowrap; }
+
+.production-kpi-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.production-kpi-grid article { background: #ffffff; border: 1px solid #d7e6e1; border-radius: 8px; box-shadow: 0 8px 20px rgba(22, 60, 57, 0.06); display: grid; gap: 5px; padding: 16px; }
+.production-kpi-grid span { color: #60727b; font-size: 0.75rem; font-weight: 750; }
+.production-kpi-grid strong { color: #14374d; font-size: 1.55rem; }
+.production-kpi-grid small { color: #47736d; font-size: 0.72rem; font-weight: 700; }
+.production-date { color: #5f7380; font-size: 0.76rem; font-weight: 700; }
+
 .operator-progress {
   align-items: center;
   display: grid;
@@ -5876,6 +5902,8 @@ h4 {
   .inventory-sticky-actions {
     flex-wrap: wrap;
   }
+
+  .production-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -5899,4 +5927,9 @@ h4 {
   .inventory-sticky-actions > button { flex: 0 0 auto; font-size: 0.76rem; min-height: 48px; padding: 8px 10px; }
   .inventory-sticky-actions .secondary-button { max-width: 110px; }
   .inventory-sticky-actions .primary-button { flex: 1 1 auto; margin-left: 0; }
+  .production-brief { align-items: flex-start; flex-direction: column; padding: 18px; }
+  .production-brief-actions { width: 100%; }
+  .production-brief-actions button { flex: 1; justify-content: center; }
+  .production-kpi-grid { gap: 10px; }
+  .production-kpi-grid article { padding: 14px; }
 }

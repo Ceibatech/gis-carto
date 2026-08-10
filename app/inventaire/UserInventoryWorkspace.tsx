@@ -105,6 +105,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
     if (canCreate) items.push({ key: "drafts", label: "Mes brouillons", href: "/inventaire" });
     if (canReadOwn || canReadAll) items.push({ key: "records", label: "Mes fiches", href: "/inventaire/registre" });
     if (has(actor.permissions, "inventory.dashboard.view")) items.push({ key: "overview", label: "Vue d'ensemble", href: "/inventaire?tab=overview" });
+    if (canReadAll) items.push({ key: "production", label: "Pilotage production", href: "/inventaire/production" });
     if (has(actor.permissions, "inventory.record.export")) items.push({ key: "export", label: "Export", href: "/inventaire/registre" });
     return items;
   }, [actor.permissions, canCreate, canReadAll, canReadOwn]);

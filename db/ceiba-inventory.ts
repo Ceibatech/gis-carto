@@ -204,8 +204,8 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
     const pool = getPool();
     const [rows] = await pool.query<OperatorPerformanceRow[]>(`
       select
-        users.login,
-        users.full_name as name,
+        coalesce(users.login, forms.created_by) as login,
+        coalesce(users.full_name, forms.created_by) as name,
         users.employee_id,
         users.assigned_room,
         count(forms.id) as total_records,
@@ -213,11 +213,10 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
         sum(case when forms.status = 'review' then 1 else 0 end) as reviewed_records,
         sum(case when forms.status = 'processed' then 1 else 0 end) as processed_records,
         sum(case when forms.status = 'blocked' then 1 else 0 end) as blocked_records
-      from ceiba_inventory_users users
-      left join ceiba_inventory_forms forms on lower(forms.created_by) = lower(users.login)
-      where users.role = 'operator' and users.status = 'active'
-      group by users.id, users.login, users.full_name, users.employee_id, users.assigned_room
-      order by total_records desc, processed_records desc, users.full_name asc
+      from ceiba_inventory_forms forms
+      left join ceiba_inventory_users users on lower(users.login) = lower(forms.created_by)
+      group by users.id, users.login, users.full_name, users.employee_id, users.assigned_room, forms.created_by
+      order by total_records desc, processed_records desc, name asc
     `);
 
     return rows.map((row) => ({
