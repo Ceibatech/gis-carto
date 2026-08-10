@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import { getInitialGeoArchivesDashboard } from "../lib/geoarchives-dashboard-source";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../lib/geoarchives-auth";
@@ -16,6 +17,11 @@ export const metadata: Metadata = {
 export default async function Home() {
   const cookieStore = await cookies();
   const session = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
+
+  if (session?.startApplication === "inventory") {
+    redirect("/inventaire");
+  }
+
   const dashboard = session ? await getInitialGeoArchivesDashboard() : emptyGeoArchivesDashboard();
   return <GeoArchivesApp initialData={dashboard} initialSession={session} />;
 }
