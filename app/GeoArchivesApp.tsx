@@ -929,6 +929,11 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setSelectedCode("");
     setActiveView("Vue executive");
   }
+
+  function openInventory() {
+    window.location.assign("/inventaire");
+  }
+
   const refreshUserAccounts = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
@@ -1154,6 +1159,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           <div className="agent-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
             <span className={sourceState.badgeClass}>{sourceState.badge}</span>
+            <button className="secondary-button" onClick={openInventory} type="button">Inventaire CEIBA</button>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
           </div>
         </header>
@@ -1216,6 +1222,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </div>
           <div className="topbar-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
+            <button className="secondary-button" onClick={openInventory} type="button">Inventaire CEIBA</button>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
             <button
               aria-pressed={compactMode}
