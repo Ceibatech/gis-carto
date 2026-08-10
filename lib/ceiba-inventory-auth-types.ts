@@ -13,6 +13,10 @@ export type CeibaInventoryUserAccount = {
   login: string;
   email: string | null;
   name: string;
+  employeeId: string | null;
+  phone: string | null;
+  jobTitle: string | null;
+  assignedRoom: string | null;
   role: CeibaInventoryRole;
   status: "active" | "disabled";
   createdBy: string | null;

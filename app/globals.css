@@ -5372,6 +5372,55 @@ h4 {
   text-decoration: none;
 }
 
+.operator-performance-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.operator-performance-summary {
+  color: #4d677d;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.84rem;
+  font-weight: 700;
+  gap: 18px;
+}
+
+.operator-progress {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(90px, 1fr) 40px;
+}
+
+.operator-progress > div {
+  background: #e5edf3;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.operator-progress i {
+  background: #178059;
+  display: block;
+  height: 100%;
+}
+
+.operator-progress strong {
+  color: #155840;
+  font-size: 0.8rem;
+}
+
+@media print {
+  body { background: #fff; }
+  .inventory-sidebar, .inventory-header-card, .inventory-footer-links, .inventory-print-hide { display: none !important; }
+  .inventory-layout { display: block; padding: 0; }
+  .inventory-main { max-width: none; }
+  .operator-performance-panel { border: 0; box-shadow: none; }
+  .inventory-print-head { display: block; }
+  .table-wrap { overflow: visible; }
+}
+
 @media (max-width: 980px) {
   .inventory-layout {
     grid-template-columns: 1fr;

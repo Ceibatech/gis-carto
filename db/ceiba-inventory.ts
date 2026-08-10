@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
-import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
 import { getPool, isDatabaseConfigured } from "./index";
 
 const statusValues: Record<CeibaInventoryStatusLabel, string> = {
@@ -29,6 +29,8 @@ type SummaryRow = RowDataPacket & {
 
 type RecordRow = RowDataPacket & {
   id: string;
+  box_label: string | null;
+  barcode: string | null;
   guichet_number: string | null;
   ddu_number: string | null;
   classification_reference: string | null;
@@ -58,6 +60,18 @@ type CommuneRow = RowDataPacket & {
   count: number;
 };
 
+type OperatorPerformanceRow = RowDataPacket & {
+  login: string;
+  name: string;
+  employee_id: string | null;
+  assigned_room: string | null;
+  total_records: number;
+  new_records: number;
+  reviewed_records: number;
+  processed_records: number;
+  blocked_records: number;
+};
+
 function emptyCeibaInventoryDashboard(databaseReady: boolean, schemaReady: boolean, message: string | null): CeibaInventoryDashboard {
   return {
     activityByCommune: [],
@@ -78,6 +92,8 @@ function emptyCeibaInventoryDashboard(databaseReady: boolean, schemaReady: boole
 function mapRecord(row: RecordRow): CeibaInventoryRecord {
   return {
     address: row.address ?? "",
+    barcode: row.barcode ?? "",
+    boxLabel: row.box_label ?? "",
     caseNature: row.case_nature,
     classificationReference: row.classification_reference ?? "",
     commune: row.commune,
@@ -124,6 +140,8 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
     const [recentRows] = await pool.query<RecordRow[]>(`
       select
         id,
+        box_label,
+        barcode,
         guichet_number,
         ddu_number,
         classification_reference,
@@ -179,12 +197,53 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
   }
 }
 
+export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInventoryOperatorPerformance[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<OperatorPerformanceRow[]>(`
+      select
+        users.login,
+        users.full_name as name,
+        users.employee_id,
+        users.assigned_room,
+        count(forms.id) as total_records,
+        sum(case when forms.status = 'new' then 1 else 0 end) as new_records,
+        sum(case when forms.status = 'review' then 1 else 0 end) as reviewed_records,
+        sum(case when forms.status = 'processed' then 1 else 0 end) as processed_records,
+        sum(case when forms.status = 'blocked' then 1 else 0 end) as blocked_records
+      from ceiba_inventory_users users
+      left join ceiba_inventory_forms forms on lower(forms.created_by) = lower(users.login)
+      where users.role = 'operator' and users.status = 'active'
+      group by users.id, users.login, users.full_name, users.employee_id, users.assigned_room
+      order by total_records desc, processed_records desc, users.full_name asc
+    `);
+
+    return rows.map((row) => ({
+      blockedRecords: Number(row.blocked_records ?? 0),
+      assignedRoom: row.assigned_room,
+      employeeId: row.employee_id,
+      login: row.login,
+      name: row.name,
+      newRecords: Number(row.new_records ?? 0),
+      processedRecords: Number(row.processed_records ?? 0),
+      reviewedRecords: Number(row.reviewed_records ?? 0),
+      totalRecords: Number(row.total_records ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function createCeibaInventoryRecord(input: CeibaInventoryInput, createdBy: string | null) {
   const pool = getPool();
 
   await pool.execute(
     `insert into ceiba_inventory_forms (
     id,
+    box_label,
+    barcode,
     guichet_number,
     ddu_number,
     classification_reference,
@@ -205,9 +264,11 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     status,
     notes,
     created_by
-  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     [
       randomUUID(),
+      cleanText(input.boxLabel) || null,
+      cleanText(input.barcode) || null,
       cleanText(input.guichetNumber) || null,
       cleanText(input.dduNumber) || null,
       cleanText(input.classificationReference) || null,

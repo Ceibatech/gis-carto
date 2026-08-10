@@ -48,12 +48,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as { login?: unknown; name?: unknown; password?: unknown; role?: unknown };
+    const body = (await request.json()) as { login?: unknown; name?: unknown; password?: unknown; role?: unknown; email?: unknown; employeeId?: unknown; phone?: unknown; jobTitle?: unknown; assignedRoom?: unknown };
     const result = await createCeibaInventoryUserAccount(
       {
+        assignedRoom: String(body.assignedRoom ?? ""),
+        email: String(body.email ?? ""),
+        employeeId: String(body.employeeId ?? ""),
+        jobTitle: String(body.jobTitle ?? ""),
         login: String(body.login ?? ""),
         name: String(body.name ?? ""),
         password: String(body.password ?? ""),
+        phone: String(body.phone ?? ""),
         role: String(body.role ?? "operator") as CeibaInventoryRole,
       },
       { login: safeActor.login, name: safeActor.name, role: safeActor.ceibaRole },

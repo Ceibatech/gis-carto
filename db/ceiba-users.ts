@@ -16,6 +16,10 @@ type CeibaUserRow = RowDataPacket & {
   login: string;
   email: string | null;
   full_name: string;
+  employee_id: string | null;
+  phone: string | null;
+  job_title: string | null;
+  assigned_room: string | null;
   role: CeibaInventoryRole;
   password_hash: string;
   status: UserStatus;
@@ -53,7 +57,7 @@ export async function listCeibaInventoryUsers(): Promise<CeibaInventoryUserAccou
   const pool = getPool();
   try {
     const [rows] = await pool.query<CeibaUserRow[]>(`
-      select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+      select id, login, email, full_name, employee_id, phone, job_title, assigned_room, role, password_hash, status, created_by, last_login_at, created_at
       from ceiba_inventory_users
       order by field(role, 'admin', 'supervisor', 'operator'), full_name asc, login asc
     `);
@@ -85,7 +89,7 @@ export async function findActiveCeibaInventoryUserByLogin(login: string): Promis
   const pool = getPool();
   try {
     const [rows] = await pool.query<CeibaUserRow[]>(
-      `select id, login, email, full_name, role, password_hash, status, created_by, last_login_at, created_at
+      `select id, login, email, full_name, employee_id, phone, job_title, assigned_room, role, password_hash, status, created_by, last_login_at, created_at
        from ceiba_inventory_users
        where lower(login) = ? and status = 'active'
        limit 1`,
@@ -138,7 +142,7 @@ export async function upsertBootstrapCeibaInventoryUser(account: { login: string
   }
 }
 
-export async function createCeibaInventoryUserAccount(input: { login: string; name: string; password: string; role: CeibaInventoryRole }, actor: { login: string; name: string; role: string }) {
+export async function createCeibaInventoryUserAccount(input: { login: string; name: string; password: string; role: CeibaInventoryRole; email?: string; employeeId?: string; phone?: string; jobTitle?: string; assignedRoom?: string }, actor: { login: string; name: string; role: string }) {
   if (!isDatabaseConfigured()) {
     throw new Error("DATABASE_URL n'est pas configuré pour enregistrer les comptes CEIBA.");
   }
@@ -146,6 +150,11 @@ export async function createCeibaInventoryUserAccount(input: { login: string; na
   const login = normalizeLogin(input.login);
   const name = input.name.trim();
   const password = input.password.trim();
+  const email = cleanOptionalText(input.email) || emailFromLogin(login);
+  const employeeId = cleanOptionalText(input.employeeId);
+  const phone = cleanOptionalText(input.phone);
+  const jobTitle = cleanOptionalText(input.jobTitle);
+  const assignedRoom = cleanOptionalText(input.assignedRoom);
 
   if (!login) throw new Error("Le login du compte est obligatoire.");
   if (!name) throw new Error("Le nom du compte est obligatoire.");
@@ -161,9 +170,9 @@ export async function createCeibaInventoryUserAccount(input: { login: string; na
     const passwordHash = await hashPassword(password);
 
     await connection.execute(
-      `insert into ceiba_inventory_users (id, login, email, full_name, role, password_hash, status, created_by)
-       values (?, ?, ?, ?, ?, ?, 'active', ?)`,
-      [id, login, emailFromLogin(login), name, input.role, passwordHash, actor.login],
+      `insert into ceiba_inventory_users (id, login, email, full_name, employee_id, phone, job_title, assigned_room, role, password_hash, status, created_by)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+      [id, login, email, name, employeeId, phone, jobTitle, assignedRoom, input.role, passwordHash, actor.login],
     );
 
     await writeAccountAudit(connection, actor, id, login, input.role);
@@ -317,10 +326,14 @@ function toUserAccount(row: CeibaUserRow): CeibaInventoryUserAccount {
     createdAt: toIso(row.created_at),
     createdBy: row.created_by,
     email: row.email,
+    employeeId: row.employee_id,
     id: row.id,
+    assignedRoom: row.assigned_room,
+    jobTitle: row.job_title,
     lastLoginAt: row.last_login_at ? toIso(row.last_login_at) : null,
     login: row.login,
     name: row.full_name,
+    phone: row.phone,
     role: row.role,
     status: row.status,
   };
@@ -339,6 +352,10 @@ function normalizeLogin(value: string) {
 
 function emailFromLogin(login: string) {
   return login.includes("@") ? login : null;
+}
+
+function cleanOptionalText(value: string | undefined) {
+  return value?.trim() || null;
 }
 
 function toIso(value: string | Date) {

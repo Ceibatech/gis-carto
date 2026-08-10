@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCeibaInventoryDashboard } from "../../../db/ceiba-inventory";
+import { getCeibaInventoryDashboard, getCeibaInventoryOperatorPerformance } from "../../../db/ceiba-inventory";
 import { listCeibaInventoryUsers } from "../../../db/ceiba-users";
 import { isDatabaseConfigured } from "../../../db";
 import { normalizeGeoArchivesApiBaseUrl } from "../../../lib/api-url";
@@ -31,12 +31,14 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
 
   const dashboard = await getCeibaInventoryDashboard();
   const users = await getUsersSnapshot();
+  const operatorPerformance = await getCeibaInventoryOperatorPerformance();
 
   return (
     <AdminInventoryWorkspace
       actor={actor}
       dashboard={dashboard}
       initialAccounts={users.accounts}
+      operatorPerformance={operatorPerformance}
       tableReady={users.tableReady}
       tableMessage={users.message}
       section={section}

@@ -3,6 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS ceiba_inventory_forms (
   id CHAR(36) PRIMARY KEY,
+  box_label VARCHAR(190) NULL,
+  barcode VARCHAR(190) NULL,
   guichet_number VARCHAR(80) NULL,
   ddu_number VARCHAR(80) NULL,
   classification_reference VARCHAR(160) NULL,
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS ceiba_inventory_forms (
   KEY ceiba_inventory_commune_idx (commune),
   KEY ceiba_inventory_status_idx (status),
   KEY ceiba_inventory_created_idx (created_at),
+  KEY ceiba_inventory_barcode_idx (barcode),
   KEY ceiba_inventory_guichet_idx (guichet_number),
   KEY ceiba_inventory_ddu_idx (ddu_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -37,6 +40,10 @@ CREATE TABLE IF NOT EXISTS ceiba_inventory_users (
   login VARCHAR(190) NOT NULL,
   email VARCHAR(190) NULL,
   full_name VARCHAR(190) NOT NULL,
+  employee_id VARCHAR(80) NULL,
+  phone VARCHAR(80) NULL,
+  job_title VARCHAR(190) NULL,
+  assigned_room VARCHAR(190) NULL,
   role ENUM('admin', 'supervisor', 'operator') NOT NULL DEFAULT 'operator',
   password_hash VARCHAR(255) NOT NULL,
   status ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
@@ -46,5 +53,6 @@ CREATE TABLE IF NOT EXISTS ceiba_inventory_users (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY ceiba_inventory_users_login_unique (login),
   KEY ceiba_inventory_users_role_status_idx (role, status),
+  KEY ceiba_inventory_users_room_idx (assigned_room),
   KEY ceiba_inventory_users_email_idx (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

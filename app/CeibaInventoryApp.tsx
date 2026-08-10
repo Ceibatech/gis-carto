@@ -21,6 +21,8 @@ type CeibaAdminFormState = {
 
 const defaultForm: CeibaInventoryInput = {
   address: "",
+  barcode: "",
+  boxLabel: "",
   caseNature: "",
   classificationReference: "",
   commune: "",
@@ -735,6 +737,8 @@ export default function CeibaInventoryApp({
               onToggle={() => toggleFormSection("step-identification")}
             >
               <div className="ceiba-form-grid">
+                <label><span>Libelle du carton</span><input placeholder="Libelle inscrit sur le carton" value={form.boxLabel} onChange={(event) => update("boxLabel", event.target.value)} /></label>
+                <label><span>Code barre</span><input placeholder="Code-barres du carton" value={form.barcode} onChange={(event) => update("barcode", event.target.value)} /></label>
                 <label><span>N° guichet</span><input placeholder="Ex: GU-2026-001" value={form.guichetNumber} onChange={(event) => update("guichetNumber", event.target.value)} /></label>
                 <label><span>N° DDU</span><input placeholder="Ex: DDU-ABJ-8991" value={form.dduNumber} onChange={(event) => update("dduNumber", event.target.value)} /></label>
                 <label className="wide"><span>Reference de classement</span><input placeholder="Reference de classement MCLU" value={form.classificationReference} onChange={(event) => update("classificationReference", event.target.value)} /></label>

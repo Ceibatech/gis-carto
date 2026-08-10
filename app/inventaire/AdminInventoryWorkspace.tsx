@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { CeibaInventoryDashboard } from "../../lib/ceiba-inventory-types";
+import type { CeibaInventoryDashboard, CeibaInventoryOperatorPerformance } from "../../lib/ceiba-inventory-types";
 import type { CeibaInventoryRole, CeibaInventoryUserAccount } from "../../lib/ceiba-inventory-auth-types";
 import { inventoryPermissions, rolePermissionMatrix, type InventoryActor, type InventoryAppRole, type InventoryPermission } from "../../lib/inventory-rbac";
 import {
@@ -20,6 +20,7 @@ type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
   initialAccounts: CeibaInventoryUserAccount[];
+  operatorPerformance: CeibaInventoryOperatorPerformance[];
   tableReady: boolean;
   tableMessage: string | null;
   section: "overview" | "users" | "roles" | "audit" | "settings";
@@ -31,6 +32,7 @@ export default function AdminInventoryWorkspace({
   actor,
   dashboard,
   initialAccounts,
+  operatorPerformance,
   tableReady,
   tableMessage,
   section,
@@ -41,7 +43,7 @@ export default function AdminInventoryWorkspace({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(tableMessage);
-  const [form, setForm] = useState({ login: "", name: "", password: "", role: "operator" as CeibaInventoryRole });
+  const [form, setForm] = useState({ assignedRoom: "", email: "", employeeId: "", jobTitle: "", login: "", name: "", password: "", phone: "", role: "operator" as CeibaInventoryRole });
   const [roleEditorRole, setRoleEditorRole] = useState<InventoryAppRole>("ADMIN_CEIBA");
   const [customRolePermissions, setCustomRolePermissions] = useState<Record<InventoryAppRole, InventoryPermission[]>>({
     AGENT: rolePermissionMatrix.AGENT,
@@ -86,7 +88,7 @@ export default function AdminInventoryWorkspace({
         throw new Error(payload.message || "Creation impossible");
       }
       setAccounts(payload.accounts);
-      setForm({ login: "", name: "", password: "", role: "operator" });
+      setForm({ assignedRoom: "", email: "", employeeId: "", jobTitle: "", login: "", name: "", password: "", phone: "", role: "operator" });
       setDrawerOpen(false);
       setMessage("Utilisateur cree.");
     } catch (error) {
@@ -122,6 +124,33 @@ export default function AdminInventoryWorkspace({
     });
   }
 
+  function exportOperatorPerformance() {
+    const rows = [
+      ["Operateur", "Identifiant", "Fiches creees", "Nouveau", "En revue", "Traite", "Bloque", "Taux de traitement"],
+      ...operatorPerformance.map((item) => [
+        item.name,
+        item.login,
+        String(item.totalRecords),
+        String(item.newRecords),
+        String(item.reviewedRecords),
+        String(item.processedRecords),
+        String(item.blockedRecords),
+        `${item.totalRecords ? Math.round((item.processedRecords / item.totalRecords) * 100) : 0}%`,
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(";")).join("\r\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "suivi-operateurs-ceiba.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function printOperatorPerformance() {
+    window.print();
+  }
+
   return (
     <div className="inventory-layout">
       <AdminSidebar items={nav} activeKey={section} />
@@ -141,14 +170,48 @@ export default function AdminInventoryWorkspace({
         {message && <div className="inventory-banner">{message}</div>}
 
         {section === "overview" && (
-          <section className="ceiba-panel">
-            <div className="ceiba-kpi-grid">
-              <article className="ceiba-stat-card"><p>Total comptes</p><strong>{accounts.length}</strong></article>
-              <article className="ceiba-stat-card"><p>Comptes actifs</p><strong>{accounts.filter((account) => account.status === "active").length}</strong></article>
-              <article className="ceiba-stat-card"><p>Fiches total</p><strong>{dashboard.totalRecords}</strong></article>
-              <article className="ceiba-stat-card"><p>Fiches en attente</p><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong></article>
-            </div>
-          </section>
+          <>
+            <section className="ceiba-panel inventory-print-hide">
+              <div className="ceiba-kpi-grid">
+                <article className="ceiba-stat-card"><p>Total comptes</p><strong>{accounts.length}</strong></article>
+                <article className="ceiba-stat-card"><p>Comptes actifs</p><strong>{accounts.filter((account) => account.status === "active").length}</strong></article>
+                <article className="ceiba-stat-card"><p>Fiches total</p><strong>{dashboard.totalRecords}</strong></article>
+                <article className="ceiba-stat-card"><p>Fiches en attente</p><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong></article>
+              </div>
+            </section>
+            <section className="ceiba-panel operator-performance-panel">
+              <div className="ceiba-panel-head inventory-print-head">
+                <div>
+                  <p className="panel-label">Production terrain</p>
+                  <h3>Suivi des operateurs d&apos;inventaire</h3>
+                </div>
+                <div className="table-actions inventory-print-hide">
+                  <button className="secondary-button" onClick={exportOperatorPerformance} type="button">Exporter Excel (CSV)</button>
+                  <button className="primary-button" onClick={printOperatorPerformance} type="button">Exporter PDF</button>
+                </div>
+              </div>
+              <div className="operator-performance-summary">
+                <span>{operatorPerformance.length} operateur(s) actif(s)</span>
+                <span>{operatorPerformance.reduce((sum, item) => sum + item.processedRecords, 0)} dossier(s) traite(s)</span>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Operateur</th><th>Fiches creees</th><th>Nouveau</th><th>En revue</th><th>Traite</th><th>Bloque</th><th>Avancement</th></tr></thead>
+                  <tbody>
+                    {operatorPerformance.map((item) => {
+                      const completion = item.totalRecords ? Math.round((item.processedRecords / item.totalRecords) * 100) : 0;
+                      return <tr key={item.login}>
+                        <td><strong>{item.name}</strong><span>{[item.employeeId, item.assignedRoom, item.login].filter(Boolean).join(" · ")}</span></td>
+                        <td>{item.totalRecords}</td><td>{item.newRecords}</td><td>{item.reviewedRecords}</td><td>{item.processedRecords}</td><td>{item.blockedRecords}</td>
+                        <td><div className="operator-progress"><div><i style={{ width: `${completion}%` }} /></div><strong>{completion}%</strong></div></td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+                {!operatorPerformance.length && <EmptyState title="Aucun operateur actif" description="Les statistiques apparaissent dès que des comptes operateurs et des fiches sont disponibles dans la base CEIBA." />}
+              </div>
+            </section>
+          </>
         )}
 
         {section === "users" && (
@@ -191,6 +254,7 @@ export default function AdminInventoryWorkspace({
                   <tr>
                     <th>Utilisateur</th>
                     <th>Login</th>
+                    <th>Profil operationnel</th>
                     <th>Role</th>
                     <th>Statut</th>
                     <th>Derniere connexion</th>
@@ -203,6 +267,7 @@ export default function AdminInventoryWorkspace({
                     <tr key={account.id}>
                       <td>{account.name}</td>
                       <td>{account.login}</td>
+                      <td>{[account.employeeId, account.jobTitle, account.assignedRoom, account.phone].filter(Boolean).join(" · ") || "Non renseigne"}</td>
                       <td>{roleLabel(account.role)}</td>
                       <td><StatusBadge status={statusLabel(account.status)} /></td>
                       <td>{account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString("fr-FR") : "Jamais"}</td>
@@ -248,8 +313,13 @@ export default function AdminInventoryWorkspace({
 
             <UserDrawer open={drawerOpen} title="Ajouter un utilisateur" onClose={() => setDrawerOpen(false)}>
               <form className="ceiba-drawer-form" onSubmit={createUser}>
-                <label><span>Utilisateur</span><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+                <label><span>Nom et prenoms</span><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+                <label><span>Matricule</span><input value={form.employeeId} onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))} /></label>
                 <label><span>Login</span><input required value={form.login} onChange={(event) => setForm((current) => ({ ...current, login: event.target.value }))} /></label>
+                <label><span>E-mail professionnel</span><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} /></label>
+                <label><span>Telephone</span><input inputMode="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label>
+                <label><span>Fonction</span><input placeholder="Ex: Agent d'inventaire" value={form.jobTitle} onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))} /></label>
+                <label><span>Salle ou zone affectee</span><input placeholder="Ex: Salle 1 - Marcory" value={form.assignedRoom} onChange={(event) => setForm((current) => ({ ...current, assignedRoom: event.target.value }))} /></label>
                 <label><span>Role</span><select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CeibaInventoryRole }))}>{roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
                 <label><span>Mot de passe provisoire</span><input required minLength={8} type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} /></label>
                 <div className="ceiba-drawer-actions">

@@ -30,6 +30,8 @@ type DraftQueueItem = {
 
 const defaultForm: CeibaInventoryInput = {
   address: "",
+  barcode: "",
+  boxLabel: "",
   caseNature: "",
   classificationReference: "",
   commune: "",
@@ -360,6 +362,8 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
 
               {activeStep === "identification" && (
                 <FormSection title="Identification du guichet">
+                  <label><span>Libelle du carton</span><input value={form.boxLabel} onChange={(event) => update("boxLabel", event.target.value)} /></label>
+                  <label><span>Code barre</span><input value={form.barcode} onChange={(event) => update("barcode", event.target.value)} /></label>
                   <label><span>N guichet</span><input value={form.guichetNumber} onChange={(event) => update("guichetNumber", event.target.value)} /></label>
                   <label><span>N DDU</span><input value={form.dduNumber} onChange={(event) => update("dduNumber", event.target.value)} /></label>
                   <label className="wide"><span>Reference de classement</span><input value={form.classificationReference} onChange={(event) => update("classificationReference", event.target.value)} /></label>

@@ -1,6 +1,8 @@
 export type CeibaInventoryStatusLabel = "Nouveau" | "En revue" | "Traité" | "Bloqué";
 
 export type CeibaInventoryInput = {
+  boxLabel: string;
+  barcode: string;
   guichetNumber: string;
   dduNumber: string;
   classificationReference: string;
@@ -27,6 +29,18 @@ export type CeibaInventoryRecord = CeibaInventoryInput & {
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
+};
+
+export type CeibaInventoryOperatorPerformance = {
+  login: string;
+  name: string;
+  employeeId: string | null;
+  assignedRoom: string | null;
+  totalRecords: number;
+  newRecords: number;
+  reviewedRecords: number;
+  processedRecords: number;
+  blockedRecords: number;
 };
 
 export type CeibaInventoryDashboard = {

@@ -33,3 +33,5 @@ npm run dev
 - Une fois la table creee, la page `/inventaire-ceiba` permet de saisir les fiches et de suivre l'activite dans un dashboard dedie.
 - Le meme script cree aussi `ceiba_inventory_users`, table dediee aux comptes du module CEIBA uniquement.
 - Pour une base CEIBA existante et pour activer le role `supervisor` (lecture seule dashboard), executer ensuite `sql/006_add_ceiba_supervisor_role.sql` une seule fois.
+- Pour une base CEIBA existante, executer aussi `sql/007_add_ceiba_inventory_carton_fields.sql` une seule fois afin d'ajouter les champs `Libelle du carton` et `Code barre`.
+- Pour enrichir les fiches agents (matricule, telephone, fonction et salle/zone), executer `sql/008_add_ceiba_inventory_agent_profile_fields.sql` une seule fois.
