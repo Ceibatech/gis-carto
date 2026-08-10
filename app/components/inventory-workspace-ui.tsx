@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, CheckCircle2, FileText, FolderOpen, Landmark, MapPin, UserRound, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Archive, CheckCircle2, FileText, FolderOpen, Landmark, MapPin, Menu, UserRound, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import type { InventoryPermission } from "../../lib/inventory-rbac";
 import type { CeibaInventoryRecord } from "../../lib/ceiba-inventory-types";
 import type { CeibaInventoryRole, CeibaInventoryUserAccount } from "../../lib/ceiba-inventory-auth-types";
@@ -46,6 +46,8 @@ export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activ
 }
 
 export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; activeKey: string }) {
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
   return (
     <aside className="inventory-sidebar" aria-label="Navigation metier">
       <div className="inventory-brand">
@@ -55,6 +57,10 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
           <small>Operations terrain</small>
         </div>
       </div>
+      <button className="inventory-mobile-nav-trigger" type="button" onClick={() => setIsMobileNavOpen(true)}>
+        <Menu size={18} aria-hidden="true" />
+        Menu
+      </button>
       <nav>
         {items.map((item) => (
           <Link key={item.key} href={item.href} className={`inventory-nav-item ${item.key === activeKey ? "active" : ""}`}>
@@ -63,6 +69,16 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
         ))}
       </nav>
       <Link className="inventory-portal-link" href="/">Retour au portail</Link>
+      <UserDrawer open={isMobileNavOpen} title="Inventaire CEIBA" onClose={() => setIsMobileNavOpen(false)}>
+        <nav className="inventory-drawer-nav" aria-label="Navigation mobile">
+          {items.map((item) => (
+            <Link key={item.key} href={item.href} className={`inventory-nav-item ${item.key === activeKey ? "active" : ""}`} onClick={() => setIsMobileNavOpen(false)}>
+              {item.label}
+            </Link>
+          ))}
+          <Link className="inventory-drawer-portal-link" href="/" onClick={() => setIsMobileNavOpen(false)}>Retour au portail</Link>
+        </nav>
+      </UserDrawer>
     </aside>
   );
 }
@@ -130,9 +146,10 @@ export function FormStepper({
     <div className="inventory-stepper-wrap">
       <div className="inventory-progress-line">
         <div>
-          <span>Fiche en cours</span>
+          <span>Etape {currentIndex + 1} sur {steps.length}</span>
           <strong>{currentStep?.label}</strong>
         </div>
+        <b>{percent}%</b>
       </div>
       <div className="inventory-progress-track" aria-hidden="true"><i style={{ width: `${percent}%` }} /></div>
       <div className="inventory-stepper" role="navigation" aria-label="Etapes de la fiche">

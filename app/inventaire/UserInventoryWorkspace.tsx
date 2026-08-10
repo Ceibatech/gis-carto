@@ -359,10 +359,10 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
           <PermissionGuard allowed={canCreate} fallback={<EmptyState title="Formulaire indisponible" description="Votre role ne permet pas la creation de fiche." />}>
             <section className="inventory-draft-summary">
               <div>
-                <p>Fiche en cours</p>
+                <p>Saisie terrain en cours</p>
                 <strong>{form.guichetNumber || form.dduNumber || form.classificationReference || "Nouvelle fiche CEIBA"}</strong>
               </div>
-              <span>{online ? "Enregistree localement" : "Mode hors ligne"}</span>
+              <span>{online ? "Sauvegarde locale active" : "Mode hors connexion"}</span>
             </section>
 
             <section className="ceiba-panel inventory-entry-workspace">
