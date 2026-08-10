@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { X } from "lucide-react";
+import { Archive, CheckCircle2, FileText, FolderOpen, Landmark, MapPin, UserRound, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type { InventoryPermission } from "../../lib/inventory-rbac";
 import type { CeibaInventoryRecord } from "../../lib/ceiba-inventory-types";
@@ -11,6 +11,16 @@ type SidebarItem = {
   key: string;
   label: string;
   href: string;
+};
+
+const stepMeta: Record<string, { description: string; Icon: typeof FileText }> = {
+  demandeur: { description: "Identite et contacts", Icon: UserRound },
+  documents: { description: "Pieces et observations", Icon: Archive },
+  dossier: { description: "Nature et statut", Icon: FolderOpen },
+  identification: { description: "Carton, guichet et reference", Icon: FileText },
+  localisation: { description: "Commune et adresse", Icon: MapPin },
+  references: { description: "Ilot, lot et titre foncier", Icon: Landmark },
+  validation: { description: "Controle avant soumission", Icon: CheckCircle2 },
 };
 
 export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activeKey: string }) {
@@ -106,20 +116,29 @@ export function FormStepper({
 }) {
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === active));
   const percent = Math.round(((currentIndex + 1) / steps.length) * 100);
+  const currentStep = steps[currentIndex];
 
   return (
     <div className="inventory-stepper-wrap">
       <div className="inventory-progress-line">
-        <strong>Etape {currentIndex + 1}/{steps.length}</strong>
-        <span>{percent}%</span>
+        <div>
+          <span>Fiche en cours</span>
+          <strong>{currentStep?.label}</strong>
+        </div>
       </div>
-      <div className="inventory-stepper">
-        {steps.map((step, index) => (
-          <button type="button" key={step.id} className={`inventory-step ${step.id === active ? "active" : ""}`} onClick={() => onSelect(step.id)}>
-            <span>{index + 1}</span>
-            <b>{step.label}</b>
-          </button>
-        ))}
+      <div className="inventory-progress-track" aria-hidden="true"><i style={{ width: `${percent}%` }} /></div>
+      <div className="inventory-stepper" role="navigation" aria-label="Etapes de la fiche">
+        {steps.map((step, index) => {
+          const meta = stepMeta[step.id] ?? { description: "Etape de saisie", Icon: FileText };
+          const Icon = meta.Icon;
+          return (
+            <button type="button" key={step.id} className={`inventory-step ${step.id === active ? "active" : ""}`} onClick={() => onSelect(step.id)} aria-current={step.id === active ? "step" : undefined}>
+              <span><Icon aria-hidden="true" size={15} /></span>
+              <b>{step.label}<small>{meta.description}</small></b>
+              <em>{index + 1}</em>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -128,6 +147,7 @@ export function FormStepper({
 export function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="inventory-form-section">
+      <p className="inventory-section-kicker">Etape de la fiche</p>
       <h3>{title}</h3>
       <div className="inventory-form-grid">{children}</div>
     </section>
@@ -253,7 +273,7 @@ export function RolePermissionEditor({
   onToggle: (permission: InventoryPermission) => void;
 }) {
   return (
-    <section className="ceiba-panel">
+        <section className="ceiba-panel">
       <div className="ceiba-panel-head">
         <div>
           <p className="panel-label">Role et acces</p>
