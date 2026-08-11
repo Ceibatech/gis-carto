@@ -930,10 +930,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setActiveView("Vue executive");
   }
 
-  function openInventory() {
-    window.location.assign("/inventaire");
-  }
-
   const refreshUserAccounts = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
@@ -1142,6 +1138,18 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
+  const inventoryCommuneOptions = useMemo(() =>
+    Array.from(new Set(abidjanSubPrefectures.flatMap((item) => item.communes))).sort((a, b) => a.localeCompare(b, "fr")),
+    [],
+  );
+  const [showInventorySession, setShowInventorySession] = useState(false);
+  const [inventorySessionForm, setInventorySessionForm] = useState({
+    cartonId: "",
+    boxLabel: "",
+    commune: "",
+    status: "Bon",
+    notes: "",
+  });
 
   if (!session) {
     return <LoginScreen onLogin={handleLogin} />;
@@ -1159,13 +1167,42 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           <div className="agent-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
             <span className={sourceState.badgeClass}>{sourceState.badge}</span>
-            <button className="secondary-button" onClick={openInventory} type="button">Inventaire CEIBA</button>
+            <button className="secondary-button" onClick={() => setShowInventorySession((current) => !current)} type="button">{showInventorySession ? "Fermer session inventaire" : "Session inventaire"}</button>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
           </div>
         </header>
         <section className="agent-form-frame">
           <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
         </section>
+
+        {showInventorySession && (
+          <section className="agent-form-frame" aria-label="Session inventaire">
+            <div className="ceiba-panel inventory-entry-workspace">
+              <div className="section-head">
+                <div>
+                  <p className="panel-label">Session inventaire</p>
+                  <h3>Nouvelle fiche CEIBA</h3>
+                </div>
+              </div>
+
+              <div className="inventory-form-grid">
+                <label><span>ID carton</span><input value={inventorySessionForm.cartonId} onChange={(event) => setInventorySessionForm((current) => ({ ...current, cartonId: event.target.value }))} placeholder="CART-0001" /></label>
+                <label><span>Libellé carton</span><input value={inventorySessionForm.boxLabel} onChange={(event) => setInventorySessionForm((current) => ({ ...current, boxLabel: event.target.value }))} /></label>
+                <label>
+                  <span>Commune</span>
+                  <select value={inventorySessionForm.commune} onChange={(event) => setInventorySessionForm((current) => ({ ...current, commune: event.target.value }))}>
+                    <option value="">Choisir une commune</option>
+                    {inventoryCommuneOptions.map((commune) => (
+                      <option key={commune} value={commune}>{commune}</option>
+                    ))}
+                  </select>
+                </label>
+                <label><span>État</span><select value={inventorySessionForm.status} onChange={(event) => setInventorySessionForm((current) => ({ ...current, status: event.target.value }))}><option value="Bon">Bon</option><option value="À vérifier">À vérifier</option><option value="Dégradé">Dégradé</option><option value="Mauvais état">Mauvais état</option></select></label>
+                <label className="wide"><span>Observations</span><textarea rows={3} value={inventorySessionForm.notes} onChange={(event) => setInventorySessionForm((current) => ({ ...current, notes: event.target.value }))} /></label>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     );
   }
@@ -1222,7 +1259,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </div>
           <div className="topbar-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
-            <button className="secondary-button" onClick={openInventory} type="button">Inventaire CEIBA</button>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
             <button
               aria-pressed={compactMode}

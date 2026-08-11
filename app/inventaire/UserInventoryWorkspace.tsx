@@ -300,7 +300,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
       <main className="inventory-main">
         <header className="inventory-header-card">
           <div>
-            <p className="panel-label">Inventaire CEIBA</p>
+            <p className="panel-label">Registre terrain</p>
             <h1>{view === "registre" ? "Registre des fiches" : "Nouvelle fiche"}</h1>
           </div>
           <div className="inventory-status-row">
@@ -395,7 +395,15 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
                   <label><span>Superficie</span><input value={form.surfaceArea} onChange={(event) => update("surfaceArea", event.target.value)} /></label>
                   <label><span>N° titre foncier</span><input value={form.landTitleNumber} onChange={(event) => update("landTitleNumber", event.target.value)} /></label>
                   <label><span>Lotissement</span><input value={form.housingEstate} onChange={(event) => update("housingEstate", event.target.value)} /></label>
-                  <label><span>Commune(s)</span><input value={form.commune} onChange={(event) => update("commune", event.target.value)} /></label>
+                  <label>
+                    <span>Commune(s)</span>
+                    <select value={form.commune} onChange={(event) => update("commune", event.target.value)}>
+                      <option value="">Choisir une commune</option>
+                      {communes.length ? communes.map((commune) => (
+                        <option key={commune} value={commune}>{commune}</option>
+                      )) : (form.commune ? <option value={form.commune}>{form.commune}</option> : null)}
+                    </select>
+                  </label>
                   <label><span>État du dossier</span><select value={form.dossierState} onChange={(event) => update("dossierState", event.target.value as CeibaInventoryInput["dossierState"])}><option value="Bon">Bon</option><option value="À vérifier">À vérifier</option><option value="Dégradé">Dégradé</option><option value="Mauvais état">Mauvais état</option></select></label>
                   <label><span>Dossier endommagé ?</span><select value={String(form.dossierDamaged)} onChange={(event) => update("dossierDamaged", event.target.value === "true")}><option value="false">Non</option><option value="true">Oui</option></select></label>
                   <label><span>Type de dégradation dossier</span><input value={form.dossierDamageType} onChange={(event) => update("dossierDamageType", event.target.value)} placeholder="Humidité, pagination, déchirure..." /></label>

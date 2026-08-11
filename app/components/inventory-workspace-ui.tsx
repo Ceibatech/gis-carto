@@ -50,8 +50,8 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
       <div className="inventory-brand">
         <span className="inventory-brand-mark" aria-hidden="true">C</span>
         <div>
-          <strong>Inventaire CEIBA</strong>
-          <small>Operations terrain</small>
+          <strong>CEIBA</strong>
+          <small>Registre terrain</small>
         </div>
       </div>
       <button className="inventory-mobile-nav-trigger" type="button" onClick={() => setIsMobileNavOpen(true)}>
