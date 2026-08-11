@@ -43,6 +43,11 @@ export type CeibaInventoryOperatorPerformance = {
   blockedRecords: number;
 };
 
+export type CeibaInventoryProductionSnapshot = {
+  dashboard: CeibaInventoryDashboard;
+  operatorPerformance: CeibaInventoryOperatorPerformance[];
+};
+
 export type CeibaInventoryDashboard = {
   databaseReady: boolean;
   schemaReady: boolean;

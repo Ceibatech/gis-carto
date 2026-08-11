@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
-import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
 import { getPool, isDatabaseConfigured } from "./index";
 
 const statusValues: Record<CeibaInventoryStatusLabel, string> = {
@@ -233,6 +233,15 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
   } catch {
     return [];
   }
+}
+
+export async function getCeibaInventoryProductionSnapshot(): Promise<CeibaInventoryProductionSnapshot> {
+  const [dashboard, operatorPerformance] = await Promise.all([
+    getCeibaInventoryDashboard(),
+    getCeibaInventoryOperatorPerformance(),
+  ]);
+
+  return { dashboard, operatorPerformance };
 }
 
 export async function createCeibaInventoryRecord(input: CeibaInventoryInput, createdBy: string | null) {

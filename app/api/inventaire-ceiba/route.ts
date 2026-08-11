@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { createCeibaInventoryRecord, getCeibaInventoryDashboard } from "../../../db/ceiba-inventory";
+import { createCeibaInventoryRecord, getCeibaInventoryDashboard, getCeibaInventoryProductionSnapshot } from "../../../db/ceiba-inventory";
 import { isDatabaseConfigured } from "../../../db";
 import { normalizeGeoArchivesApiBaseUrl } from "../../../lib/api-url";
 import { getInventoryActorFromRequest, requireAnyInventoryPermission, requireInventoryPermission } from "../../../lib/inventory-authz";
@@ -25,6 +25,13 @@ export async function GET(request: NextRequest) {
   const safeActor = actor;
   if (!safeActor) {
     return corsJson(request, { message: "Acces CEIBA requis." }, { status: 403 });
+  }
+
+  if (request.nextUrl.searchParams.get("view") === "production") {
+    if (!requireInventoryPermission(safeActor, "inventory.record.read_all")) {
+      return corsJson(request, { message: "Acces refuse: permission inventory.record.read_all requise." }, { status: 403 });
+    }
+    return corsJson(request, await getCeibaInventoryProductionSnapshot());
   }
 
   const rawDashboard = await getCeibaInventoryDashboard();
@@ -79,7 +86,7 @@ async function proxyIfRemote(request: NextRequest) {
   const baseUrl = normalizeGeoArchivesApiBaseUrl(process.env.GEOARCHIVES_API_BASE_URL);
   if (!baseUrl) return null;
 
-  const targetUrl = `${baseUrl}/api/inventaire-ceiba`;
+  const targetUrl = `${baseUrl}/api/inventaire-ceiba${request.nextUrl.search}`;
   const method = request.method.toUpperCase();
   const payload = method === "GET" || method === "HEAD" ? undefined : await request.text();
 
