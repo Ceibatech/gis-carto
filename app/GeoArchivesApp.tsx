@@ -1173,12 +1173,13 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     return (
       <main className="agent-shell">
         <header className="agent-topbar">
-          <div>
+          <div className="agent-header-identity">
             <p className="eyebrow">MULCV GeoArchives</p>
             <h2>Registre terrain</h2>
             <p className="view-description">Renseignez les fiches même sans connexion. Elles sont enregistrées sur l’appareil et envoyées automatiquement dès que le réseau est disponible.</p>
           </div>
-          <div className="agent-actions">
+
+          <div className="agent-user-card" aria-label="Informations utilisateur du registre terrain">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
             <span className={sourceState.badgeClass}>{sourceState.badge}</span>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
