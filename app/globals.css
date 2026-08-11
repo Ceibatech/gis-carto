@@ -5154,7 +5154,7 @@ h4 {
 
 /* Inventory split workspace */
 .inventory-layout {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 248, 246, 0.96));
+  background: #f5f7f6;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
@@ -5305,13 +5305,7 @@ h4 {
 }
 
 .inventory-main::before {
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-radius: 18px;
-  content: "";
-  inset: 18px 20px;
-  pointer-events: none;
-  position: fixed;
-  z-index: 0;
+  content: none;
 }
 
 .inventory-main > * {
@@ -5321,7 +5315,7 @@ h4 {
 
 .inventory-header-card {
   align-items: center;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 250, 0.92));
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -5442,7 +5436,7 @@ h4 {
 }
 
 .inventory-stepper-wrap {
-  background: linear-gradient(180deg, rgba(248, 252, 250, 0.96), rgba(244, 248, 246, 0.92));
+  background: #f8faf9;
   border: 1px solid var(--line);
   border-radius: 12px;
   display: grid;
@@ -5556,7 +5550,7 @@ h4 {
 }
 
 .inventory-form-section {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 252, 250, 0.92));
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 12px;
   display: grid;
