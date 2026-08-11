@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
-import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryDailyProduction, CeibaInventoryDailyProductionInput, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
 import { getPool, isDatabaseConfigured } from "./index";
 
 const statusValues: Record<CeibaInventoryStatusLabel, string> = {
@@ -236,12 +236,44 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
 }
 
 export async function getCeibaInventoryProductionSnapshot(): Promise<CeibaInventoryProductionSnapshot> {
-  const [dashboard, operatorPerformance] = await Promise.all([
+  const [dashboard, operatorPerformance, dailyProduction] = await Promise.all([
     getCeibaInventoryDashboard(),
     getCeibaInventoryOperatorPerformance(),
+    getCeibaInventoryDailyProduction(),
   ]);
 
-  return { dashboard, operatorPerformance };
+  return { dashboard, operatorPerformance, dailyProduction };
+}
+
+export async function getCeibaInventoryDailyProduction(): Promise<CeibaInventoryDailyProduction[]> {
+  if (!isDatabaseConfigured()) return [];
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<Array<RowDataPacket & { operator_login: string; operator_name: string; assigned_room: string | null; cartons_count: number; dossiers_count: number; damaged_cartons_count: number; damaged_dossiers_count: number }>>(`
+      select operator_login, operator_name, assigned_room,
+        sum(cartons_count) as cartons_count, sum(dossiers_count) as dossiers_count,
+        sum(damaged_cartons_count) as damaged_cartons_count, sum(damaged_dossiers_count) as damaged_dossiers_count
+      from ceiba_inventory_daily_production
+      group by operator_login, operator_name, assigned_room
+      order by dossiers_count desc, operator_name asc
+    `);
+    return rows.map((row) => ({ operatorLogin: row.operator_login, operatorName: row.operator_name, assignedRoom: row.assigned_room, cartonsCount: Number(row.cartons_count), dossiersCount: Number(row.dossiers_count), damagedCartonsCount: Number(row.damaged_cartons_count), damagedDossiersCount: Number(row.damaged_dossiers_count) }));
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCeibaInventoryDailyProduction(input: CeibaInventoryDailyProductionInput, operator: { login: string; name: string }) {
+  const pool = getPool();
+  await pool.execute(`
+    insert into ceiba_inventory_daily_production (
+      id, production_date, operator_login, operator_name, cartons_count, dossiers_count,
+      damaged_cartons_count, damaged_dossiers_count, difficulties
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    on duplicate key update operator_name = values(operator_name), cartons_count = values(cartons_count),
+      dossiers_count = values(dossiers_count), damaged_cartons_count = values(damaged_cartons_count),
+      damaged_dossiers_count = values(damaged_dossiers_count), difficulties = values(difficulties)
+  `, [randomUUID(), input.productionDate, operator.login, operator.name, input.cartonsCount, input.dossiersCount, input.damagedCartonsCount, input.damagedDossiersCount, cleanText(input.difficulties) || null]);
 }
 
 export async function createCeibaInventoryRecord(input: CeibaInventoryInput, createdBy: string | null) {

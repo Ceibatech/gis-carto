@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, Printer } from "lucide-react";
-import type { CeibaInventoryDashboard, CeibaInventoryOperatorPerformance } from "../../lib/ceiba-inventory-types";
+import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard, CeibaInventoryOperatorPerformance } from "../../lib/ceiba-inventory-types";
 import type { InventoryActor } from "../../lib/inventory-rbac";
 import { UserSidebar } from "../components/inventory-workspace-ui";
 
@@ -9,6 +9,7 @@ type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
   operatorPerformance: CeibaInventoryOperatorPerformance[];
+  dailyProduction: CeibaInventoryDailyProduction[];
 };
 
 function csvCell(value: string | number) {
@@ -22,20 +23,23 @@ const statusPalette = [
   { key: "blockedRecords", label: "Bloque", color: "#c84c4c" },
 ] as const;
 
-export default function ProductionInventoryWorkspace({ actor, dashboard, operatorPerformance }: Props) {
+export default function ProductionInventoryWorkspace({ actor, dashboard, operatorPerformance, dailyProduction }: Props) {
   const processedTotal = operatorPerformance.reduce((sum, item) => sum + item.processedRecords, 0);
-  const totalBoxes = operatorPerformance.reduce((sum, item) => sum + item.totalRecords, 0);
+  const totalCartons = dailyProduction.reduce((sum, item) => sum + item.cartonsCount, 0);
+  const totalDossiers = dailyProduction.reduce((sum, item) => sum + item.dossiersCount, 0);
+  const totalDamagedCartons = dailyProduction.reduce((sum, item) => sum + item.damagedCartonsCount, 0);
+  const totalDamagedDossiers = dailyProduction.reduce((sum, item) => sum + item.damagedDossiersCount, 0);
   const statusTotal = dashboard.newRecords + dashboard.reviewedRecords + dashboard.processedRecords + dashboard.blockedRecords;
   const circumference = 2 * Math.PI * 42;
   let cumulativeLength = 0;
 
   function downloadReport() {
     const rows = [
-      ["Operateur", "Identifiant", "Salle", "Fiches", "Nouveau", "En revue", "Traite", "Bloque", "Avancement"],
-      ...operatorPerformance.map((item) => {
-        const progress = item.totalRecords ? Math.round((item.processedRecords / item.totalRecords) * 100) : 0;
-        return [item.name, item.login, item.assignedRoom ?? "", item.totalRecords, item.newRecords, item.reviewedRecords, item.processedRecords, item.blockedRecords, `${progress}%`];
-      }),
+      ["UNITE DE CONSERVATION (UC)", ...dailyProduction.map((item) => item.operatorName), "TOTAL GENERAL"],
+      ["NBRE DE CARTONS", ...dailyProduction.map((item) => item.cartonsCount), totalCartons],
+      ["NBRE DE DOSSIERS", ...dailyProduction.map((item) => item.dossiersCount), totalDossiers],
+      ["NBRE DE CARTONS DEGRADES", ...dailyProduction.map((item) => item.damagedCartonsCount), totalDamagedCartons],
+      ["NBRE DE DOSSIERS DEGRADES", ...dailyProduction.map((item) => item.damagedDossiersCount), totalDamagedDossiers],
     ];
     const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\r\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -68,7 +72,7 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
         </header>
 
         <section className="production-brief">
-          <div><p>Suivi quotidien des operateurs</p><strong>Production terrain</strong><span>Consolide les fiches enregistrees et leur etat de traitement.</span></div>
+          <div><p>Suivi quotidien des operateurs</p><strong>Production terrain</strong><span>Consolide les indicateurs declares dans les fiches journalières CG1020.</span></div>
           <div className="production-brief-actions">
             <button className="secondary-button" type="button" onClick={downloadReport}><Download size={16} /> Telecharger CSV</button>
             <button className="primary-button" type="button" onClick={() => window.print()}><Printer size={16} /> Imprimer PDF</button>
@@ -76,10 +80,10 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
         </section>
 
         <section className="production-kpi-grid">
-          <article><span>Fiches enregistrees</span><strong>{dashboard.totalRecords}</strong><small>{dashboard.todayRecords} aujourd&apos;hui</small></article>
-          <article><span>Production operateurs</span><strong>{totalBoxes}</strong><small>{operatorPerformance.length} operateur(s)</small></article>
-          <article><span>Dossiers traites</span><strong>{processedTotal}</strong><small>{dashboard.processedRecords} valides au total</small></article>
-          <article><span>En attente</span><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong><small>{dashboard.blockedRecords} bloque(s)</small></article>
+          <article><span>Nbre de cartons</span><strong>{totalCartons}</strong><small>{dailyProduction.length} operateur(s)</small></article>
+          <article><span>Nbre de dossiers</span><strong>{totalDossiers}</strong><small>{dashboard.totalRecords} fiche(s) detaillee(s)</small></article>
+          <article><span>Cartons degrades</span><strong>{totalDamagedCartons}</strong><small>Declare dans CG1020</small></article>
+          <article><span>Dossiers degrades</span><strong>{totalDamagedDossiers}</strong><small>Declare dans CG1020</small></article>
         </section>
 
         <section className="production-bi-grid">
@@ -137,22 +141,18 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
 
         <section className="ceiba-panel operator-performance-panel">
           <div className="ceiba-panel-head">
-            <div><p className="panel-label">Tableau de suivi</p><h3>Production par operateur</h3></div>
+            <div><p className="panel-label">Fiche de suivi de la production</p><h3>Indicateurs par operateur</h3></div>
             <span className="production-date">Mis a jour en temps reel</span>
           </div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Operateur</th><th>Fiches</th><th>Nouveau</th><th>En revue</th><th>Traite</th><th>Bloque</th><th>Avancement</th></tr></thead>
-              <tbody>{operatorPerformance.map((item) => {
-                const progress = item.totalRecords ? Math.round((item.processedRecords / item.totalRecords) * 100) : 0;
-                return <tr key={item.login}>
-                  <td><strong>{item.name}</strong><span>{[item.assignedRoom, item.login].filter(Boolean).join(" · ")}</span></td>
-                  <td>{item.totalRecords}</td><td>{item.newRecords}</td><td>{item.reviewedRecords}</td><td>{item.processedRecords}</td><td>{item.blockedRecords}</td>
-                  <td><div className="operator-progress"><div><i style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div></td>
-                </tr>;
-              })}</tbody>
+              <thead><tr><th>Operateur</th><th>Nbre de cartons</th><th>Nbre de dossiers</th><th>Cartons degrades</th><th>Dossiers degrades</th></tr></thead>
+              <tbody>{dailyProduction.map((item) => <tr key={item.operatorLogin}>
+                <td><strong>{item.operatorName}</strong><span>{[item.assignedRoom, item.operatorLogin].filter(Boolean).join(" · ")}</span></td>
+                <td>{item.cartonsCount}</td><td>{item.dossiersCount}</td><td>{item.damagedCartonsCount}</td><td>{item.damagedDossiersCount}</td>
+              </tr>)}</tbody>
             </table>
-            {!operatorPerformance.length && <div className="ceiba-empty-state"><h3>Aucune production disponible</h3><p>Les lignes apparaissent apres la premiere fiche enregistree par un operateur.</p></div>}
+            {!dailyProduction.length && <div className="ceiba-empty-state"><h3>Aucune remontee journaliere disponible</h3><p>Les indicateurs apparaissent apres la premiere fiche CG1020 saisie par un operateur.</p></div>}
           </div>
         </section>
       </main>

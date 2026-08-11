@@ -15,9 +15,9 @@ export default async function InventoryProductionPage() {
   if (!actor) redirect("/inventaire/login");
   if (!hasInventoryPermission(actor.permissions, "inventory.record.read_all")) redirect("/inventaire/acces-refuse");
 
-  const { dashboard, operatorPerformance } = await getProductionSnapshot();
+  const { dashboard, operatorPerformance, dailyProduction } = await getProductionSnapshot();
 
-  return <ProductionInventoryWorkspace actor={actor} dashboard={dashboard} operatorPerformance={operatorPerformance} />;
+  return <ProductionInventoryWorkspace actor={actor} dashboard={dashboard} operatorPerformance={operatorPerformance} dailyProduction={dailyProduction} />;
 }
 
 async function getProductionSnapshot(): Promise<CeibaInventoryProductionSnapshot> {

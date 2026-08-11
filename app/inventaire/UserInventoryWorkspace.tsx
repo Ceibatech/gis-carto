@@ -99,6 +99,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
   const sidebarItems = useMemo(() => {
     const items: Array<{ key: string; label: string; href: string }> = [];
     if (canCreate) items.push({ key: "new", label: "Nouvelle fiche", href: "/inventaire" });
+    if (canCreate) items.push({ key: "daily", label: "Remontee journaliere", href: "/inventaire/remontee" });
     if (canCreate) items.push({ key: "drafts", label: "Mes brouillons", href: "/inventaire" });
     if (canReadOwn || canReadAll) items.push({ key: "records", label: "Mes fiches", href: "/inventaire/registre" });
     if (has(actor.permissions, "inventory.dashboard.view")) items.push({ key: "overview", label: "Vue d'ensemble", href: "/inventaire?tab=overview" });

@@ -46,6 +46,26 @@ export type CeibaInventoryOperatorPerformance = {
 export type CeibaInventoryProductionSnapshot = {
   dashboard: CeibaInventoryDashboard;
   operatorPerformance: CeibaInventoryOperatorPerformance[];
+  dailyProduction: CeibaInventoryDailyProduction[];
+};
+
+export type CeibaInventoryDailyProduction = {
+  operatorLogin: string;
+  operatorName: string;
+  assignedRoom: string | null;
+  cartonsCount: number;
+  dossiersCount: number;
+  damagedCartonsCount: number;
+  damagedDossiersCount: number;
+};
+
+export type CeibaInventoryDailyProductionInput = {
+  productionDate: string;
+  cartonsCount: number;
+  dossiersCount: number;
+  damagedCartonsCount: number;
+  damagedDossiersCount: number;
+  difficulties: string;
 };
 
 export type CeibaInventoryDashboard = {
