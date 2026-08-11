@@ -1142,7 +1142,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     Array.from(new Set(abidjanSubPrefectures.flatMap((item) => item.communes))).sort((a, b) => a.localeCompare(b, "fr")),
     [],
   );
-  const [showInventorySession, setShowInventorySession] = useState(false);
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "site" | "inventory">("dashboard");
   const [inventorySessionForm, setInventorySessionForm] = useState({
     cartonId: "",
     boxLabel: "",
@@ -1167,21 +1167,77 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           <div className="agent-actions">
             <div className="session-chip"><span>{roleLabel(session.role)}</span><strong>{session.name}</strong></div>
             <span className={sourceState.badgeClass}>{sourceState.badge}</span>
-            <button className="secondary-button" onClick={() => setShowInventorySession((current) => !current)} type="button">{showInventorySession ? "Fermer session inventaire" : "Session inventaire"}</button>
             <button className="secondary-button" onClick={() => void handleLogout()} type="button">Se déconnecter</button>
           </div>
         </header>
-        <section className="agent-form-frame">
-          <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
-        </section>
 
-        {showInventorySession && (
-          <section className="agent-form-frame" aria-label="Session inventaire">
+        <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
+          {([
+            { key: "dashboard", label: "Dashboard" },
+            { key: "site", label: "Fiche du site" },
+            { key: "inventory", label: "Inventaire" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              className={agentRegistryTab === tab.key ? "secondary-button active" : "secondary-button"}
+              onClick={() => setAgentRegistryTab(tab.key)}
+              type="button"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        {agentRegistryTab === "dashboard" && (
+          <section className="agent-form-frame" aria-label="Dashboard registre terrain">
+            <div className="dashboard-grid">
+              <div className="chart-panel">
+                <p className="panel-label">Vue terrain</p>
+                <h3>Dashboard</h3>
+                <div className="metric-grid">
+                  <Metric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${totals.evaluated} évalués`} />
+                  <Metric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${totals.pages} pages`} />
+                  <Metric label="Avancement moyen" value={`${totals.progress}%`} detail="Mobilisation, traitement, GED/SAE" />
+                  <Metric label="Sites critiques" value={formatNumber(totals.critical)} detail="Sauvegarde ou accès urgent" />
+                </div>
+              </div>
+              <div className="chart-panel">
+                <p className="panel-label">Suivi rapide</p>
+                <h3>Fiches récentes</h3>
+                {filteredSites.length ? (
+                  <div className="priority-list">
+                    {filteredSites.slice(0, 5).map((site) => (
+                      <button className="priority-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button">
+                        <span>{site.code}</span>
+                        <div>
+                          <strong>{site.name}</strong>
+                          <small>{site.region}</small>
+                        </div>
+                        <b>{site.priority}</b>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-text">Aucune fiche à afficher pour le moment.</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {agentRegistryTab === "site" && (
+          <section className="agent-form-frame" aria-label="Fiche du site">
+            <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
+          </section>
+        )}
+
+        {agentRegistryTab === "inventory" && (
+          <section className="agent-form-frame" aria-label="Inventaire">
             <div className="ceiba-panel inventory-entry-workspace">
               <div className="section-head">
                 <div>
-                  <p className="panel-label">Session inventaire</p>
-                  <h3>Nouvelle fiche CEIBA</h3>
+                  <p className="panel-label">Inventaire</p>
+                  <h3>Fiche inventaire opérateurs</h3>
                 </div>
               </div>
 
