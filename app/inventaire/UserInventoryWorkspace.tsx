@@ -495,9 +495,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
           </PermissionGuard>
         )}
 
-        <footer className="inventory-footer-links">
-          <Link href="/">Retour GeoArchives</Link>
-        </footer>
       </main>
     </div>
   );

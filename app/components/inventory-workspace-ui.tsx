@@ -37,7 +37,6 @@ export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activ
           </Link>
         ))}
       </nav>
-      <Link className="inventory-portal-link" href="/">Retour au portail</Link>
     </aside>
   );
 }
@@ -65,7 +64,6 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
           </Link>
         ))}
       </nav>
-      <Link className="inventory-portal-link" href="/">Retour au portail</Link>
       <UserDrawer open={isMobileNavOpen} title="Inventaire CEIBA" onClose={() => setIsMobileNavOpen(false)}>
         <nav className="inventory-drawer-nav" aria-label="Navigation mobile">
           {items.map((item) => (
@@ -73,7 +71,6 @@ export function UserSidebar({ items, activeKey }: { items: SidebarItem[]; active
               {item.label}
             </Link>
           ))}
-          <Link className="inventory-drawer-portal-link" href="/" onClick={() => setIsMobileNavOpen(false)}>Retour au portail</Link>
         </nav>
       </UserDrawer>
     </aside>
