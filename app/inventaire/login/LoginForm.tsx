@@ -21,7 +21,7 @@ export default function LoginForm() {
       });
       const payload = await response.json() as { message?: string };
       if (!response.ok) throw new Error(payload.message || "Connexion impossible");
-      window.location.href = "/inventaire";
+      window.location.href = "/";
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Connexion impossible");
     } finally {

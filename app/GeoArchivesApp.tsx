@@ -888,7 +888,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
     const authenticatedSession = result.session;
     const next = new URLSearchParams(window.location.search).get("next");
-    const destination = next === "/inventaire" || authenticatedSession.startApplication === "inventory" ? "/inventaire" : null;
+    const destination = next === "/inventaire" ? "/" : null;
 
     if (destination) {
       window.location.assign(destination);

@@ -18,10 +18,6 @@ export default async function Home() {
   const cookieStore = await cookies();
   const session = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
 
-  if (session?.startApplication === "inventory") {
-    redirect("/inventaire");
-  }
-
   const dashboard = session ? await getInitialGeoArchivesDashboard() : emptyGeoArchivesDashboard();
   return <GeoArchivesApp initialData={dashboard} initialSession={session} />;
 }

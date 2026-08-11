@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
+import { abidjanSubPrefectures, rgphDistricts } from "../../lib/rgph-territories";
 import type { InventoryActor, InventoryPermission } from "../../lib/inventory-rbac";
 import {
   ConnectionStatus,
@@ -126,7 +127,45 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
   }, [actor.login, canReadAll, canReadOwn, communeFilter, dashboard.recentRecords, search, statusFilter]);
 
   const communes = useMemo(() => {
-    return Array.from(new Set(dashboard.recentRecords.map((item) => item.commune).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fr"));
+    const values = new Set<string>();
+
+    for (const record of dashboard.recentRecords) {
+      if (record.commune) {
+        values.add(record.commune);
+      }
+    }
+
+    for (const district of rgphDistricts) {
+      for (const subPrefecture of district.subPrefectures ?? []) {
+        for (const commune of subPrefecture.communes ?? []) {
+          if (commune && commune !== "Non applicable") {
+            values.add(commune);
+          }
+        }
+      }
+
+      for (const region of district.regionItems ?? []) {
+        for (const department of region.departments) {
+          for (const subPrefecture of department.subPrefectures) {
+            for (const commune of subPrefecture.communes ?? []) {
+              if (commune && commune !== "Non applicable") {
+                values.add(commune);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (const subPrefecture of abidjanSubPrefectures) {
+      for (const commune of subPrefecture.communes ?? []) {
+        if (commune && commune !== "Non applicable") {
+          values.add(commune);
+        }
+      }
+    }
+
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "fr"));
   }, [dashboard.recentRecords]);
 
   const pageSize = 10;

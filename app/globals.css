@@ -5154,9 +5154,9 @@ h4 {
 
 /* Inventory split workspace */
 .inventory-layout {
-  background: linear-gradient(180deg, #f5f7fa 0%, #eff4f6 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 248, 246, 0.96));
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   display: grid;
   gap: 0;
@@ -5167,7 +5167,7 @@ h4 {
 
 .inventory-sidebar {
   align-content: start;
-  background: #f7fafb;
+  background: linear-gradient(180deg, rgba(247, 250, 249, 0.96), rgba(238, 244, 241, 0.92));
   border-right: 1px solid var(--line);
   display: grid;
   gap: 18px;
@@ -5190,10 +5190,10 @@ h4 {
 
 .inventory-brand-mark {
   align-items: center;
-  background: #edf5f6;
-  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(15, 125, 92, 0.15), rgba(198, 140, 31, 0.12));
+  border: 1px solid rgba(15, 125, 92, 0.18);
   border-radius: 10px;
-  color: #12354d;
+  color: var(--green-dark);
   display: inline-flex;
   font-family: Georgia, serif;
   font-size: 1.35rem;
@@ -5277,9 +5277,9 @@ h4 {
 }
 
 .inventory-nav-item.active {
-  background: #edf5f6;
-  border-color: var(--line);
-  color: #12354d;
+  background: linear-gradient(180deg, rgba(15, 125, 92, 0.08), rgba(15, 125, 92, 0.04));
+  border-color: rgba(15, 125, 92, 0.15);
+  color: var(--green-dark);
   font-weight: 700;
 }
 
@@ -5321,10 +5321,10 @@ h4 {
 
 .inventory-header-card {
   align-items: center;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid #d7e6e1;
-  border-radius: 8px;
-  box-shadow: 0 14px 30px rgba(22, 60, 57, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 250, 0.92));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
   display: flex;
   justify-content: space-between;
   padding: 18px 22px;
@@ -5442,9 +5442,9 @@ h4 {
 }
 
 .inventory-stepper-wrap {
-  background: rgba(248, 252, 251, 0.96);
-  border: 1px solid #d5e5df;
-  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(248, 252, 250, 0.96), rgba(244, 248, 246, 0.92));
+  border: 1px solid var(--line);
+  border-radius: 12px;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -5514,9 +5514,9 @@ h4 {
 
 .inventory-step span {
   align-items: center;
-  background: #f0f4ff;
+  background: rgba(15, 125, 92, 0.08);
   border-radius: 6px;
-  color: #526df0;
+  color: var(--green-dark);
   display: inline-flex;
   height: 30px;
   justify-content: center;
@@ -5544,26 +5544,26 @@ h4 {
 }
 
 .inventory-step.active {
-  background: #ffffff;
-  border-color: #e1e8f5;
-  box-shadow: 0 5px 14px rgba(64, 87, 134, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(15, 125, 92, 0.14);
+  box-shadow: 0 5px 14px rgba(17, 48, 39, 0.08);
   color: #263a59;
 }
 
 .inventory-step.active span {
-  background: #edf0ff;
-  color: #536cf0;
+  background: rgba(15, 125, 92, 0.1);
+  color: var(--green-dark);
 }
 
 .inventory-form-section {
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid #d7e6e1;
-  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 252, 250, 0.92));
+  border: 1px solid var(--line);
+  border-radius: 12px;
   display: grid;
   gap: 18px;
   min-height: 286px;
   padding: 24px;
-  box-shadow: 0 16px 32px rgba(22, 60, 57, 0.07);
+  box-shadow: var(--shadow);
 }
 
 .inventory-form-section h3 {
