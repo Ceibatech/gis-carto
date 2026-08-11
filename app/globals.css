@@ -4069,7 +4069,7 @@ tr:hover td {
 
 
 .agent-shell {
-  background: #f5f7fa;
+  background: #f4f7f6;
   display: grid;
   gap: 22px;
   min-height: 100vh;
@@ -4078,10 +4078,10 @@ tr:hover td {
 
 .agent-registry-tabs {
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: #f9fbfa;
   border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 14px 30px rgba(17, 48, 39, 0.04);
   display: flex;
   gap: 10px;
   margin: 0 auto;
@@ -4108,7 +4108,7 @@ tr:hover td {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 40px rgba(17, 48, 39, 0.06);
   display: flex;
   gap: 18px;
   justify-content: space-between;
@@ -5334,7 +5334,7 @@ h4 {
   background: #f5f7f6;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 40px rgba(17, 48, 39, 0.06);
   display: grid;
   gap: 0;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -5344,7 +5344,7 @@ h4 {
 
 .inventory-sidebar {
   align-content: start;
-  background: linear-gradient(180deg, rgba(247, 250, 249, 0.96), rgba(238, 244, 241, 0.92));
+  background: linear-gradient(180deg, #f9fbfa, #eef4f2);
   border-right: 1px solid var(--line);
   display: grid;
   gap: 18px;
