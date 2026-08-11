@@ -28,8 +28,8 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
   const totalCartons = dailyProduction.reduce((sum, item) => sum + item.cartonsCount, 0);
   const totalDossiers = dailyProduction.reduce((sum, item) => sum + item.dossiersCount, 0);
   const hasDailyProduction = dailyProduction.some((item) => item.source === "daily");
-  const totalDamagedCartons = dailyProduction.reduce((sum, item) => sum + (item.damagedCartonsCount ?? 0), 0);
-  const totalDamagedDossiers = dailyProduction.reduce((sum, item) => sum + (item.damagedDossiersCount ?? 0), 0);
+  const totalDamagedCartons = dailyProduction.reduce((sum, item) => sum + (item.damagedCartonsCount ?? 0), 0) || dashboard.damagedCartons;
+  const totalDamagedDossiers = dailyProduction.reduce((sum, item) => sum + (item.damagedDossiersCount ?? 0), 0) || dashboard.damagedDossiers;
   const statusTotal = dashboard.newRecords + dashboard.reviewedRecords + dashboard.processedRecords + dashboard.blockedRecords;
   const circumference = 2 * Math.PI * 42;
   let cumulativeLength = 0;
@@ -83,8 +83,8 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
         <section className="production-kpi-grid">
           <article><span>Nbre de cartons</span><strong>{totalCartons}</strong><small>{dailyProduction.length} operateur(s)</small></article>
           <article><span>Nbre de dossiers</span><strong>{totalDossiers}</strong><small>{dashboard.totalRecords} fiche(s) detaillee(s)</small></article>
-          <article><span>Cartons degrades</span><strong>{hasDailyProduction ? totalDamagedCartons : "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : "Non renseigne historiquement"}</small></article>
-          <article><span>Dossiers degrades</span><strong>{hasDailyProduction ? totalDamagedDossiers : "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : "Non renseigne historiquement"}</small></article>
+          <article><span>Cartons degrades</span><strong>{hasDailyProduction ? totalDamagedCartons : dashboard.damagedCartons || "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : (dashboard.damagedCartons ? "Calcule depuis l'état des cartons" : "Non renseigne historiquement")}</small></article>
+          <article><span>Dossiers degrades</span><strong>{hasDailyProduction ? totalDamagedDossiers : dashboard.damagedDossiers || "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : (dashboard.damagedDossiers ? "Calcule depuis l'état des dossiers" : "Non renseigne historiquement")}</small></article>
         </section>
 
         <section className="production-bi-grid">

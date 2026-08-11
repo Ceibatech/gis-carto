@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS ceiba_inventory_forms (
   id CHAR(36) PRIMARY KEY,
   box_label VARCHAR(190) NULL,
+  carton_id VARCHAR(190) NULL,
   barcode VARCHAR(190) NULL,
   guichet_number VARCHAR(80) NULL,
   ddu_number VARCHAR(80) NULL,
@@ -15,6 +16,12 @@ CREATE TABLE IF NOT EXISTS ceiba_inventory_forms (
   housing_estate TEXT NULL,
   commune VARCHAR(190) NOT NULL,
   case_nature TEXT NOT NULL,
+  carton_state ENUM('Bon', 'À vérifier', 'Dégradé', 'Mauvais état') NOT NULL DEFAULT 'Bon',
+  carton_damaged TINYINT(1) NOT NULL DEFAULT 0,
+  carton_damage_type VARCHAR(190) NULL,
+  dossier_state ENUM('Bon', 'À vérifier', 'Dégradé', 'Mauvais état') NOT NULL DEFAULT 'Bon',
+  dossier_damaged TINYINT(1) NOT NULL DEFAULT 0,
+  dossier_damage_type VARCHAR(190) NULL,
   last_name VARCHAR(190) NOT NULL,
   first_names VARCHAR(190) NOT NULL,
   address TEXT NULL,
@@ -31,6 +38,9 @@ CREATE TABLE IF NOT EXISTS ceiba_inventory_forms (
   KEY ceiba_inventory_status_idx (status),
   KEY ceiba_inventory_created_idx (created_at),
   KEY ceiba_inventory_barcode_idx (barcode),
+  KEY ceiba_inventory_carton_id_idx (carton_id),
+  KEY ceiba_inventory_carton_state_idx (carton_state),
+  KEY ceiba_inventory_dossier_state_idx (dossier_state),
   KEY ceiba_inventory_guichet_idx (guichet_number),
   KEY ceiba_inventory_ddu_idx (ddu_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

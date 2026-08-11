@@ -32,12 +32,19 @@ const defaultForm: CeibaInventoryInput = {
   address: "",
   barcode: "",
   boxLabel: "",
+  cartonDamaged: false,
+  cartonDamageType: "",
+  cartonId: "",
+  cartonState: "Bon",
   caseNature: "",
   classificationReference: "",
   commune: "",
   contactMobile: "",
   contactPerson: "",
   dduNumber: "",
+  dossierDamaged: false,
+  dossierDamageType: "",
+  dossierState: "Bon",
   email: "",
   firstNames: "",
   guichetNumber: "",
@@ -369,10 +376,14 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
 
               {activeStep === "carton" && (
                 <FormSection title="1. Identification du carton">
+                  <label><span>ID unique du carton</span><input value={form.cartonId} onChange={(event) => update("cartonId", event.target.value)} placeholder="CART-0001" /></label>
                   <label><span>Libelle du carton</span><input value={form.boxLabel} onChange={(event) => update("boxLabel", event.target.value)} /></label>
                   <label><span>Code barre</span><input value={form.barcode} onChange={(event) => update("barcode", event.target.value)} /></label>
                   <label><span>N° guichet</span><input value={form.guichetNumber} onChange={(event) => update("guichetNumber", event.target.value)} /></label>
                   <label><span>N° DDU</span><input value={form.dduNumber} onChange={(event) => update("dduNumber", event.target.value)} /></label>
+                  <label><span>État du carton</span><select value={form.cartonState} onChange={(event) => update("cartonState", event.target.value as CeibaInventoryInput["cartonState"])}><option value="Bon">Bon</option><option value="À vérifier">À vérifier</option><option value="Dégradé">Dégradé</option><option value="Mauvais état">Mauvais état</option></select></label>
+                  <label><span>Carton endommagé ?</span><select value={String(form.cartonDamaged)} onChange={(event) => update("cartonDamaged", event.target.value === "true")}><option value="false">Non</option><option value="true">Oui</option></select></label>
+                  <label><span>Type de dégradation</span><input value={form.cartonDamageType} onChange={(event) => update("cartonDamageType", event.target.value)} placeholder="Fissure, humide, déchirure..." /></label>
                   <label className="wide"><span>Reference de classement</span><input value={form.classificationReference} onChange={(event) => update("classificationReference", event.target.value)} /></label>
                 </FormSection>
               )}
@@ -385,6 +396,9 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
                   <label><span>N° titre foncier</span><input value={form.landTitleNumber} onChange={(event) => update("landTitleNumber", event.target.value)} /></label>
                   <label><span>Lotissement</span><input value={form.housingEstate} onChange={(event) => update("housingEstate", event.target.value)} /></label>
                   <label><span>Commune(s)</span><input value={form.commune} onChange={(event) => update("commune", event.target.value)} /></label>
+                  <label><span>État du dossier</span><select value={form.dossierState} onChange={(event) => update("dossierState", event.target.value as CeibaInventoryInput["dossierState"])}><option value="Bon">Bon</option><option value="À vérifier">À vérifier</option><option value="Dégradé">Dégradé</option><option value="Mauvais état">Mauvais état</option></select></label>
+                  <label><span>Dossier endommagé ?</span><select value={String(form.dossierDamaged)} onChange={(event) => update("dossierDamaged", event.target.value === "true")}><option value="false">Non</option><option value="true">Oui</option></select></label>
+                  <label><span>Type de dégradation dossier</span><input value={form.dossierDamageType} onChange={(event) => update("dossierDamageType", event.target.value)} placeholder="Humidité, pagination, déchirure..." /></label>
                   <label className="wide"><span>Nature de dossier</span><input value={form.caseNature} onChange={(event) => update("caseNature", event.target.value)} /></label>
                 </FormSection>
               )}

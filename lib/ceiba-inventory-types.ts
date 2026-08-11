@@ -2,6 +2,7 @@ export type CeibaInventoryStatusLabel = "Nouveau" | "En revue" | "Traité" | "Bl
 
 export type CeibaInventoryInput = {
   boxLabel: string;
+  cartonId: string;
   barcode: string;
   guichetNumber: string;
   dduNumber: string;
@@ -13,6 +14,12 @@ export type CeibaInventoryInput = {
   housingEstate: string;
   commune: string;
   caseNature: string;
+  cartonState: "Bon" | "À vérifier" | "Dégradé" | "Mauvais état";
+  cartonDamaged: boolean;
+  cartonDamageType: string;
+  dossierState: "Bon" | "À vérifier" | "Dégradé" | "Mauvais état";
+  dossierDamaged: boolean;
+  dossierDamageType: string;
   lastName: string;
   firstNames: string;
   address: string;
@@ -78,8 +85,11 @@ export type CeibaInventoryDashboard = {
   reviewedRecords: number;
   processedRecords: number;
   blockedRecords: number;
+  damagedCartons: number;
+  damagedDossiers: number;
   todayRecords: number;
   uniqueCommunes: number;
+  uniqueCartons: number;
   recentRecords: CeibaInventoryRecord[];
   activityByCommune: Array<{ commune: string; count: number }>;
 };

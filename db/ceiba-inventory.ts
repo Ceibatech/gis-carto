@@ -23,13 +23,17 @@ type SummaryRow = RowDataPacket & {
   reviewed_records: number;
   processed_records: number;
   blocked_records: number;
+  damaged_cartons: number;
+  damaged_dossiers: number;
   today_records: number;
   unique_communes: number;
+  unique_cartons: number;
 };
 
 type RecordRow = RowDataPacket & {
   id: string;
   box_label: string | null;
+  carton_id: string | null;
   barcode: string | null;
   guichet_number: string | null;
   ddu_number: string | null;
@@ -41,6 +45,12 @@ type RecordRow = RowDataPacket & {
   housing_estate: string | null;
   commune: string;
   case_nature: string;
+  carton_state: string | null;
+  carton_damaged: number | null;
+  carton_damage_type: string | null;
+  dossier_state: string | null;
+  dossier_damaged: number | null;
+  dossier_damage_type: string | null;
   last_name: string;
   first_names: string;
   address: string | null;
@@ -76,6 +86,8 @@ function emptyCeibaInventoryDashboard(databaseReady: boolean, schemaReady: boole
   return {
     activityByCommune: [],
     blockedRecords: 0,
+    damagedCartons: 0,
+    damagedDossiers: 0,
     databaseReady,
     message,
     newRecords: 0,
@@ -85,6 +97,7 @@ function emptyCeibaInventoryDashboard(databaseReady: boolean, schemaReady: boole
     schemaReady,
     todayRecords: 0,
     totalRecords: 0,
+    uniqueCartons: 0,
     uniqueCommunes: 0,
   };
 }
@@ -94,6 +107,10 @@ function mapRecord(row: RecordRow): CeibaInventoryRecord {
     address: row.address ?? "",
     barcode: row.barcode ?? "",
     boxLabel: row.box_label ?? "",
+    cartonDamaged: Boolean(row.carton_damaged),
+    cartonDamageType: row.carton_damage_type ?? "",
+    cartonId: row.carton_id ?? "",
+    cartonState: (row.carton_state as CeibaInventoryInput["cartonState"]) ?? "Bon",
     caseNature: row.case_nature,
     classificationReference: row.classification_reference ?? "",
     commune: row.commune,
@@ -102,6 +119,9 @@ function mapRecord(row: RecordRow): CeibaInventoryRecord {
     createdAt: new Date(row.created_at).toISOString(),
     createdBy: row.created_by,
     dduNumber: row.ddu_number ?? "",
+    dossierDamaged: Boolean(row.dossier_damaged),
+    dossierDamageType: row.dossier_damage_type ?? "",
+    dossierState: (row.dossier_state as CeibaInventoryInput["dossierState"]) ?? "Bon",
     email: row.email ?? "",
     firstNames: row.first_names,
     guichetNumber: row.guichet_number ?? "",
@@ -133,14 +153,18 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
         sum(case when status = 'review' then 1 else 0 end) as reviewed_records,
         sum(case when status = 'processed' then 1 else 0 end) as processed_records,
         sum(case when status = 'blocked' then 1 else 0 end) as blocked_records,
+        sum(case when carton_damaged = 1 then 1 else 0 end) as damaged_cartons,
+        sum(case when dossier_damaged = 1 then 1 else 0 end) as damaged_dossiers,
         sum(case when date(created_at) = current_date then 1 else 0 end) as today_records,
-        count(distinct nullif(trim(commune), '')) as unique_communes
+        count(distinct nullif(trim(commune), '')) as unique_communes,
+        count(distinct nullif(trim(carton_id), '')) as unique_cartons
       from ceiba_inventory_forms
     `);
     const [recentRows] = await pool.query<RecordRow[]>(`
       select
         id,
         box_label,
+        carton_id,
         barcode,
         guichet_number,
         ddu_number,
@@ -152,6 +176,12 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
         housing_estate,
         commune,
         case_nature,
+        carton_state,
+        carton_damaged,
+        carton_damage_type,
+        dossier_state,
+        dossier_damaged,
+        dossier_damage_type,
         last_name,
         first_names,
         address,
@@ -180,6 +210,8 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
     return {
       activityByCommune: communeRows.map((row) => ({ commune: row.commune, count: Number(row.count ?? 0) })),
       blockedRecords: Number(summary?.blocked_records ?? 0),
+      damagedCartons: Number(summary?.damaged_cartons ?? 0),
+      damagedDossiers: Number(summary?.damaged_dossiers ?? 0),
       databaseReady: true,
       message: null,
       newRecords: Number(summary?.new_records ?? 0),
@@ -189,6 +221,7 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
       schemaReady: true,
       todayRecords: Number(summary?.today_records ?? 0),
       totalRecords: Number(summary?.total_records ?? 0),
+      uniqueCartons: Number(summary?.unique_cartons ?? 0),
       uniqueCommunes: Number(summary?.unique_communes ?? 0),
     };
   } catch (error) {
@@ -296,6 +329,7 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     `insert into ceiba_inventory_forms (
     id,
     box_label,
+    carton_id,
     barcode,
     guichet_number,
     ddu_number,
@@ -307,6 +341,12 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     housing_estate,
     commune,
     case_nature,
+    carton_state,
+    carton_damaged,
+    carton_damage_type,
+    dossier_state,
+    dossier_damaged,
+    dossier_damage_type,
     last_name,
     first_names,
     address,
@@ -317,10 +357,11 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     status,
     notes,
     created_by
-  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     [
       randomUUID(),
       cleanText(input.boxLabel) || null,
+      cleanText(input.cartonId) || null,
       cleanText(input.barcode) || null,
       cleanText(input.guichetNumber) || null,
       cleanText(input.dduNumber) || null,
@@ -332,6 +373,12 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
       cleanText(input.housingEstate) || null,
       cleanText(input.commune),
       cleanText(input.caseNature),
+      cleanText(input.cartonState) || "Bon",
+      input.cartonDamaged ? 1 : 0,
+      cleanText(input.cartonDamageType) || null,
+      cleanText(input.dossierState) || "Bon",
+      input.dossierDamaged ? 1 : 0,
+      cleanText(input.dossierDamageType) || null,
       cleanText(input.lastName),
       cleanText(input.firstNames),
       cleanText(input.address) || null,
