@@ -15,7 +15,10 @@ import type {
 } from "../lib/geoarchives-types";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse, UserStartApplication } from "../lib/geoarchives-auth-types";
+import type { CeibaInventoryDashboard } from "../lib/ceiba-inventory-types";
+import { buildInventoryActor } from "../lib/inventory-rbac";
 import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
+import UserInventoryWorkspace from "./inventaire/UserInventoryWorkspace";
 
 type Assessment = {
   physical: number;
@@ -1138,18 +1141,29 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const inventoryCommuneOptions = useMemo(() =>
-    Array.from(new Set(abidjanSubPrefectures.flatMap((item) => item.communes))).sort((a, b) => a.localeCompare(b, "fr")),
-    [],
-  );
   const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "site" | "inventory">("dashboard");
-  const [inventorySessionForm, setInventorySessionForm] = useState({
-    cartonId: "",
-    boxLabel: "",
-    commune: "",
-    status: "Bon",
-    notes: "",
-  });
+  const inventoryActor = useMemo(() => {
+    if (!session) return null;
+    const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
+    return buildInventoryActor({ login: session.login, name: session.name, role });
+  }, [session]);
+  const emptyInventoryDashboard = useMemo<CeibaInventoryDashboard>(() => ({
+    activityByCommune: [],
+    blockedRecords: 0,
+    damagedCartons: 0,
+    damagedDossiers: 0,
+    databaseReady: false,
+    message: "Aucune donnee inventaire disponible pour le moment.",
+    newRecords: 0,
+    processedRecords: 0,
+    recentRecords: [],
+    reviewedRecords: 0,
+    schemaReady: false,
+    todayRecords: 0,
+    totalRecords: 0,
+    uniqueCartons: 0,
+    uniqueCommunes: 0,
+  }), []);
 
   if (!session) {
     return <LoginScreen onLogin={handleLogin} />;
@@ -1231,32 +1245,9 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </section>
         )}
 
-        {agentRegistryTab === "inventory" && (
+        {agentRegistryTab === "inventory" && inventoryActor && (
           <section className="agent-form-frame" aria-label="Inventaire">
-            <div className="ceiba-panel inventory-entry-workspace">
-              <div className="section-head">
-                <div>
-                  <p className="panel-label">Inventaire</p>
-                  <h3>Fiche inventaire opérateurs</h3>
-                </div>
-              </div>
-
-              <div className="inventory-form-grid">
-                <label><span>ID carton</span><input value={inventorySessionForm.cartonId} onChange={(event) => setInventorySessionForm((current) => ({ ...current, cartonId: event.target.value }))} placeholder="CART-0001" /></label>
-                <label><span>Libellé carton</span><input value={inventorySessionForm.boxLabel} onChange={(event) => setInventorySessionForm((current) => ({ ...current, boxLabel: event.target.value }))} /></label>
-                <label>
-                  <span>Commune</span>
-                  <select value={inventorySessionForm.commune} onChange={(event) => setInventorySessionForm((current) => ({ ...current, commune: event.target.value }))}>
-                    <option value="">Choisir une commune</option>
-                    {inventoryCommuneOptions.map((commune) => (
-                      <option key={commune} value={commune}>{commune}</option>
-                    ))}
-                  </select>
-                </label>
-                <label><span>État</span><select value={inventorySessionForm.status} onChange={(event) => setInventorySessionForm((current) => ({ ...current, status: event.target.value }))}><option value="Bon">Bon</option><option value="À vérifier">À vérifier</option><option value="Dégradé">Dégradé</option><option value="Mauvais état">Mauvais état</option></select></label>
-                <label className="wide"><span>Observations</span><textarea rows={3} value={inventorySessionForm.notes} onChange={(event) => setInventorySessionForm((current) => ({ ...current, notes: event.target.value }))} /></label>
-              </div>
-            </div>
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={emptyInventoryDashboard} view="dashboard" />
           </section>
         )}
       </main>
