@@ -55,8 +55,9 @@ export type CeibaInventoryDailyProduction = {
   assignedRoom: string | null;
   cartonsCount: number;
   dossiersCount: number;
-  damagedCartonsCount: number;
-  damagedDossiersCount: number;
+  damagedCartonsCount: number | null;
+  damagedDossiersCount: number | null;
+  source: "daily" | "historical";
 };
 
 export type CeibaInventoryDailyProductionInput = {

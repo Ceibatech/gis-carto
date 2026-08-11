@@ -27,8 +27,9 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
   const processedTotal = operatorPerformance.reduce((sum, item) => sum + item.processedRecords, 0);
   const totalCartons = dailyProduction.reduce((sum, item) => sum + item.cartonsCount, 0);
   const totalDossiers = dailyProduction.reduce((sum, item) => sum + item.dossiersCount, 0);
-  const totalDamagedCartons = dailyProduction.reduce((sum, item) => sum + item.damagedCartonsCount, 0);
-  const totalDamagedDossiers = dailyProduction.reduce((sum, item) => sum + item.damagedDossiersCount, 0);
+  const hasDailyProduction = dailyProduction.some((item) => item.source === "daily");
+  const totalDamagedCartons = dailyProduction.reduce((sum, item) => sum + (item.damagedCartonsCount ?? 0), 0);
+  const totalDamagedDossiers = dailyProduction.reduce((sum, item) => sum + (item.damagedDossiersCount ?? 0), 0);
   const statusTotal = dashboard.newRecords + dashboard.reviewedRecords + dashboard.processedRecords + dashboard.blockedRecords;
   const circumference = 2 * Math.PI * 42;
   let cumulativeLength = 0;
@@ -38,8 +39,8 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
       ["UNITE DE CONSERVATION (UC)", ...dailyProduction.map((item) => item.operatorName), "TOTAL GENERAL"],
       ["NBRE DE CARTONS", ...dailyProduction.map((item) => item.cartonsCount), totalCartons],
       ["NBRE DE DOSSIERS", ...dailyProduction.map((item) => item.dossiersCount), totalDossiers],
-      ["NBRE DE CARTONS DEGRADES", ...dailyProduction.map((item) => item.damagedCartonsCount), totalDamagedCartons],
-      ["NBRE DE DOSSIERS DEGRADES", ...dailyProduction.map((item) => item.damagedDossiersCount), totalDamagedDossiers],
+      ["NBRE DE CARTONS DEGRADES", ...dailyProduction.map((item) => item.damagedCartonsCount ?? "Non renseigne"), hasDailyProduction ? totalDamagedCartons : "Non renseigne"],
+      ["NBRE DE DOSSIERS DEGRADES", ...dailyProduction.map((item) => item.damagedDossiersCount ?? "Non renseigne"), hasDailyProduction ? totalDamagedDossiers : "Non renseigne"],
     ];
     const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\r\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -82,8 +83,8 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
         <section className="production-kpi-grid">
           <article><span>Nbre de cartons</span><strong>{totalCartons}</strong><small>{dailyProduction.length} operateur(s)</small></article>
           <article><span>Nbre de dossiers</span><strong>{totalDossiers}</strong><small>{dashboard.totalRecords} fiche(s) detaillee(s)</small></article>
-          <article><span>Cartons degrades</span><strong>{totalDamagedCartons}</strong><small>Declare dans CG1020</small></article>
-          <article><span>Dossiers degrades</span><strong>{totalDamagedDossiers}</strong><small>Declare dans CG1020</small></article>
+          <article><span>Cartons degrades</span><strong>{hasDailyProduction ? totalDamagedCartons : "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : "Non renseigne historiquement"}</small></article>
+          <article><span>Dossiers degrades</span><strong>{hasDailyProduction ? totalDamagedDossiers : "-"}</strong><small>{hasDailyProduction ? "Declare dans CG1020" : "Non renseigne historiquement"}</small></article>
         </section>
 
         <section className="production-bi-grid">
@@ -149,7 +150,7 @@ export default function ProductionInventoryWorkspace({ actor, dashboard, operato
               <thead><tr><th>Operateur</th><th>Nbre de cartons</th><th>Nbre de dossiers</th><th>Cartons degrades</th><th>Dossiers degrades</th></tr></thead>
               <tbody>{dailyProduction.map((item) => <tr key={item.operatorLogin}>
                 <td><strong>{item.operatorName}</strong><span>{[item.assignedRoom, item.operatorLogin].filter(Boolean).join(" · ")}</span></td>
-                <td>{item.cartonsCount}</td><td>{item.dossiersCount}</td><td>{item.damagedCartonsCount}</td><td>{item.damagedDossiersCount}</td>
+                <td>{item.cartonsCount}</td><td>{item.dossiersCount}</td><td>{item.damagedCartonsCount ?? "Non renseigne"}</td><td>{item.damagedDossiersCount ?? "Non renseigne"}</td>
               </tr>)}</tbody>
             </table>
             {!dailyProduction.length && <div className="ceiba-empty-state"><h3>Aucune remontee journaliere disponible</h3><p>Les indicateurs apparaissent apres la premiere fiche CG1020 saisie par un operateur.</p></div>}

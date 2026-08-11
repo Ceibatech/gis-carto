@@ -249,15 +249,28 @@ export async function getCeibaInventoryDailyProduction(): Promise<CeibaInventory
   if (!isDatabaseConfigured()) return [];
   try {
     const pool = getPool();
-    const [rows] = await pool.query<Array<RowDataPacket & { operator_login: string; operator_name: string; assigned_room: string | null; cartons_count: number; dossiers_count: number; damaged_cartons_count: number; damaged_dossiers_count: number }>>(`
-      select operator_login, operator_name, assigned_room,
-        sum(cartons_count) as cartons_count, sum(dossiers_count) as dossiers_count,
-        sum(damaged_cartons_count) as damaged_cartons_count, sum(damaged_dossiers_count) as damaged_dossiers_count
-      from ceiba_inventory_daily_production
-      group by operator_login, operator_name, assigned_room
+    const [rows] = await pool.query<Array<RowDataPacket & { operator_login: string; operator_name: string; assigned_room: string | null; cartons_count: number; dossiers_count: number; damaged_cartons_count: number | null; damaged_dossiers_count: number | null; source: "daily" | "historical" }>>(`
+      select operator_login, operator_name, assigned_room, cartons_count, dossiers_count,
+        damaged_cartons_count, damaged_dossiers_count, source
+      from (
+        select operator_login, operator_name, assigned_room,
+          sum(cartons_count) as cartons_count, sum(dossiers_count) as dossiers_count,
+          sum(damaged_cartons_count) as damaged_cartons_count, sum(damaged_dossiers_count) as damaged_dossiers_count,
+          'daily' as source
+        from ceiba_inventory_daily_production
+        group by operator_login, operator_name, assigned_room
+        union all
+        select forms.created_by as operator_login, forms.created_by as operator_name, null as assigned_room,
+          count(forms.id) as cartons_count, count(forms.id) as dossiers_count,
+          null as damaged_cartons_count, null as damaged_dossiers_count, 'historical' as source
+        from ceiba_inventory_forms forms
+        where forms.created_by is not null
+          and not exists (select 1 from ceiba_inventory_daily_production daily where lower(daily.operator_login) = lower(forms.created_by))
+        group by forms.created_by
+      ) production
       order by dossiers_count desc, operator_name asc
     `);
-    return rows.map((row) => ({ operatorLogin: row.operator_login, operatorName: row.operator_name, assignedRoom: row.assigned_room, cartonsCount: Number(row.cartons_count), dossiersCount: Number(row.dossiers_count), damagedCartonsCount: Number(row.damaged_cartons_count), damagedDossiersCount: Number(row.damaged_dossiers_count) }));
+    return rows.map((row) => ({ operatorLogin: row.operator_login, operatorName: row.operator_name, assignedRoom: row.assigned_room, cartonsCount: Number(row.cartons_count), dossiersCount: Number(row.dossiers_count), damagedCartonsCount: row.damaged_cartons_count === null ? null : Number(row.damaged_cartons_count), damagedDossiersCount: row.damaged_dossiers_count === null ? null : Number(row.damaged_dossiers_count), source: row.source }));
   } catch {
     return [];
   }
