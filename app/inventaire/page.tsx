@@ -13,7 +13,7 @@ export default async function InventairePage() {
     redirect("/?next=/inventaire");
   }
 
-  if (!hasInventoryPermission(actor.permissions, "inventory.dashboard.view")) {
+  if (!hasInventoryPermission(actor.permissions, "inventory.record.create")) {
     redirect("/inventaire/acces-refuse");
   }
 

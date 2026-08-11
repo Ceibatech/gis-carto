@@ -105,15 +105,11 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
 
   const sidebarItems = useMemo(() => {
     const items: Array<{ key: string; label: string; href: string }> = [];
-    if (canCreate) items.push({ key: "new", label: "Fiche inventaire opérateurs", href: "/inventaire" });
-    if (canCreate) items.push({ key: "daily", label: "Remontee journaliere", href: "/inventaire/remontee" });
-    if (canCreate) items.push({ key: "drafts", label: "Mes brouillons", href: "/inventaire" });
-    if (canReadOwn || canReadAll) items.push({ key: "records", label: "Mes fiches", href: "/inventaire/registre" });
-    if (has(actor.permissions, "inventory.dashboard.view")) items.push({ key: "overview", label: "Vue d'ensemble", href: "/inventaire?tab=overview" });
-    if (canReadAll) items.push({ key: "production", label: "Pilotage production", href: "/inventaire/production" });
-    if (has(actor.permissions, "inventory.record.export")) items.push({ key: "export", label: "Export", href: "/inventaire/registre" });
+    if (canCreate) {
+      items.push({ key: "new", label: "Fiche inventaire", href: "/inventaire" });
+    }
     return items;
-  }, [actor.permissions, canCreate, canReadAll, canReadOwn]);
+  }, [canCreate]);
 
   const filteredRecords = useMemo(() => {
     return dashboard.recentRecords.filter((record) => {
@@ -291,7 +287,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
     setActiveStep(stepDefs[index - 1].id);
   }
 
-  const activeKey = view === "registre" ? "records" : (isOverviewTab ? "overview" : "new");
+  const activeKey = "new";
 
   return (
     <div className="inventory-layout">
@@ -461,8 +457,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
         )}
 
         <footer className="inventory-footer-links">
-          <Link href="/inventaire/registre">Registre</Link>
-          <Link href="/inventaire/admin">Administration</Link>
           <Link href="/">Retour GeoArchives</Link>
         </footer>
       </main>
