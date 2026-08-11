@@ -1141,7 +1141,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "site" | "inventory">("dashboard");
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
     const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
@@ -1187,8 +1187,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
           {([
-            { key: "dashboard", label: "Dashboard" },
-            { key: "site", label: "Fiche du site" },
+            { key: "terrain", label: "Terrain" },
             { key: "inventory", label: "Inventaire" },
           ] as const).map((tab) => (
             <button
@@ -1202,44 +1201,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           ))}
         </nav>
 
-        {agentRegistryTab === "dashboard" && (
-          <section className="agent-form-frame" aria-label="Dashboard registre terrain">
-            <div className="dashboard-grid">
-              <div className="chart-panel">
-                <p className="panel-label">Vue terrain</p>
-                <h3>Dashboard</h3>
-                <div className="metric-grid">
-                  <Metric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${totals.evaluated} évalués`} />
-                  <Metric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${totals.pages} pages`} />
-                  <Metric label="Avancement moyen" value={`${totals.progress}%`} detail="Mobilisation, traitement, GED/SAE" />
-                  <Metric label="Sites critiques" value={formatNumber(totals.critical)} detail="Sauvegarde ou accès urgent" />
-                </div>
-              </div>
-              <div className="chart-panel">
-                <p className="panel-label">Suivi rapide</p>
-                <h3>Fiches récentes</h3>
-                {filteredSites.length ? (
-                  <div className="priority-list">
-                    {filteredSites.slice(0, 5).map((site) => (
-                      <button className="priority-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button">
-                        <span>{site.code}</span>
-                        <div>
-                          <strong>{site.name}</strong>
-                          <small>{site.region}</small>
-                        </div>
-                        <b>{site.priority}</b>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="empty-text">Aucune fiche à afficher pour le moment.</p>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {agentRegistryTab === "site" && (
+        {agentRegistryTab === "terrain" && (
           <section className="agent-form-frame" aria-label="Fiche du site">
             <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
           </section>

@@ -4069,11 +4069,38 @@ tr:hover td {
 
 
 .agent-shell {
-  background: #f6f7f9;
+  background: #f5f7fa;
   display: grid;
   gap: 22px;
   min-height: 100vh;
   padding: 28px;
+}
+
+.agent-registry-tabs {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  width: min(1180px, 100%);
+}
+
+.agent-registry-tabs .secondary-button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.agent-registry-tabs .secondary-button.active {
+  background: linear-gradient(135deg, #e8f3ff, #eff7ff);
+  border-color: #cfe1ff;
+  box-shadow: inset 0 0 0 1px rgba(74, 121, 255, 0.05);
+  color: #13406d;
 }
 
 .agent-topbar {
@@ -5127,32 +5154,25 @@ h4 {
 
 /* Inventory split workspace */
 .inventory-layout {
-  background:
-    radial-gradient(circle at 92% 8%, rgba(77, 180, 151, 0.22), transparent 24rem),
-    radial-gradient(circle at 48% 100%, rgba(220, 183, 104, 0.12), transparent 28rem),
-    linear-gradient(90deg, rgba(26, 89, 81, 0.055) 1px, transparent 1px),
-    linear-gradient(rgba(26, 89, 81, 0.055) 1px, transparent 1px),
-    #edf3f0;
-  background-size: auto, auto, 30px 30px, 30px 30px, auto;
+  background: linear-gradient(180deg, #f5f7fa 0%, #eff4f6 100%);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
   display: grid;
   gap: 0;
-  grid-template-columns: 288px minmax(0, 1fr);
-  min-height: 100vh;
-  padding: 0;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 100%;
+  overflow: hidden;
 }
 
 .inventory-sidebar {
   align-content: start;
-  background:
-    linear-gradient(160deg, rgba(50, 202, 166, 0.12), transparent 17rem),
-    #103c4b;
-  border: 0;
-  border-radius: 0 24px 24px 0;
-  box-shadow: 12px 0 32px rgba(11, 42, 52, 0.14);
+  background: #f7fafb;
+  border-right: 1px solid var(--line);
   display: grid;
-  gap: 30px;
-  min-height: 100vh;
-  padding: 32px 20px 22px;
+  gap: 18px;
+  min-height: 100%;
+  padding: 20px 14px 18px;
   position: sticky;
   top: 0;
 }
@@ -5170,9 +5190,10 @@ h4 {
 
 .inventory-brand-mark {
   align-items: center;
-  background: #d7f3e9;
+  background: #edf5f6;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  color: #115d59;
+  color: #12354d;
   display: inline-flex;
   font-family: Georgia, serif;
   font-size: 1.35rem;
@@ -5183,12 +5204,12 @@ h4 {
 }
 
 .inventory-brand strong {
-  color: #ffffff;
+  color: #12354d;
   font-size: 1.02rem;
 }
 
 .inventory-brand small {
-  color: #a6c4c8;
+  color: #667785;
   font-size: 0.76rem;
 }
 
@@ -5199,10 +5220,10 @@ h4 {
 
 .inventory-mobile-nav-trigger {
   align-items: center;
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(213, 240, 237, 0.2);
-  border-radius: 6px;
-  color: #ffffff;
+  background: #f4f7f9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #12354d;
   display: none;
   font: inherit;
   font-size: 0.8rem;
@@ -5224,13 +5245,13 @@ h4 {
 }
 
 .inventory-drawer-nav .inventory-nav-item.active {
-  background: #e5f6f0;
-  color: #135657;
+  background: #edf7ff;
+  color: #13436d;
 }
 
 .inventory-drawer-portal-link {
   border-top: 1px solid #dce8e5;
-  color: #1d685f;
+  color: #1c5d7a;
   font-size: 0.82rem;
   font-weight: 750;
   margin-top: 6px;
@@ -5241,7 +5262,7 @@ h4 {
 .inventory-nav-item {
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #d2e1e3;
+  color: #3d5367;
   display: block;
   font-size: 0.88rem;
   padding: 11px 12px;
@@ -5250,29 +5271,29 @@ h4 {
 }
 
 .inventory-nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  transform: translateX(3px);
+  background: #f0f4f7;
+  color: #12354d;
+  transform: translateX(2px);
 }
 
 .inventory-nav-item.active {
-  background: #e5f6f0;
-  border-color: #e5f6f0;
-  color: #135657;
+  background: #edf5f6;
+  border-color: var(--line);
+  color: #12354d;
   font-weight: 700;
 }
 
 .inventory-portal-link {
   align-self: end;
-  border-top: 1px solid rgba(213, 240, 237, 0.17);
-  color: #a6c4c8;
+  border-top: 1px solid rgba(49, 76, 99, 0.12);
+  color: #40607a;
   font-size: 0.78rem;
   font-weight: 700;
   padding: 16px 12px 0;
   text-decoration: none;
 }
 
-.inventory-portal-link:hover { color: #ffffff; }
+.inventory-portal-link:hover { color: #12354d; }
 
 .inventory-main {
   display: grid;
