@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
       return corsJson(request, { message: "Acces refuse: permissions de creation/soumission requises." }, { status: 403 });
     }
 
-    const input = (await request.json()) as CeibaInventoryInput;
+    const submittedInput = (await request.json()) as CeibaInventoryInput;
+    const input: CeibaInventoryInput = { ...submittedInput, status: "Traité" };
     validateCeibaInventoryInput(input);
     await createCeibaInventoryRecord(input, actor.login);
     const dashboard = await getCeibaInventoryDashboard();
@@ -66,7 +67,6 @@ function validateCeibaInventoryInput(input: CeibaInventoryInput) {
     ["Nature de dossier", input.caseNature],
     ["Nom", input.lastName],
     ["Prénoms", input.firstNames],
-    ["Statut", input.status],
   ];
 
   for (const [label, value] of required) {

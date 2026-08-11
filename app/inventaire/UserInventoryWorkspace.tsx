@@ -48,7 +48,7 @@ const defaultForm: CeibaInventoryInput = {
   lotNumber: "",
   notes: "",
   phone: "",
-  status: "Nouveau",
+  status: "Traité",
   surfaceArea: "",
 };
 
@@ -401,8 +401,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
               )}
 
               {activeStep === "validation" && (
-                <FormSection title="4. Statut, observations et validation" className="inventory-validation-section">
-                  <label><span>Statut de traitement</span><select value={form.status} onChange={(event) => update("status", event.target.value as CeibaInventoryStatusLabel)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                <FormSection title="4. Observations et validation" className="inventory-validation-section">
                   <label className="wide"><span>Notes</span><textarea rows={4} value={form.notes} onChange={(event) => update("notes", event.target.value)} /></label>
                   <article className="inventory-check-card">
                     <div>
