@@ -53,13 +53,10 @@ const defaultForm: CeibaInventoryInput = {
 };
 
 const stepDefs = [
-  { id: "identification", label: "Identification du guichet" },
-  { id: "references", label: "References foncieres" },
-  { id: "localisation", label: "Localisation" },
-  { id: "demandeur", label: "Informations du demandeur" },
-  { id: "dossier", label: "Nature du dossier" },
-  { id: "documents", label: "Documents et observations" },
-  { id: "validation", label: "Verification et validation" },
+  { id: "carton", label: "Carton et references" },
+  { id: "dossier", label: "Foncier et dossier" },
+  { id: "coordonnees", label: "Titulaire et contacts" },
+  { id: "validation", label: "Statut et validation" },
 ] as const;
 
 type StepId = (typeof stepDefs)[number]["id"];
@@ -369,78 +366,63 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
             <section className="ceiba-panel inventory-entry-workspace">
               <FormStepper steps={stepDefs.map((step) => ({ id: step.id, label: step.label }))} active={activeStep} onSelect={(id) => setActiveStep(id as StepId)} />
 
-              {activeStep === "identification" && (
-                <FormSection title="Identification du guichet">
+              {activeStep === "carton" && (
+                <FormSection title="1. Identification du carton">
                   <label><span>Libelle du carton</span><input value={form.boxLabel} onChange={(event) => update("boxLabel", event.target.value)} /></label>
                   <label><span>Code barre</span><input value={form.barcode} onChange={(event) => update("barcode", event.target.value)} /></label>
-                  <label><span>N guichet</span><input value={form.guichetNumber} onChange={(event) => update("guichetNumber", event.target.value)} /></label>
-                  <label><span>N DDU</span><input value={form.dduNumber} onChange={(event) => update("dduNumber", event.target.value)} /></label>
+                  <label><span>N° guichet</span><input value={form.guichetNumber} onChange={(event) => update("guichetNumber", event.target.value)} /></label>
+                  <label><span>N° DDU</span><input value={form.dduNumber} onChange={(event) => update("dduNumber", event.target.value)} /></label>
                   <label className="wide"><span>Reference de classement</span><input value={form.classificationReference} onChange={(event) => update("classificationReference", event.target.value)} /></label>
                 </FormSection>
               )}
 
-              {activeStep === "references" && (
-                <FormSection title="References foncieres">
-                  <label><span>Ilot</span><input value={form.ilotNumber} onChange={(event) => update("ilotNumber", event.target.value)} /></label>
-                  <label><span>Lot</span><input value={form.lotNumber} onChange={(event) => update("lotNumber", event.target.value)} /></label>
+              {activeStep === "dossier" && (
+                <FormSection title="2. References foncieres et dossier">
+                  <label><span>N° ilot</span><input value={form.ilotNumber} onChange={(event) => update("ilotNumber", event.target.value)} /></label>
+                  <label><span>N° lot</span><input value={form.lotNumber} onChange={(event) => update("lotNumber", event.target.value)} /></label>
                   <label><span>Superficie</span><input value={form.surfaceArea} onChange={(event) => update("surfaceArea", event.target.value)} /></label>
-                  <label><span>Titre foncier</span><input value={form.landTitleNumber} onChange={(event) => update("landTitleNumber", event.target.value)} /></label>
+                  <label><span>N° titre foncier</span><input value={form.landTitleNumber} onChange={(event) => update("landTitleNumber", event.target.value)} /></label>
+                  <label><span>Lotissement</span><input value={form.housingEstate} onChange={(event) => update("housingEstate", event.target.value)} /></label>
+                  <label><span>Commune(s)</span><input value={form.commune} onChange={(event) => update("commune", event.target.value)} /></label>
+                  <label className="wide"><span>Nature de dossier</span><input value={form.caseNature} onChange={(event) => update("caseNature", event.target.value)} /></label>
                 </FormSection>
               )}
 
-              {activeStep === "localisation" && (
-                <FormSection title="Localisation">
-                  <label><span>Commune</span><input value={form.commune} onChange={(event) => update("commune", event.target.value)} /></label>
-                  <label className="wide"><span>Adresse</span><input value={form.address} onChange={(event) => update("address", event.target.value)} /></label>
-                  <label className="wide"><span>Lotissement</span><input value={form.housingEstate} onChange={(event) => update("housingEstate", event.target.value)} /></label>
-                </FormSection>
-              )}
-
-              {activeStep === "demandeur" && (
-                <FormSection title="Informations du demandeur">
+              {activeStep === "coordonnees" && (
+                <FormSection title="3. Titulaire et coordonnees">
                   <label><span>Nom</span><input value={form.lastName} onChange={(event) => update("lastName", event.target.value)} /></label>
                   <label><span>Prenoms</span><input value={form.firstNames} onChange={(event) => update("firstNames", event.target.value)} /></label>
+                  <label className="wide"><span>Adresse</span><input value={form.address} onChange={(event) => update("address", event.target.value)} /></label>
                   <label><span>Telephone</span><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></label>
                   <label><span>Email</span><input value={form.email} onChange={(event) => update("email", event.target.value)} /></label>
-                  <label><span>Contact</span><input value={form.contactPerson} onChange={(event) => update("contactPerson", event.target.value)} /></label>
-                  <label><span>Mobile contact</span><input value={form.contactMobile} onChange={(event) => update("contactMobile", event.target.value)} /></label>
-                </FormSection>
-              )}
-
-              {activeStep === "dossier" && (
-                <FormSection title="Nature du dossier">
-                  <label className="wide"><span>Nature du dossier</span><input value={form.caseNature} onChange={(event) => update("caseNature", event.target.value)} /></label>
-                  <label><span>Statut</span><select value={form.status} onChange={(event) => update("status", event.target.value as CeibaInventoryStatusLabel)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-                </FormSection>
-              )}
-
-              {activeStep === "documents" && (
-                <FormSection title="Documents et observations">
-                  <label className="wide"><span>Notes</span><textarea rows={4} value={form.notes} onChange={(event) => update("notes", event.target.value)} /></label>
+                  <label><span>Personne a contacter</span><input value={form.contactPerson} onChange={(event) => update("contactPerson", event.target.value)} /></label>
+                  <label><span>Mobile de la personne a contacter</span><input value={form.contactMobile} onChange={(event) => update("contactMobile", event.target.value)} /></label>
                 </FormSection>
               )}
 
               {activeStep === "validation" && (
-                <FormSection title="Verification et validation" className="inventory-validation-section">
+                <FormSection title="4. Statut, observations et validation" className="inventory-validation-section">
+                  <label><span>Statut de traitement</span><select value={form.status} onChange={(event) => update("status", event.target.value as CeibaInventoryStatusLabel)}>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                  <label className="wide"><span>Notes</span><textarea rows={4} value={form.notes} onChange={(event) => update("notes", event.target.value)} /></label>
                   <article className="inventory-check-card">
                     <div>
                       <p>Controle avant soumission</p>
                       <span>Verifiez les informations essentielles de la fiche.</span>
                     </div>
-                    <button type="button" className={`inventory-validation-item ${form.commune ? "complete" : "missing"}`} onClick={() => setActiveStep("localisation")}>
+                    <button type="button" className={`inventory-validation-item ${form.commune ? "complete" : "missing"}`} onClick={() => setActiveStep("dossier")}>
                       <span>{form.commune ? "OK" : "!"}</span>
                       <strong>Commune<small>{form.commune ? "Renseignee" : "A completer"}</small></strong>
-                      <em>Localisation</em>
+                      <em>Foncier et dossier</em>
                     </button>
                     <button type="button" className={`inventory-validation-item ${form.caseNature ? "complete" : "missing"}`} onClick={() => setActiveStep("dossier")}>
                       <span>{form.caseNature ? "OK" : "!"}</span>
                       <strong>Nature du dossier<small>{form.caseNature ? "Renseignee" : "A completer"}</small></strong>
                       <em>Dossier</em>
                     </button>
-                    <button type="button" className={`inventory-validation-item ${form.lastName && form.firstNames ? "complete" : "missing"}`} onClick={() => setActiveStep("demandeur")}>
+                    <button type="button" className={`inventory-validation-item ${form.lastName && form.firstNames ? "complete" : "missing"}`} onClick={() => setActiveStep("coordonnees")}>
                       <span>{form.lastName && form.firstNames ? "OK" : "!"}</span>
                       <strong>Demandeur<small>{form.lastName && form.firstNames ? "Renseigne" : "A completer"}</small></strong>
-                      <em>Demandeur</em>
+                      <em>Titulaire</em>
                     </button>
                   </article>
                 </FormSection>

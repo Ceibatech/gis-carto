@@ -14,13 +14,10 @@ type SidebarItem = {
 };
 
 const stepMeta: Record<string, { description: string; Icon: typeof FileText }> = {
-  demandeur: { description: "Identite et contacts", Icon: UserRound },
-  documents: { description: "Pieces et observations", Icon: Archive },
-  dossier: { description: "Nature et statut", Icon: FolderOpen },
-  identification: { description: "Carton, guichet et reference", Icon: FileText },
-  localisation: { description: "Commune et adresse", Icon: MapPin },
-  references: { description: "Ilot, lot et titre foncier", Icon: Landmark },
-  validation: { description: "Controle avant soumission", Icon: CheckCircle2 },
+  carton: { description: "Carton, guichet et reference", Icon: FileText },
+  dossier: { description: "Ilot, lot, commune et dossier", Icon: Landmark },
+  coordonnees: { description: "Titulaire et personne a contacter", Icon: UserRound },
+  validation: { description: "Statut et controle avant soumission", Icon: CheckCircle2 },
 };
 
 export function AdminSidebar({ items, activeKey }: { items: SidebarItem[]; activeKey: string }) {
