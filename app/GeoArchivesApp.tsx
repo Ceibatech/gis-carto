@@ -303,19 +303,9 @@ const accountRoleLabels: Record<AuthRole, string> = {
 
 const navigationItems: { section: string; items: NavigationItem[] }[] = [
   {
-    section: "Pilotage national",
-    items: [
-      { view: "Vue executive", label: "Vue executive", helper: "Arbitrages et alertes" },
-      { view: "Carte nationale", label: "Carte nationale", helper: "Lecture territoriale" },
-    ],
-  },
-  {
     section: "Conduite terrain",
     items: [
       { view: "Registre des sites", label: "Registre", helper: "Fiches et collecte" },
-      { view: "Evaluation", label: "Evaluation", helper: "Scores de priorit\u00e9" },
-      { view: "Mobilisation", label: "Mobilisation", helper: "Vagues et \u00e9quipes" },
-      { view: "Documents", label: "Documents", helper: "Pi\u00e8ces et audit" },
     ],
   },
   {
@@ -332,33 +322,24 @@ const executiveNavigationViews = navigationItems
 const adminNavigationViews = navigationItems.flatMap((group) => group.items.map((item) => item.view));
 
 const viewNarratives: Record<string, string> = {
-  "Vue executive": "Synth\u00e8se nationale pour arbitrer les priorit\u00e9s de conservation et de num\u00e9risation.",
-  "Carte nationale": "Vision territoriale des sites, risques et progression des op\u00e9rations.",
-  "Registre des sites": "Fiches terrain structur\u00e9es et capture m\u00e9tier centralis\u00e9e.",
-  Evaluation: "Diagnostic archivistique et calcul automatis\u00e9 des niveaux de risque.",
-  Mobilisation: "Programmation des vagues terrain, \u00e9quipes et chronologie d\'intervention.",
-  Documents: "Tra\u00e7abilit\u00e9 documentaire et audit continu des pi\u00e8ces justificatives.",
-  "Gestion des comptes": "Cr\u00e9ation et suivi des acc\u00e8s agents, ex\u00e9cutifs et administrateurs.",
+  "Registre des sites": "Fiches terrain structurées et capture métier centralisée.",
+  "Gestion des comptes": "Création et suivi des accès agents, exécutifs et administrateurs.",
 };
 
 const viewIconMap: Record<string, string> = {
-  "Vue executive": "EX",
-  "Carte nationale": "CA",
   "Registre des sites": "RG",
-  Evaluation: "EV",
-  Mobilisation: "MO",
-  Documents: "DO",
   "Gestion des comptes": "AD",
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
-  admin: ["Vue executive", "Carte nationale", "Gestion des comptes"],
+  admin: ["Registre des sites", "Gestion des comptes"],
   agent: ["Registre des sites"],
-  executive: ["Vue executive", "Carte nationale"],
+  executive: ["Registre des sites"],
 };
 
 function landingViewForSession(session: AuthSession | null) {
-  return session?.landingView ?? "Vue executive";
+  const requested = session?.landingView;
+  return requested ?? "Registre des sites";
 }
 
 function allowedViewsForSession(session: AuthSession | null) {
@@ -376,22 +357,12 @@ const InteractiveNationalMap = dynamic(() => import("./SiteOperationsMap"), {
 
 function viewThemeClass(view: string) {
   switch (view) {
-    case "Vue executive":
-      return "view-executive";
-    case "Carte nationale":
-      return "view-map";
     case "Registre des sites":
       return "view-registry";
-    case "Evaluation":
-      return "view-assessment";
-    case "Mobilisation":
-      return "view-operations";
-    case "Documents":
-      return "view-documents";
     case "Gestion des comptes":
       return "view-admin";
     default:
-      return "view-executive";
+      return "view-registry";
   }
 }
 
@@ -790,66 +761,15 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const navigationTabItems = useMemo(() => visibleNavigationItems.flatMap((group) => group.items), [visibleNavigationItems]);
   const viewBadgeMap = useMemo<Record<string, string>>(
     () => ({
-      "Vue executive": `${formatNumber(totals.critical)} critiques`,
-      "Carte nationale": `${formatNumber(geolocatedFilteredSites.length)} GPS`,
       "Registre des sites": `${formatNumber(filteredSites.length)} fiches`,
-      Evaluation: `${computedRisk}/100`,
-      Mobilisation: `${formatNumber(activeMissionCount)} actives`,
-      Documents: `${formatNumber(data.documents.length)} pieces`,
       "Gestion des comptes": usersTableReady ? `${formatNumber(userAccounts.length)} comptes` : "SQL requis",
     }),
-    [activeMissionCount, computedRisk, data.documents.length, filteredSites.length, geolocatedFilteredSites.length, totals.critical, userAccounts.length, usersTableReady],
+    [filteredSites.length, userAccounts.length, usersTableReady],
   );
   const contextualShortcuts = useMemo(() => {
-    let shortcuts: { label: string; target: string }[];
-
-    switch (activeView) {
-      case "Vue executive":
-        shortcuts = [
-          { label: "Ouvrir la carte live", target: "Carte nationale" },
-          { label: "Lancer une nouvelle fiche", target: "Registre des sites" },
-        ];
-        break;
-      case "Carte nationale":
-        shortcuts = [
-          { label: "Examiner le registre", target: "Registre des sites" },
-          { label: "Voir les vagues de mobilisation", target: "Mobilisation" },
-        ];
-        break;
-      case "Registre des sites":
-        shortcuts = [
-          { label: "Retour vue executive", target: "Vue executive" },
-          { label: "Préparer l'évaluation", target: "Evaluation" },
-        ];
-        break;
-      case "Evaluation":
-        shortcuts = [
-          { label: "Passer en mobilisation", target: "Mobilisation" },
-          { label: "Revenir au registre", target: "Registre des sites" },
-        ];
-        break;
-      case "Mobilisation":
-        shortcuts = [
-          { label: "Suivre la carte live", target: "Carte nationale" },
-          { label: "Consulter les documents", target: "Documents" },
-        ];
-        break;
-      case "Documents":
-        shortcuts = [
-          { label: "Retour vue executive", target: "Vue executive" },
-          { label: "Revenir à la mobilisation", target: "Mobilisation" },
-        ];
-        break;
-      default:
-        shortcuts = [
-          { label: "Nouvelle fiche terrain", target: "Registre des sites" },
-          { label: "Carte nationale", target: "Carte nationale" },
-        ];
-        break;
-    }
-
+    const shortcuts: { label: string; target: string }[] = [{ label: "Nouvelle fiche terrain", target: "Registre des sites" }];
     return shortcuts.filter((shortcut) => allowedViewSet.has(shortcut.target));
-  }, [activeView, allowedViewSet]);
+  }, [allowedViewSet]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -922,7 +842,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setData(nextDashboard);
     setSession(authenticatedSession);
     setSelectedCode(nextDashboard.sites[0]?.code ?? "");
-    setActiveView(authenticatedSession.landingView);
+    setActiveView(landingViewForSession(authenticatedSession));
   }
 
   async function handleLogout() {
@@ -930,7 +850,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     setSession(null);
     setData(emptyGeoArchivesDashboard());
     setSelectedCode("");
-    setActiveView("Vue executive");
+    setActiveView("Registre des sites");
   }
 
   const refreshUserAccounts = useCallback(async () => {
@@ -1140,7 +1060,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   }, [activeView, refreshUserAccounts, session?.role]);
 
   const isAccountsView = activeView === "Gestion des comptes";
-  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
+  const showWorkspaceFilters = !isAccountsView;
   const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
@@ -1371,20 +1291,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
         </section>
         )}
 
-        {activeView === "Vue executive" && (
-          <ExecutiveView
-            auditEntries={data.auditEntries}
-            databaseUsable={databaseUsable}
-            documents={data.documents}
-            missions={missions}
-            onSelectSite={setSelectedCode}
-            regions={regions}
-            selectedSite={selectedSite}
-            sites={sites}
-            totals={totals}
-          />
-        )}
-
         {activeView === "Gestion des comptes" && (
           <UserAccountsView
             accountForm={accountForm}
@@ -1398,55 +1304,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             tableMessage={usersMessage}
             tableReady={usersTableReady}
           />
-        )}
-
-        {activeView !== "Vue executive" && !isAccountsView && (
-          <section className="metric-grid" aria-label="Indicateurs nationaux">
-            <Metric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${totals.evaluated} évalués`} />
-            <Metric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${totals.pages} pages`} />
-            <Metric label="Avancement moyen" value={`${totals.progress}%`} detail="Mobilisation, traitement, GED/SAE" />
-            <Metric label="Sites critiques" value={formatNumber(totals.critical)} detail="Sauvegarde ou accès urgent" />
-          </section>
-        )}
-
-        {activeView === "Carte nationale" && (
-          <section className="dashboard-grid">
-            <div className="map-panel">
-              <div className="map-head">
-                <div><p className="panel-label">Carte SIG nationale</p><h3>Sites d&apos;archives en Côte d&apos;Ivoire</h3></div>
-                <div className="legend"><span><i className="legend-risk" />Risque élevé</span><span><i className="legend-active" />En cours</span><span><i className="legend-complete" />Terminé</span></div>
-              </div>
-              <div className="map-live-grid">
-                <InteractiveNationalMap onSelectSite={setSelectedCode} selectedCode={selectedCode} sites={filteredSites} />
-                <div className="map-intelligence-panel">
-                  <div className="map-intelligence-card">
-                    <span>Sites affichés</span>
-                    <strong>{formatNumber(filteredSites.length)}</strong>
-                    <small>{formatNumber(geolocatedFilteredSites.length)} localisés</small>
-                  </div>
-                  <div className="map-intelligence-card">
-                    <span>Missions actives</span>
-                    <strong>{formatNumber(activeMissionCount)}</strong>
-                    <small>{upcomingMission ? upcomingMission.timeline : "Aucune mission imminente"}</small>
-                  </div>
-                  <div className="map-intelligence-card">
-                    <span>Sites sans GPS</span>
-                    <strong>{formatNumber(filteredSites.length - geolocatedFilteredSites.length)}</strong>
-                    <small>Priorité de localisation terrain</small>
-                  </div>
-                  <div className="map-intelligence-card">
-                    <span>Statuts mission</span>
-                    <strong>{formatNumber(missionStatusFilter.length)}</strong>
-                    <small>{missionStatusFilter.join(" · ") || "Aucune phase active"}</small>
-                  </div>
-                </div>
-                {!filteredSites.length && <div className="map-empty">Aucun site ne correspond aux critères retenus.</div>}
-              </div>
-            </div>
-            {selectedSite ? <SiteDetail site={selectedSite} /> : <EmptyCard title="Aucun site sélectionné" text="Le premier site retenu apparaîtra ici dès qu&apos;une fiche sera disponible." />}
-            <div className="chart-panel"><p className="panel-label">Volumes par région</p><h3>Charge de traitement</h3>{regionalVolumes.length ? <div className="bar-list">{regionalVolumes.map((item) => <div className="bar-row" key={item.region}><span>{item.region}</span><div className="bar-track"><div style={{ width: `${Math.max(12, (item.meters / regionalVolumes[0].meters) * 100)}%` }} /></div><strong>{item.meters} ml</strong></div>)}</div> : <p className="empty-text">Aucun volume à afficher.</p>}</div>
-            <div className="chart-panel"><p className="panel-label">Risque et priorité</p><h3>Sites à traiter en premier</h3>{sites.length ? <div className="priority-list">{[...sites].sort((a, b) => b.priority - a.priority).slice(0, 5).map((site, index) => <button className="priority-row" key={site.code} onClick={() => setSelectedCode(site.code)} type="button"><span>{index + 1}</span><div><strong>{site.region}</strong><small>{site.name}</small></div><b>{site.priority}</b></button>)}</div> : <p className="empty-text">Aucune priorité disponible.</p>}</div>
-          </section>
         )}
 
         {activeView === "Registre des sites" && (
@@ -1466,245 +1323,12 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           </section>
         )}
 
-        {activeView === "Evaluation" && (
-          <section className="assessment-grid">
-            <div className="assessment-panel"><p className="panel-label">Questionnaire archivistique</p><h3>Diagnostic rapide d&apos;un site</h3>{assessmentFields.map(({ key, label }) => <label className="range-field" key={key}><span>{label}</span><input max="5" min="1" onChange={(event) => setAssessment((current) => ({ ...current, [key]: Number(event.target.value) }))} type="range" value={assessment[key]} /><b>{assessment[key]}/5</b></label>)}</div>
-            <div className="score-panel"><p className="panel-label">Calcul automatique</p><div className="score-dial" style={{ "--score": computedRisk } as CSSProperties}><span>{computedRisk}</span><small>Score de risque</small></div><div className="score-stack"><Metric label="Priorité de numérisation" value={`${computedPriority}/100`} detail="Risque, sensibilité, état et urgence" /><Metric label="Charge indicative" value={`${assessment.inventory + assessment.physical} équipes`} detail="Tri, préparation, numérisation" /></div><div className="decision-box"><strong>Décision recommandée</strong><p>{computedRisk >= 80 ? "Sauvegarde urgente, transfert sécurisé et traitement préalable avant numérisation." : computedRisk >= 60 ? "Traitement archivistique prioritaire avec numérisation centralisée." : "Numérisation sur site possible après contrôle documentaire."}</p></div></div>
-          </section>
-        )}
 
-        {activeView === "Mobilisation" && (
-          <section className="operations-grid">
-            <div className="section-head full"><div><p className="panel-label">Planification opérationnelle</p><h3>Vagues nationales de déploiement</h3></div></div>
-            {missionSnapshots.map((mission) => <article className={`mission-card mission-${mission.tone}`} key={mission.id}><div className="mission-card-head"><div><p className="panel-label">{mission.wave}</p><h4>{mission.region}</h4></div><span className={`mission-status mission-${mission.tone}`}>{mission.label}</span></div><span>{mission.dates}</span><p>{mission.timeline}</p><strong>{mission.team}</strong><small>{mission.focus}</small><div className="mission-site-summary"><span>{mission.siteCount} site(s) affecté(s)</span><p>{mission.assignedSiteCodes.length ? mission.assignedSiteCodes.join(" · ") : "Aucun site affecté pour le moment"}</p></div></article>)}
-            {!data.missions.length && <EmptyCard title="Aucune mission" text="Les prochaines mobilisations apparaîtront ici dès validation du calendrier." />}
-            {selectedSite && <div className="timeline-panel"><p className="panel-label">Chronologie du site sélectionné</p><h3>{selectedSite.name}</h3>{["Capture GPS et fiche initiale", "Évaluation archivistique", missionSnapshots.find((mission) => mission.assignedSiteCodes.includes(selectedSite.code))?.timeline ?? missionSnapshots.find((mission) => mission.region === selectedSite.region)?.timeline ?? "Mission régionale à caler", selectedSite.nextStep].map((item, index) => <div className="timeline-item" key={item}><span>{index + 1}</span><p>{item}</p></div>)}</div>}
-          </section>
-        )}
-
-        {activeView === "Documents" && (
-          <section className="documents-grid">
-            <div className="section-head full"><div><p className="panel-label">Pièces justificatives</p><h3>Espace documentaire sécurisé</h3></div></div>
-            {data.documents.map((document) => <article className="document-card" key={document.label}><span className="document-icon" aria-hidden="true">{document.label.slice(0, 2)}</span><div><strong>{document.label}</strong><p>{document.trend}</p></div><b>{document.count}</b></article>)}
-            {!data.documents.length && <EmptyCard title="Aucune pièce" text="Les rapports, photos et inventaires apparaîtront après les premiers versements." />}
-            <div className="audit-panel"><p className="panel-label">Journal d&apos;audit</p><h3>Traçabilité récente</h3>{data.auditEntries.map((entry) => <p key={entry.id}>{entry.description}<small>{entry.actor}</small></p>)}{!data.auditEntries.length && <p>Aucune action auditée pour le moment.</p>}</div>
-          </section>
-        )}
       </section>
     </main>
   );
 }
 
-﻿function ExecutiveView({ auditEntries, databaseUsable, documents, missions, onSelectSite, regions, selectedSite, sites, totals }: { auditEntries: AuditEntry[]; databaseUsable: boolean; documents: DocumentStat[]; missions: MissionPlanItem[]; onSelectSite: (code: string) => void; regions: string[]; selectedSite: DashboardSite | null; sites: DashboardSite[]; totals: { sites: number; meters: number; pages: number; progress: number; evaluated: number; critical: number } }) {
-  const totalSites = sites.length;
-  const missionSnapshots = missions.map((mission) => ({ ...mission, ...missionStatusMeta(mission) }));
-  const activeMissions = missionSnapshots.filter((mission) => mission.phase === "active");
-  const upcomingMissions = missionSnapshots.filter((mission) => mission.phase === "upcoming");
-  const missionSiteCodes = new Set(missionSnapshots.flatMap((mission) => mission.assignedSiteCodes));
-  const assignedSites = sites.filter((site) => missionSiteCodes.has(site.code)).length;
-  const gpsCaptured = sites.filter((site) => site.latitude !== null && site.longitude !== null).length;
-  const gpsMissing = Math.max(0, totalSites - gpsCaptured);
-  const gpsCoverage = totalSites ? Math.round((gpsCaptured / totalSites) * 100) : 0;
-  const evaluatedRate = totalSites ? Math.round((totals.evaluated / totalSites) * 100) : 0;
-  const inventoryReady = sites.filter((site) => site.hasInventory).length;
-  const inventoryRate = totalSites ? Math.round((inventoryReady / totalSites) * 100) : 0;
-  const missionCoverage = totalSites ? Math.round((assignedSites / totalSites) * 100) : activeMissions.length ? 50 : 0;
-  const criticalSites = sites.filter((site) => site.risk >= 80);
-  const elevatedSites = sites.filter((site) => site.risk >= 60 && site.risk < 80);
-  const moderateSites = sites.filter((site) => site.risk >= 40 && site.risk < 60);
-  const controlledSites = sites.filter((site) => site.risk < 40);
-  const sensitiveSites = sites.filter((site) => site.confidentiality === "Confidentiel" || site.confidentiality === "Critique").length;
-  const inaccessibleSites = sites.filter((site) => site.status === "Inaccessible" || site.accessibility.toLowerCase().includes("difficile") || site.accessibility.toLowerCase().includes("restreint")).length;
-  const missingLead = sites.filter((site) => !site.lead.trim()).length;
-  const missingCapacity = sites.filter((site) => site.meters <= 0 && site.pages <= 0 && site.storageCapacityMl <= 0).length;
-  const readinessScore = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(totals.progress * 0.26 + gpsCoverage * 0.22 + evaluatedRate * 0.2 + inventoryRate * 0.16 + missionCoverage * 0.16),
-    ),
-  );
-  const nationalPosture = totalSites
-    ? totals.critical
-      ? "Arbitrage national requis sur les sites critiques avant industrialisation."
-      : elevatedSites.length
-        ? "Portefeuille exploitable, avec surveillance rapprochée des sites sensibles."
-        : "Portefeuille sous contrôle, accélération possible sur la collecte et la numérisation."
-    : "Aucune fiche consolidée. La priorité est l’ouverture de la collecte terrain.";
-  const scoreTone = readinessScore >= 75 ? "good" : readinessScore >= 50 ? "watch" : "critical";
-  const commandSignals = [
-    {
-      label: "Sauvegarde critique",
-      value: totals.critical,
-      detail: totals.critical ? "Sites à sécuriser sous 72h" : "Aucun blocage immédiat",
-      tone: totals.critical ? "critical" : "good",
-    },
-    {
-      label: "GPS manquant",
-      value: gpsMissing,
-      detail: gpsMissing ? "Coordonnées à capturer" : "Couverture GPS complète",
-      tone: gpsMissing ? "watch" : "good",
-    },
-    {
-      label: "Qualification à terminer",
-      value: Math.max(0, totalSites - totals.evaluated),
-      detail: evaluatedRate >= 80 ? "Niveau de lecture suffisant" : "Evaluation à consolider",
-      tone: evaluatedRate >= 80 ? "good" : "watch",
-    },
-    {
-      label: "Accès contraint",
-      value: inaccessibleSites,
-      detail: inaccessibleSites ? "Missions à préparer" : "Accès terrain maîtrisé",
-      tone: inaccessibleSites ? "critical" : "good",
-    },
-  ];
-  const riskBands = [
-    { label: "Critique", value: criticalSites.length, tone: "critical" },
-    { label: "Élevé", value: elevatedSites.length, tone: "elevated" },
-    { label: "Modéré", value: moderateSites.length, tone: "watch" },
-    { label: "Maîtrisé", value: controlledSites.length, tone: "good" },
-  ];
-  const dataQualityItems = [
-    { label: "Géolocalisation", value: gpsCoverage, detail: `${formatNumber(gpsCaptured)} / ${formatNumber(totalSites)} sites GPS` },
-    { label: "Evaluation", value: evaluatedRate, detail: `${formatNumber(totals.evaluated)} fiches qualifiées` },
-    { label: "Inventaire", value: inventoryRate, detail: `${formatNumber(inventoryReady)} inventaires disponibles` },
-    { label: "Responsable", value: totalSites ? Math.round(((totalSites - missingLead) / totalSites) * 100) : 0, detail: missingLead ? `${formatNumber(missingLead)} point(s) focal à compléter` : "Responsables renseignés" },
-  ];
-  const regionalPortfolio = regions
-    .map((region) => {
-      const regionSites = sites.filter((site) => site.region === region);
-      const regionCritical = regionSites.filter((site) => site.risk >= 80).length;
-      const regionHigh = regionSites.filter((site) => site.risk >= 60).length;
-      const regionGpsMissing = regionSites.filter((site) => site.latitude === null || site.longitude === null).length;
-      const averageRisk = regionSites.length ? Math.round(regionSites.reduce((sum, site) => sum + site.risk, 0) / regionSites.length) : 0;
-      const averageProgress = regionSites.length ? Math.round(regionSites.reduce((sum, site) => sum + site.progress, 0) / regionSites.length) : 0;
-      const mission = missionSnapshots.find((item) => item.region === region);
-      return {
-        region,
-        averageProgress,
-        averageRisk,
-        critical: regionCritical,
-        gpsMissing: regionGpsMissing,
-        high: regionHigh,
-        mission,
-        sites: regionSites.length,
-        volume: regionSites.reduce((sum, site) => sum + site.meters, 0),
-      };
-    })
-    .sort((left, right) => right.critical - left.critical || right.averageRisk - left.averageRisk || right.gpsMissing - left.gpsMissing || right.sites - left.sites)
-    .slice(0, 7);
-  const topPrioritySites = [...sites]
-    .sort((left, right) => right.priority - left.priority || right.risk - left.risk || right.meters - left.meters)
-    .slice(0, 6);
-  const missionQueue = [...missionSnapshots]
-    .sort((left, right) => {
-      const phaseRank = { active: 0, upcoming: 1, completed: 2 } as const;
-      return phaseRank[left.phase] - phaseRank[right.phase] || new Date(left.startDate).getTime() - new Date(right.startDate).getTime();
-    })
-    .slice(0, 5);
-  const recentActivity = [...auditEntries]
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-    .slice(0, 5);
-  const documentTotal = documents.reduce((sum, item) => sum + item.count, 0);
-  const selectedDecisionSite = selectedSite ?? topPrioritySites[0] ?? null;
-
-  return (
-    <section className="executive-command-grid" aria-label="Tableau de bord">
-      <article className="executive-command-hero">
-        <div className="executive-hero-copy">
-          <p className="panel-label">Tableau de bord</p>
-          <h3>Production</h3>
-          <p>Suivi des indicateurs de production calculés sur les données journalières enregistrées.</p>
-        </div>
-      </article>
-
-      <div className="executive-kpi-strip" aria-label="Indicateurs de production">
-        <ExecutiveMetric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${formatNumber(totals.evaluated)} évalués`} tone={totals.sites ? "good" : "neutral"} />
-        <ExecutiveMetric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${formatNumber(totals.pages)} pages`} tone={totals.meters ? "good" : "neutral"} />
-        <ExecutiveMetric label="Avancement moyen" value={`${totals.progress}%`} detail="Suivi global" tone={totals.progress >= 50 ? "good" : "watch"} />
-        <ExecutiveMetric label="Sites critiques" value={formatNumber(totals.critical)} detail={totals.critical ? "Action immédiate" : "Aucun blocage immédiat"} tone={totals.critical ? "critical" : "good"} />
-      </div>
-
-      <div className="executive-panel-grid">
-        <article className="executive-panel">
-          <div className="section-head">
-            <div>
-              <p className="panel-label">Répartition du risque</p>
-              <h3>Portefeuille</h3>
-            </div>
-          </div>
-          <div className="executive-band-list">
-            {riskBands.map((item) => (
-              <div className="executive-band-row" key={item.label}>
-                <span>{item.label}</span>
-                <div className="mini-progress"><div style={{ width: `${totalSites ? Math.max(8, (item.value / totalSites) * 100) : 0}%` }} className={`tone-${item.tone}`} /></div>
-                <strong>{formatNumber(item.value)}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="executive-panel">
-          <div className="section-head">
-            <div>
-              <p className="panel-label">Qualité des données</p>
-              <h3>État du portefeuille</h3>
-            </div>
-          </div>
-          <div className="executive-band-list">
-            {dataQualityItems.map((item) => (
-              <div className="executive-band-row" key={item.label}>
-                <span>{item.label}</span>
-                <div className="mini-progress"><div style={{ width: `${Math.max(8, item.value)}%` }} className="tone-good" /></div>
-                <strong>{item.value}%</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="executive-panel full-width">
-          <div className="section-head">
-            <div>
-              <p className="panel-label">Synthèse régionale</p>
-              <h3>Performance par région</h3>
-            </div>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Région</th>
-                  <th>Sites</th>
-                  <th>Risque moyen</th>
-                  <th>Progression</th>
-                  <th>GPS manquant</th>
-                </tr>
-              </thead>
-              <tbody>
-                {regionalPortfolio.length ? regionalPortfolio.map((item) => (
-                  <tr key={item.region}>
-                    <td>{item.region}</td>
-                    <td>{formatNumber(item.sites)}</td>
-                    <td>{item.averageRisk}</td>
-                    <td>{item.averageProgress}%</td>
-                    <td>{formatNumber(item.gpsMissing)}</td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="empty-text">Aucune donnée régionale disponible.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </div>
-    </section>
-  );
-}
-function ExecutiveMetric({ detail, label, tone = "neutral", value }: { detail: string; label: string; tone?: "neutral" | "good" | "watch" | "critical"; value: string }) {
-  return <article className={`executive-metric ${tone}`}><span>{label}</span><strong>{value}</strong><p>{detail}</p></article>;
-}
 
 function UserAccountsView({ accountForm, accounts, formMessage, isCreating, isLoading, onChange, onRefresh, onSubmit, tableMessage, tableReady }: { accountForm: AccountFormState; accounts: UserAccount[]; formMessage: string | null; isCreating: boolean; isLoading: boolean; onChange: (next: AccountFormState) => void; onRefresh: () => Promise<void>; onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>; tableMessage: string | null; tableReady: boolean }) {
   const activeAccounts = accounts.filter((account) => account.status === "active").length;
@@ -1796,7 +1420,7 @@ function LoginScreen({ onLogin }: { onLogin: (login: string, password: string) =
     <main className="login-shell">
       <section className="login-hero" aria-label="Connexion GeoArchives">
         <div className="login-brand"><span>GA</span><div><p className="eyebrow">MULCV GeoArchives</p><strong>Plateforme nationale</strong></div></div>
-        <div className="login-copy"><h1>Connexion sécurisée</h1><p>Accès réservé au pilotage national et aux agents habilités pour la collecte terrain.</p></div>
+        <div className="login-copy"><h1>Connexion sécurisée</h1><p>Accès réservé aux agents habilités et aux administrateurs de la plateforme.</p></div>
         <div className="login-routes" aria-label="Profils disponibles">
           <article><strong>Pilotage exécutif</strong><span>Dashboard national, arbitrages, cartographie et suivi.</span></article>
           <article><strong>Accès agent registre</strong><span>Identifiant personnel pour ouvrir le Registre des sites.</span></article>
