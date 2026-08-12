@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { CeibaInventoryDashboard, CeibaInventoryOperatorPerformance } from "../../lib/ceiba-inventory-types";
+import type { CeibaInventoryDashboard, CeibaInventoryOperatorPerformance, CeibaInventoryReportDispatch } from "../../lib/ceiba-inventory-types";
 import type { CeibaInventoryRole, CeibaInventoryUserAccount } from "../../lib/ceiba-inventory-auth-types";
 import { inventoryPermissions, rolePermissionMatrix, type InventoryActor, type InventoryAppRole, type InventoryPermission } from "../../lib/inventory-rbac";
 import {
@@ -21,9 +21,10 @@ type Props = {
   dashboard: CeibaInventoryDashboard;
   initialAccounts: CeibaInventoryUserAccount[];
   operatorPerformance: CeibaInventoryOperatorPerformance[];
+  reportDispatches: CeibaInventoryReportDispatch[];
   tableReady: boolean;
   tableMessage: string | null;
-  section: "overview" | "users" | "roles" | "audit" | "settings";
+  section: "overview" | "users" | "roles" | "audit" | "reporting" | "settings";
 };
 
 const roleOptions: CeibaInventoryRole[] = ["admin", "supervisor", "operator"];
@@ -33,6 +34,7 @@ export default function AdminInventoryWorkspace({
   dashboard,
   initialAccounts,
   operatorPerformance,
+  reportDispatches,
   tableReady,
   tableMessage,
   section,
@@ -69,6 +71,7 @@ export default function AdminInventoryWorkspace({
     { key: "users", label: "Utilisateurs", href: "/inventaire/admin?section=users" },
     { key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" },
     { key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" },
+    { key: "reporting", label: "Suivi des envois", href: "/inventaire/admin?section=reporting" },
     { key: "settings", label: "Parametres", href: "/inventaire/admin?section=settings" },
   ];
 
@@ -148,6 +151,24 @@ export default function AdminInventoryWorkspace({
 
   function printOperatorPerformance() {
     window.print();
+  }
+
+  async function resendReport(period: "day" | "week" | "month") {
+    setMessage(null);
+    try {
+      const response = await fetch("/api/inventaire-ceiba/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
+      const payload = await response.json() as { ok?: boolean; reason?: string; sent?: number; recipients?: string[] };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.reason || "Relance impossible.");
+      }
+      setMessage(`Rapport ${period} relance avec ${payload.sent ?? 0} destinataire(s).`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Relance impossible.");
+    }
   }
 
   return (
@@ -363,6 +384,59 @@ export default function AdminInventoryWorkspace({
                 description: `${record.lastName} ${record.firstNames} - ${record.commune}`,
               }))}
             />
+          </section>
+        )}
+
+        {section === "reporting" && (
+          <section className="ceiba-panel">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Supervision operationnelle</p>
+                <h3>Suivi des envois de rapports</h3>
+              </div>
+            </div>
+
+            <div className="ceiba-kpi-grid">
+              <article className="ceiba-stat-card"><p>Rapports envoyes</p><strong>{reportDispatches.filter((item) => item.status === "sent").length}</strong></article>
+              <article className="ceiba-stat-card"><p>En echecs</p><strong>{reportDispatches.filter((item) => item.status === "failed").length}</strong></article>
+              <article className="ceiba-stat-card"><p>Dernier envoi</p><strong>{reportDispatches[0]?.sentAt ? new Date(reportDispatches[0].sentAt).toLocaleDateString("fr-FR") : "Aucun"}</strong></article>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Période</th>
+                    <th>Date</th>
+                    <th>Statut</th>
+                    <th>Destinataires</th>
+                    <th>Erreur</th>
+                    <th>Envoi</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportDispatches.map((item) => (
+                    <tr key={`${item.reportDate}-${item.period}`}>
+                      <td>{item.period === "day" ? "Journalier" : item.period === "week" ? "Hebdomadaire" : "Mensuel"}</td>
+                      <td>{new Date(`${item.reportDate}T00:00:00`).toLocaleDateString("fr-FR")}</td>
+                      <td><StatusBadge status={item.status === "sent" ? "Actif" : item.status === "failed" ? "Desactive" : "En attente"} /></td>
+                      <td>{item.recipientsCount}</td>
+                      <td>{item.errorMessage || "Aucune"}</td>
+                      <td>{item.sentAt ? new Date(item.sentAt).toLocaleString("fr-FR") : "Jamais"}</td>
+                      <td>
+                        <button type="button" className="ghost-button" onClick={() => void resendReport(item.period)}>
+                          Relancer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!reportDispatches.length && (
+                <EmptyState title="Aucun envoi registre" description="Les rapports envoyes par Resend apparaissent ici lorsque l'administration les active pour la supervision." />
+              )}
+            </div>
           </section>
         )}
 

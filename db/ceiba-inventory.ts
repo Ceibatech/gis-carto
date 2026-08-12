@@ -353,27 +353,136 @@ export async function dispatchCeibaInventoryExecutiveReports(period: "day" | "we
     </tr>
   `).join("");
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: recipients,
-      subject: `${title} — CEIBA analytics`,
-      html: `<h2>${title}</h2><p>Nombre de fiches: ${summary.totalRecords}</p><p>Cartons uniques: ${summary.uniqueCartons}</p><p>Cartons dégradés: ${summary.degradedCartons}</p><table><thead><tr><th>Agent</th><th>Période</th><th>Fiches</th><th>Cartons</th><th>Cartons dégradés</th><th>Dossiers</th></tr></thead><tbody>${rowsHtml}</tbody></table>`,
-      text: `${title}\n\nFiches: ${summary.totalRecords}\nCartons uniques: ${summary.uniqueCartons}\nCartons dégradés: ${summary.degradedCartons}\n\nDétail par agent:\n${series.map((point) => `${point.agentName} (${point.label}): ${point.records} fiches, ${point.uniqueCartons} cartons, ${point.degradedCartons} dégradés`).join("\n")}`,
-    }),
-  });
+  const reportDate = new Date().toISOString().slice(0, 10);
+  const result = { ok: false as boolean, sent: 0, recipients, reason: "Email non envoyé" };
 
-  if (!response.ok) {
-    const payload = await response.text();
-    return { ok: false, sent: 0, recipients, reason: `Resend error: ${response.status} - ${payload}` };
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: recipients,
+        subject: `${title} — CEIBA analytics`,
+        html: `<h2>${title}</h2><p>Nombre de fiches: ${summary.totalRecords}</p><p>Cartons uniques: ${summary.uniqueCartons}</p><p>Cartons dégradés: ${summary.degradedCartons}</p><table><thead><tr><th>Agent</th><th>Période</th><th>Fiches</th><th>Cartons</th><th>Cartons dégradés</th><th>Dossiers</th></tr></thead><tbody>${rowsHtml}</tbody></table>`,
+        text: `${title}\n\nFiches: ${summary.totalRecords}\nCartons uniques: ${summary.uniqueCartons}\nCartons dégradés: ${summary.degradedCartons}\n\nDétail par agent:\n${series.map((point) => `${point.agentName} (${point.label}): ${point.records} fiches, ${point.uniqueCartons} cartons, ${point.degradedCartons} dégradés`).join("\n")}`,
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.text();
+      result.ok = false;
+      result.sent = 0;
+      result.reason = `Resend error: ${response.status} - ${payload}`;
+    } else {
+      result.ok = true;
+      result.sent = recipients.length;
+      result.reason = "Email envoyé";
+    }
+  } catch (error) {
+    result.ok = false;
+    result.sent = 0;
+    result.reason = error instanceof Error ? error.message : "Erreur inconnue lors de l'envoi";
   }
 
-  return { ok: true, sent: recipients.length, recipients, reason: "Email envoyé" };
+  await saveCeibaInventoryReportDispatch({
+    reportDate,
+    period,
+    status: result.ok ? "sent" : "failed",
+    recipientsCount: recipients.length,
+    errorMessage: result.ok ? null : result.reason,
+    sentAt: result.ok ? new Date().toISOString() : null,
+  });
+
+  return result;
+}
+
+export async function getCeibaInventoryReportDispatches(): Promise<CeibaInventoryReportDispatch[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  try {
+    const pool = getPool();
+    await ensureCeibaInventoryReportDispatchTable(pool);
+    const [rows] = await pool.query<Array<RowDataPacket & {
+      id: string;
+      report_date: string;
+      period: "day" | "week" | "month";
+      status: "queued" | "sent" | "failed";
+      recipients_count: number;
+      error_message: string | null;
+      generated_at: string;
+      sent_at: string | null;
+    }>>(`
+      select id, report_date, period, status, recipients_count, error_message, generated_at, sent_at
+      from ceiba_inventory_report_dispatches
+      order by report_date desc, field(period, 'day', 'week', 'month') desc
+      limit 30
+    `);
+
+    return rows.map((row) => ({
+      id: row.id,
+      reportDate: row.report_date,
+      period: row.period,
+      status: row.status,
+      recipientsCount: Number(row.recipients_count ?? 0),
+      errorMessage: row.error_message ?? null,
+      generatedAt: row.generated_at,
+      sentAt: row.sent_at ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCeibaInventoryReportDispatch(input: {
+  reportDate: string;
+  period: "day" | "week" | "month";
+  status: "queued" | "sent" | "failed";
+  recipientsCount: number;
+  errorMessage: string | null;
+  sentAt: string | null;
+}) {
+  const pool = getPool();
+  await ensureCeibaInventoryReportDispatchTable(pool);
+  await pool.execute(`
+    insert into ceiba_inventory_report_dispatches (
+      id, report_date, period, status, recipients_count, error_message, generated_at, sent_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?)
+    on duplicate key update
+      status = values(status),
+      recipients_count = values(recipients_count),
+      error_message = values(error_message),
+      sent_at = values(sent_at),
+      generated_at = values(generated_at)
+  `, [
+    randomUUID(),
+    input.reportDate,
+    input.period,
+    input.status,
+    Number(input.recipientsCount ?? 0),
+    input.errorMessage?.slice(0, 1000) ?? null,
+    new Date().toISOString(),
+    input.sentAt,
+  ]);
+}
+
+async function ensureCeibaInventoryReportDispatchTable(pool: ReturnType<typeof getPool>) {
+  await pool.execute(`
+    create table if not exists ceiba_inventory_report_dispatches (
+      id char(36) primary key,
+      report_date date not null,
+      period enum('day', 'week', 'month') not null,
+      status enum('queued', 'sent', 'failed') not null default 'queued',
+      recipients_count int unsigned not null default 0,
+      error_message text null,
+      generated_at datetime not null default current_timestamp,
+      sent_at datetime null,
+      unique key ceiba_report_dispatch_date_period_unique (report_date, period)
+    ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci
+  `);
 }
 
 function escapeHtml(value: string) {

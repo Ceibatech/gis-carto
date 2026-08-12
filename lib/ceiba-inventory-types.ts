@@ -67,6 +67,19 @@ export type CeibaInventoryDailyProduction = {
   source: "daily" | "historical";
 };
 
+export type CeibaInventoryReportDispatchStatus = "queued" | "sent" | "failed";
+
+export type CeibaInventoryReportDispatch = {
+  id: string;
+  reportDate: string;
+  period: "day" | "week" | "month";
+  status: CeibaInventoryReportDispatchStatus;
+  recipientsCount: number;
+  errorMessage: string | null;
+  generatedAt: string;
+  sentAt: string | null;
+};
+
 export type CeibaInventoryDailyProductionInput = {
   productionDate: string;
   cartonsCount: number;

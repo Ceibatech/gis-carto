@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCeibaInventoryDashboard, getCeibaInventoryOperatorPerformance } from "../../../db/ceiba-inventory";
+import { getCeibaInventoryDashboard, getCeibaInventoryOperatorPerformance, getCeibaInventoryReportDispatches } from "../../../db/ceiba-inventory";
 import { listCeibaInventoryUsers } from "../../../db/ceiba-users";
 import { isDatabaseConfigured } from "../../../db";
 import { normalizeGeoArchivesApiBaseUrl } from "../../../lib/api-url";
@@ -26,12 +26,13 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const requested = params.section;
-  const validSections = new Set(["overview", "users", "roles", "audit", "settings"]);
-  const section = validSections.has(requested || "") ? requested as "overview" | "users" | "roles" | "audit" | "settings" : "overview";
+  const validSections = new Set(["overview", "users", "roles", "audit", "reporting", "settings"]);
+  const section = validSections.has(requested || "") ? requested as "overview" | "users" | "roles" | "audit" | "reporting" | "settings" : "overview";
 
   const dashboard = await getCeibaInventoryDashboard();
   const users = await getUsersSnapshot();
   const operatorPerformance = await getCeibaInventoryOperatorPerformance();
+  const reportDispatches = await getCeibaInventoryReportDispatches();
 
   return (
     <AdminInventoryWorkspace
@@ -39,6 +40,7 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
       dashboard={dashboard}
       initialAccounts={users.accounts}
       operatorPerformance={operatorPerformance}
+      reportDispatches={reportDispatches}
       tableReady={users.tableReady}
       tableMessage={users.message}
       section={section}
