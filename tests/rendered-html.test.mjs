@@ -59,6 +59,8 @@ test("keeps the database contract on MySQL tables", async () => {
   assert.match(app, /Capturer GPS/);
   assert.match(app, /LoginScreen/);
   assert.match(app, /landingViewForSession/);
+  assert.match(app, /Fiche inventaire/);
+  assert.match(app, /Dashboard inventaire/);
   assert.match(auth, /timingSafeEqual/);
   assert.match(auth, /httpOnly: true/);
   assert.match(envExample, /GEOARCHIVES_AUTH_SECRET/);

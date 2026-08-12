@@ -307,6 +307,7 @@ const navigationItems: { section: string; items: NavigationItem[] }[] = [
     items: [
       { view: "Vue executive", label: "Vue executive", helper: "Arbitrages et alertes" },
       { view: "Carte nationale", label: "Carte nationale", helper: "Lecture territoriale" },
+      { view: "Dashboard inventaire", label: "Dashboard inventaire", helper: "Indicateurs et exports" },
     ],
   },
   {
@@ -334,6 +335,7 @@ const adminNavigationViews = navigationItems.flatMap((group) => group.items.map(
 const viewNarratives: Record<string, string> = {
   "Vue executive": "Synth\u00e8se nationale pour arbitrer les priorit\u00e9s de conservation et de num\u00e9risation.",
   "Carte nationale": "Vision territoriale des sites, risques et progression des op\u00e9rations.",
+  "Dashboard inventaire": "Indicateurs d\'inventaire, suivi des fiches et exports de performance.",
   "Registre des sites": "Fiches terrain structur\u00e9es et capture m\u00e9tier centralis\u00e9e.",
   Evaluation: "Diagnostic archivistique et calcul automatis\u00e9 des niveaux de risque.",
   Mobilisation: "Programmation des vagues terrain, \u00e9quipes et chronologie d\'intervention.",
@@ -344,6 +346,7 @@ const viewNarratives: Record<string, string> = {
 const viewIconMap: Record<string, string> = {
   "Vue executive": "EX",
   "Carte nationale": "CA",
+  "Dashboard inventaire": "DI",
   "Registre des sites": "RG",
   Evaluation: "EV",
   Mobilisation: "MO",
@@ -352,9 +355,9 @@ const viewIconMap: Record<string, string> = {
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
-  admin: adminNavigationViews,
+  admin: ["Vue executive", "Carte nationale", "Dashboard inventaire", "Gestion des comptes"],
   agent: ["Registre des sites"],
-  executive: executiveNavigationViews,
+  executive: ["Vue executive", "Carte nationale", "Dashboard inventaire"],
 };
 
 function landingViewForSession(session: AuthSession | null) {
@@ -636,6 +639,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const [missionPhase, setMissionPhase] = useState("Tous");
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState(initialData.sites[0]?.code ?? "");
+  const [inventoryDashboardTab, setInventoryDashboardTab] = useState<"dashboard" | "form">("dashboard");
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [captureSyncStatus, setCaptureSyncStatus] = useState<CaptureSyncStatus>("offlineSaved");
@@ -1140,8 +1144,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   }, [activeView, refreshUserAccounts, session?.role]);
 
   const isAccountsView = activeView === "Gestion des comptes";
-  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "terrain" | "inventory">("dashboard");
+  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive" && activeView !== "Dashboard inventaire";
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
     const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
@@ -1188,7 +1192,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
           {([
-            { key: "dashboard", label: "Dashboard" },
             { key: "terrain", label: "Fiche du site" },
             { key: "inventory", label: "Inventaire" },
           ] as const).map((tab) => (
@@ -1202,22 +1205,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             </button>
           ))}
         </nav>
-
-        {agentRegistryTab === "dashboard" && (
-          <section className="agent-form-frame" aria-label="Dashboard exécutif">
-            <ExecutiveView
-              auditEntries={data.auditEntries}
-              databaseUsable={databaseUsable}
-              documents={data.documents}
-              missions={missions}
-              onSelectSite={setSelectedCode}
-              regions={regions}
-              selectedSite={selectedSite}
-              sites={sites}
-              totals={totals}
-            />
-          </section>
-        )}
 
         {agentRegistryTab === "terrain" && (
           <section className="agent-form-frame" aria-label="Fiche du site">
@@ -1356,6 +1343,38 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             sites={sites}
             totals={totals}
           />
+        )}
+
+        {activeView === "Dashboard inventaire" && inventoryActor && (
+          <section className="agent-form-frame" aria-label="Dashboard inventaire">
+            <div className="inventory-subtabs" role="tablist" aria-label="Sous-onglets inventaire">
+              <button
+                type="button"
+                className={inventoryDashboardTab === "dashboard" ? "secondary-button active" : "secondary-button"}
+                onClick={() => setInventoryDashboardTab("dashboard")}
+                role="tab"
+                aria-selected={inventoryDashboardTab === "dashboard"}
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className={inventoryDashboardTab === "form" ? "secondary-button active" : "secondary-button"}
+                onClick={() => setInventoryDashboardTab("form")}
+                role="tab"
+                aria-selected={inventoryDashboardTab === "form"}
+              >
+                Fiche inventaire
+              </button>
+            </div>
+            <UserInventoryWorkspace
+              actor={inventoryActor}
+              dashboard={emptyInventoryDashboard}
+              view="dashboard"
+              defaultOverview={inventoryDashboardTab === "dashboard"}
+              inventoryTab={inventoryDashboardTab}
+            />
+          </section>
         )}
 
         {activeView === "Gestion des comptes" && (

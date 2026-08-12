@@ -74,13 +74,14 @@ type Props = {
   dashboard: CeibaInventoryDashboard;
   view: "dashboard" | "registre";
   defaultOverview?: boolean;
+  inventoryTab?: "dashboard" | "form";
 };
 
 function has(permissions: InventoryPermission[], permission: InventoryPermission) {
   return permissions.includes(permission);
 }
 
-export default function UserInventoryWorkspace({ actor, dashboard, view, defaultOverview = false }: Props) {
+export default function UserInventoryWorkspace({ actor, dashboard, view, defaultOverview = false, inventoryTab }: Props) {
   const searchParams = useSearchParams();
   const [online, setOnline] = useState(true);
   const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
@@ -101,6 +102,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
+  const resolvedInventoryTab = inventoryTab ?? (isOverviewTab ? "dashboard" : "form");
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -347,7 +349,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
 
         {banner && <div className="inventory-banner">{banner}</div>}
 
-        {view === "dashboard" && isOverviewTab && has(actor.permissions, "inventory.dashboard.view") && (
+        {view === "dashboard" && resolvedInventoryTab === "dashboard" && has(actor.permissions, "inventory.dashboard.view") && (
           <section className="ceiba-panel">
             <div className="ceiba-kpi-grid">
               <article className="ceiba-stat-card"><p>Total des fiches</p><strong>{dashboard.totalRecords}</strong></article>
@@ -397,7 +399,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
           </section>
         )}
 
-        {view === "dashboard" && (
+        {view === "dashboard" && resolvedInventoryTab === "form" && (
           <PermissionGuard allowed={canCreate} fallback={<EmptyState title="Formulaire indisponible" description="Votre role ne permet pas la creation de fiche." />}>
             <section className="inventory-draft-summary">
               <div>
