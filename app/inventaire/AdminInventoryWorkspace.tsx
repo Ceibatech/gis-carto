@@ -192,8 +192,8 @@ export default function AdminInventoryWorkspace({
   }, [dailyProduction, filteredProduction]);
 
   const nav = [
-    { key: "dashboard", label: "Dashboard métier", href: "/inventaire/admin?section=dashboard" },
-    ...(canManageUsers ? [{ key: "users", label: "Création utilisateur", href: "/inventaire/admin?section=users" }] : []),
+    { key: "dashboard", label: "Dashboard business", href: "/inventaire/admin?section=dashboard" },
+    ...(canManageUsers ? [{ key: "users", label: "Comptes", href: "/inventaire/admin?section=users" }] : []),
   ];
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
@@ -300,7 +300,7 @@ export default function AdminInventoryWorkspace({
         <header className="inventory-header-card">
           <div>
             <p className="panel-label">Inventaire CEIBA</p>
-            <h1>Administration des acces</h1>
+            <h1>{section === "dashboard" ? "Dashboard business" : "Gestion des comptes"}</h1>
           </div>
           <div className="session-chip compact">
             <span>Connecte</span>
@@ -309,6 +309,131 @@ export default function AdminInventoryWorkspace({
         </header>
 
         {message && <div className="inventory-banner">{message}</div>}
+
+        {section === "users" && (
+          <section className="ceiba-panel">
+            <div className="ceiba-panel-head">
+              <div>
+                <p className="panel-label">Acces et comptes</p>
+                <h3>Gestion des comptes</h3>
+              </div>
+            </div>
+
+            <div className="dashboard-double-column">
+              <form className="inventory-form-grid" onSubmit={createUser}>
+                <label>
+                  <span>Nom complet</span>
+                  <input
+                    value={form.name}
+                    onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Agent Abidjan"
+                  />
+                </label>
+                <label>
+                  <span>Login / email</span>
+                  <input
+                    value={form.login}
+                    onChange={(event) => setForm((current) => ({ ...current, login: event.target.value }))}
+                    placeholder="agent@ceiba-analytics.com"
+                  />
+                </label>
+                <label>
+                  <span>Role</span>
+                  <select
+                    value={form.role}
+                    onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CeibaInventoryRole }))}
+                  >
+                    {roleOptions.map((option) => (
+                      <option key={option} value={option}>{option === "admin" ? "Admin" : option === "supervisor" ? "Superviseur" : "Agent"}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Mot de passe provisoire</span>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="8 caracteres minimum"
+                  />
+                </label>
+                <label>
+                  <span>Email</span>
+                  <input
+                    value={form.email}
+                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="nom@ceiba-analytics.com"
+                  />
+                </label>
+                <label>
+                  <span>Poste / fonction</span>
+                  <input
+                    value={form.jobTitle}
+                    onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))}
+                    placeholder="Agent terrain"
+                  />
+                </label>
+                <label>
+                  <span>Piece / identifiant</span>
+                  <input
+                    value={form.employeeId}
+                    onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))}
+                    placeholder="EMP-001"
+                  />
+                </label>
+                <label>
+                  <span>Telephone</span>
+                  <input
+                    value={form.phone}
+                    onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                    placeholder="+225 ..."
+                  />
+                </label>
+                <label>
+                  <span>Chambre / site</span>
+                  <input
+                    value={form.assignedRoom}
+                    onChange={(event) => setForm((current) => ({ ...current, assignedRoom: event.target.value }))}
+                    placeholder="Abidjan"
+                  />
+                </label>
+
+                <div className="table-actions">
+                  <button type="submit" className="primary-button">Creer le compte</button>
+                </div>
+              </form>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Utilisateur</th>
+                      <th>Role</th>
+                      <th>Statut</th>
+                      <th>Creation</th>
+                      <th>Derniere connexion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAccounts.map((account) => (
+                      <tr key={account.login}>
+                        <td>
+                          <strong>{account.name}</strong>
+                          <span>{account.login}</span>
+                        </td>
+                        <td>{account.role}</td>
+                        <td>{account.status === "active" ? "Actif" : "Desactive"}</td>
+                        <td>{new Date(account.createdAt).toLocaleDateString("fr-FR")}</td>
+                        <td>{account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleDateString("fr-FR") : "Jamais"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!filteredAccounts.length && <p className="empty-text">Aucun compte correspondant a ce filtre.</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         {section === "dashboard" && (
           <>

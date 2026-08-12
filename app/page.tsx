@@ -21,18 +21,17 @@ export default async function Home() {
   const ceibaSession = verifyCeibaInventorySession(cookieStore.get(ceibaInventoryAuthCookieName)?.value);
   const session = geoSession ?? null;
 
+  if (geoSession && geoSession.role === "executive") {
+    redirect("/inventaire/admin?section=dashboard");
+  }
+
   if (
     geoSession && (
       geoSession.role === "admin" ||
-      geoSession.role === "executive" ||
       geoSession.startApplication === "inventory" ||
       geoSession.landingView === "Gestion des comptes"
     )
   ) {
-    redirect("/inventaire/admin");
-  }
-
-  if (geoSession && geoSession.role === "admin") {
     redirect("/inventaire/admin");
   }
 
