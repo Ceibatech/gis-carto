@@ -339,11 +339,11 @@ export default function AdminInventoryWorkspace({
             </section>
 
             <section className="ceiba-panel">
-              <div className="ceiba-kpi-grid">
-                <article className="ceiba-stat-card"><p>Cartons traités</p><strong>{productionSummary.cartons.toLocaleString("fr-FR")}</strong><small>{selectedRange.label}</small></article>
-                <article className="ceiba-stat-card"><p>Dossiers traités</p><strong>{productionSummary.dossiers.toLocaleString("fr-FR")}</strong><small>{selectedRange.label}</small></article>
-                <article className="ceiba-stat-card"><p>Cartons dégradés</p><strong>{productionSummary.damagedCartons.toLocaleString("fr-FR")}</strong><small>À surveiller</small></article>
-                <article className="ceiba-stat-card"><p>Dossiers dégradés</p><strong>{productionSummary.damagedDossiers.toLocaleString("fr-FR")}</strong><small>État documentaire</small></article>
+              <div className="ceiba-panel-head">
+                <div>
+                  <p className="panel-label">Synthèse</p>
+                  <h3>Production globale</h3>
+                </div>
               </div>
             </section>
 
