@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard, CeibaInventoryOperatorPerformance, CeibaInventoryReportDispatch } from "../../lib/ceiba-inventory-types";
 import type { CeibaInventoryRole, CeibaInventoryUserAccount } from "../../lib/ceiba-inventory-auth-types";
-import { inventoryPermissions, rolePermissionMatrix, type InventoryActor, type InventoryAppRole, type InventoryPermission } from "../../lib/inventory-rbac";
+import { hasInventoryPermission, inventoryPermissions, rolePermissionMatrix, type InventoryActor, type InventoryAppRole, type InventoryPermission } from "../../lib/inventory-rbac";
 import {
   AdminSidebar,
   AuditLogTable,
@@ -78,6 +78,10 @@ export default function AdminInventoryWorkspace({
   const [roleFilter, setRoleFilter] = useState<"all" | CeibaInventoryRole>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const canManageUsers = hasInventoryPermission(actor.permissions, "inventory.users.manage");
+  const canManageRoles = hasInventoryPermission(actor.permissions, "inventory.roles.manage");
+  const canViewAudit = hasInventoryPermission(actor.permissions, "inventory.audit.view");
+  const canExportReports = hasInventoryPermission(actor.permissions, "inventory.record.export");
   const [message, setMessage] = useState<string | null>(tableMessage);
   const [form, setForm] = useState({ assignedRoom: "", email: "", employeeId: "", jobTitle: "", login: "", name: "", password: "", phone: "", role: "operator" as CeibaInventoryRole });
   const [roleEditorRole, setRoleEditorRole] = useState<InventoryAppRole>("ADMIN_CEIBA");
@@ -189,11 +193,11 @@ export default function AdminInventoryWorkspace({
 
   const nav = [
     { key: "dashboard", label: "Dashboard", href: "/inventaire/admin?section=dashboard" },
-    { key: "users", label: "Utilisateurs", href: "/inventaire/admin?section=users" },
-    { key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" },
-    { key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" },
-    { key: "reporting", label: "Suivi des envois", href: "/inventaire/admin?section=reporting" },
-    { key: "settings", label: "Parametres", href: "/inventaire/admin?section=settings" },
+    ...(canManageUsers ? [{ key: "users", label: "Utilisateurs", href: "/inventaire/admin?section=users" }] : []),
+    ...(canManageRoles ? [{ key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" }] : []),
+    ...(canViewAudit ? [{ key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" }] : []),
+    ...(canExportReports || canViewAudit ? [{ key: "reporting", label: "Suivi des envois", href: "/inventaire/admin?section=reporting" }] : []),
+    ...(canManageUsers || canManageRoles ? [{ key: "settings", label: "Parametres", href: "/inventaire/admin?section=settings" }] : []),
   ];
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
@@ -447,32 +451,40 @@ export default function AdminInventoryWorkspace({
                 <p className="panel-label">Utilisateurs</p>
                 <h3>Gestion des comptes et acces</h3>
               </div>
-              <button type="button" className="primary-button" onClick={() => setDrawerOpen(true)}>Ajouter un utilisateur</button>
+              {canManageUsers && (
+                <button type="button" className="primary-button" onClick={() => setDrawerOpen(true)}>Ajouter un utilisateur</button>
+              )}
             </div>
 
             {!tableReady && <EmptyState title="Comptes CEIBA indisponibles" description={tableMessage || "Verifier la connexion API ou la configuration base de donnees CEIBA."} />}
 
-            <div className="ceiba-filter-row">
-              <label>
-                <span>Recherche</span>
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom ou login" />
-              </label>
-              <label>
-                <span>Role</span>
-                <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as "all" | CeibaInventoryRole)}>
-                  <option value="all">Tous</option>
-                  {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Statut</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "disabled") }>
-                  <option value="all">Tous</option>
-                  <option value="active">Actif</option>
-                  <option value="disabled">Desactive</option>
-                </select>
-              </label>
-            </div>
+            {!canManageUsers && (
+              <div className="inventory-banner">Acces limite : seul un administrateur peut creer ou modifier des comptes utilisateur.</div>
+            )}
+
+            {canManageUsers && (
+              <div className="ceiba-filter-row">
+                <label>
+                  <span>Recherche</span>
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom ou login" />
+                </label>
+                <label>
+                  <span>Role</span>
+                  <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as "all" | CeibaInventoryRole)}>
+                    <option value="all">Tous</option>
+                    {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Statut</span>
+                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "disabled") }>
+                    <option value="all">Tous</option>
+                    <option value="active">Actif</option>
+                    <option value="disabled">Desactive</option>
+                  </select>
+                </label>
+              </div>
+            )}
 
             <div className="table-wrap">
               <table>
@@ -537,23 +549,25 @@ export default function AdminInventoryWorkspace({
               )}
             </div>
 
-            <UserDrawer open={drawerOpen} title="Ajouter un utilisateur" onClose={() => setDrawerOpen(false)}>
-              <form className="ceiba-drawer-form" onSubmit={createUser}>
-                <label><span>Nom et prenoms</span><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-                <label><span>Matricule</span><input value={form.employeeId} onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))} /></label>
-                <label><span>Login</span><input required value={form.login} onChange={(event) => setForm((current) => ({ ...current, login: event.target.value }))} /></label>
-                <label><span>E-mail professionnel</span><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} /></label>
-                <label><span>Telephone</span><input inputMode="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label>
-                <label><span>Fonction</span><input placeholder="Ex: Agent d'inventaire" value={form.jobTitle} onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))} /></label>
-                <label><span>Salle ou zone affectee</span><input placeholder="Ex: Salle 1 - Marcory" value={form.assignedRoom} onChange={(event) => setForm((current) => ({ ...current, assignedRoom: event.target.value }))} /></label>
-                <label><span>Role</span><select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CeibaInventoryRole }))}>{roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
-                <label><span>Mot de passe provisoire</span><input required minLength={8} type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} /></label>
-                <div className="ceiba-drawer-actions">
-                  <button type="button" className="ghost-button" onClick={() => setDrawerOpen(false)}>Annuler</button>
-                  <button type="submit" className="primary-button">Creer</button>
-                </div>
-              </form>
-            </UserDrawer>
+            {canManageUsers && (
+              <UserDrawer open={drawerOpen} title="Ajouter un utilisateur" onClose={() => setDrawerOpen(false)}>
+                <form className="ceiba-drawer-form" onSubmit={createUser}>
+                  <label><span>Nom et prenoms</span><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+                  <label><span>Matricule</span><input value={form.employeeId} onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))} /></label>
+                  <label><span>Login</span><input required value={form.login} onChange={(event) => setForm((current) => ({ ...current, login: event.target.value }))} /></label>
+                  <label><span>E-mail professionnel</span><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} /></label>
+                  <label><span>Telephone</span><input inputMode="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label>
+                  <label><span>Fonction</span><input placeholder="Ex: Agent d'inventaire" value={form.jobTitle} onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))} /></label>
+                  <label><span>Salle ou zone affectee</span><input placeholder="Ex: Salle 1 - Marcory" value={form.assignedRoom} onChange={(event) => setForm((current) => ({ ...current, assignedRoom: event.target.value }))} /></label>
+                  <label><span>Role</span><select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CeibaInventoryRole }))}>{roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
+                  <label><span>Mot de passe provisoire</span><input required minLength={8} type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} /></label>
+                  <div className="ceiba-drawer-actions">
+                    <button type="button" className="ghost-button" onClick={() => setDrawerOpen(false)}>Annuler</button>
+                    <button type="submit" className="primary-button">Creer</button>
+                  </div>
+                </form>
+              </UserDrawer>
+            )}
           </section>
         )}
 

@@ -28,6 +28,15 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
   const requested = params.section;
   const validSections = new Set(["dashboard", "overview", "users", "roles", "audit", "reporting", "settings"]);
   const section = validSections.has(requested || "") ? (requested as "dashboard" | "overview" | "users" | "roles" | "audit" | "reporting" | "settings") : "dashboard";
+  const allowedSections = new Set<string>(["dashboard", "overview"]);
+  if (hasAnyInventoryPermission(actor.permissions, ["inventory.users.manage"])) allowedSections.add("users");
+  if (hasAnyInventoryPermission(actor.permissions, ["inventory.roles.manage"])) allowedSections.add("roles");
+  if (hasAnyInventoryPermission(actor.permissions, ["inventory.audit.view"])) allowedSections.add("audit");
+  if (hasAnyInventoryPermission(actor.permissions, ["inventory.record.export", "inventory.audit.view"])) allowedSections.add("reporting");
+  if (hasAnyInventoryPermission(actor.permissions, ["inventory.users.manage", "inventory.roles.manage"])) allowedSections.add("settings");
+  if (!allowedSections.has(section)) {
+    redirect("/inventaire/admin?section=dashboard");
+  }
 
   const [dashboard, users, operatorPerformance, reportDispatches, dailyProduction] = await Promise.all([
     getCeibaInventoryDashboard(),
