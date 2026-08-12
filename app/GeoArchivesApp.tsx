@@ -1616,12 +1616,12 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const selectedDecisionSite = selectedSite ?? topPrioritySites[0] ?? null;
 
   return (
-    <section className="executive-command-grid" aria-label="Dashboard CEIBA">
+    <section className="executive-command-grid" aria-label="Tableau de bord">
       <article className="executive-command-hero">
         <div className="executive-hero-copy">
-          <p className="panel-label">Dashboard</p>
-          <h3>Suivi de production CEIBA</h3>
-          <p>Le tableau de bord est en redémarrage. Les indicateurs métier seront recalculés proprement sur les données réelles de production journalière.</p>
+          <p className="panel-label">Tableau de bord</p>
+          <h3>Production</h3>
+          <p>Suivi des indicateurs de production calculés sur les données journalières enregistrées.</p>
         </div>
       </article>
     </section>
