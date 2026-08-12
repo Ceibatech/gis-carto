@@ -332,12 +332,13 @@ const viewIconMap: Record<string, string> = {
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
-  admin: ["Registre des sites", "Gestion des comptes"],
+  admin: ["Gestion des comptes"],
   agent: ["Registre des sites"],
   executive: ["Registre des sites"],
 };
 
 function landingViewForSession(session: AuthSession | null) {
+  if (session?.role === "admin") return "Gestion des comptes";
   const requested = session?.landingView;
   return requested ?? "Registre des sites";
 }
