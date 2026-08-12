@@ -114,10 +114,6 @@ export function AppSidebar({ collapsed, onToggle, activeSection, onNavigate, use
                 <LogOut size={15} />
                 Se deconnecter
               </button>
-              <Link className="secondary-button" href="/">
-                <ShieldCheck size={15} />
-                Retour GeoArchives
-              </Link>
             </div>
           </>
         )}

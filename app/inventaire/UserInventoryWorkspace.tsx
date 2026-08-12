@@ -73,13 +73,14 @@ type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
   view: "dashboard" | "registre";
+  defaultOverview?: boolean;
 };
 
 function has(permissions: InventoryPermission[], permission: InventoryPermission) {
   return permissions.includes(permission);
 }
 
-export default function UserInventoryWorkspace({ actor, dashboard, view }: Props) {
+export default function UserInventoryWorkspace({ actor, dashboard, view, defaultOverview = false }: Props) {
   const searchParams = useSearchParams();
   const [online, setOnline] = useState(true);
   const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
@@ -99,7 +100,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view }: Props
   const canEditAll = has(actor.permissions, "inventory.record.update_all");
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
-  const isOverviewTab = searchParams.get("tab") === "overview";
+  const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;

@@ -70,7 +70,6 @@ export default function AdminInventoryWorkspace({
     { key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" },
     { key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" },
     { key: "settings", label: "Parametres", href: "/inventaire/admin?section=settings" },
-    { key: "back", label: "Retour GeoArchives", href: "/" },
   ];
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
@@ -373,11 +372,6 @@ export default function AdminInventoryWorkspace({
           </section>
         )}
 
-        <footer className="inventory-footer-links">
-          <Link href="/inventaire">Espace metier</Link>
-          <Link href="/inventaire/registre">Registre</Link>
-          <Link href="/">Retour GeoArchives</Link>
-        </footer>
       </main>
     </div>
   );

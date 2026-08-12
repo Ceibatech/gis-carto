@@ -1141,7 +1141,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "terrain" | "inventory">("dashboard");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
     const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
@@ -1188,7 +1188,8 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
           {([
-            { key: "terrain", label: "Terrain" },
+            { key: "dashboard", label: "Dashboard" },
+            { key: "terrain", label: "Fiche du site" },
             { key: "inventory", label: "Inventaire" },
           ] as const).map((tab) => (
             <button
@@ -1201,6 +1202,22 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             </button>
           ))}
         </nav>
+
+        {agentRegistryTab === "dashboard" && (
+          <section className="agent-form-frame" aria-label="Dashboard exécutif">
+            <ExecutiveView
+              auditEntries={data.auditEntries}
+              databaseUsable={databaseUsable}
+              documents={data.documents}
+              missions={missions}
+              onSelectSite={setSelectedCode}
+              regions={regions}
+              selectedSite={selectedSite}
+              sites={sites}
+              totals={totals}
+            />
+          </section>
+        )}
 
         {agentRegistryTab === "terrain" && (
           <section className="agent-form-frame" aria-label="Fiche du site">
