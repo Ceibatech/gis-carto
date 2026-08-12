@@ -460,7 +460,6 @@ export default function CeibaInventoryApp({
   function clearForm() {
     setForm(defaultForm);
     setMessage(null);
-    setIsUnsaved(false);
     window.localStorage.removeItem(draftStorageKey);
   }
 
