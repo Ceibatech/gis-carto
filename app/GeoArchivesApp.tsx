@@ -307,7 +307,6 @@ const navigationItems: { section: string; items: NavigationItem[] }[] = [
     items: [
       { view: "Vue executive", label: "Vue executive", helper: "Arbitrages et alertes" },
       { view: "Carte nationale", label: "Carte nationale", helper: "Lecture territoriale" },
-      { view: "Dashboard inventaire", label: "Dashboard inventaire", helper: "Indicateurs et exports" },
     ],
   },
   {
@@ -335,7 +334,6 @@ const adminNavigationViews = navigationItems.flatMap((group) => group.items.map(
 const viewNarratives: Record<string, string> = {
   "Vue executive": "Synth\u00e8se nationale pour arbitrer les priorit\u00e9s de conservation et de num\u00e9risation.",
   "Carte nationale": "Vision territoriale des sites, risques et progression des op\u00e9rations.",
-  "Dashboard inventaire": "Indicateurs d\'inventaire, suivi des fiches et exports de performance.",
   "Registre des sites": "Fiches terrain structur\u00e9es et capture m\u00e9tier centralis\u00e9e.",
   Evaluation: "Diagnostic archivistique et calcul automatis\u00e9 des niveaux de risque.",
   Mobilisation: "Programmation des vagues terrain, \u00e9quipes et chronologie d\'intervention.",
@@ -346,7 +344,6 @@ const viewNarratives: Record<string, string> = {
 const viewIconMap: Record<string, string> = {
   "Vue executive": "EX",
   "Carte nationale": "CA",
-  "Dashboard inventaire": "DI",
   "Registre des sites": "RG",
   Evaluation: "EV",
   Mobilisation: "MO",
@@ -355,9 +352,9 @@ const viewIconMap: Record<string, string> = {
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
-  admin: ["Vue executive", "Carte nationale", "Dashboard inventaire", "Gestion des comptes"],
+  admin: ["Vue executive", "Carte nationale", "Gestion des comptes"],
   agent: ["Registre des sites"],
-  executive: ["Vue executive", "Carte nationale", "Dashboard inventaire"],
+  executive: ["Vue executive", "Carte nationale"],
 };
 
 function landingViewForSession(session: AuthSession | null) {
@@ -1143,7 +1140,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   }, [activeView, refreshUserAccounts, session?.role]);
 
   const isAccountsView = activeView === "Gestion des comptes";
-  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive" && activeView !== "Dashboard inventaire";
+  const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
   const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
@@ -1167,6 +1164,41 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     uniqueCartons: 0,
     uniqueCommunes: 0,
   }), []);
+  const [inventoryDashboard, setInventoryDashboard] = useState<CeibaInventoryDashboard>(emptyInventoryDashboard);
+
+  const loadInventoryDashboard = useCallback(async () => {
+    if (!inventoryActor) {
+      setInventoryDashboard(emptyInventoryDashboard);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/inventaire-ceiba", {
+        headers: { accept: "application/json" },
+      });
+      const payload = await readJsonResponse<CeibaInventoryDashboard | { message?: string }>(response);
+
+      if (!response.ok || !payload || typeof payload !== "object" || !("totalRecords" in payload)) {
+        throw new Error("message" in payload && typeof payload.message === "string" && payload.message ? payload.message : "Dashboard inventaire indisponible.");
+      }
+
+      setInventoryDashboard(payload as CeibaInventoryDashboard);
+    } catch (error) {
+      setInventoryDashboard({
+        ...emptyInventoryDashboard,
+        message: error instanceof Error ? error.message : "Dashboard inventaire indisponible.",
+      });
+    }
+  }, [emptyInventoryDashboard, inventoryActor]);
+
+  useEffect(() => {
+    if (!inventoryActor) {
+      setInventoryDashboard(emptyInventoryDashboard);
+      return;
+    }
+
+    void loadInventoryDashboard();
+  }, [emptyInventoryDashboard, inventoryActor, loadInventoryDashboard]);
 
   if (!session) {
     return <LoginScreen onLogin={handleLogin} />;
@@ -1213,7 +1245,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         {agentRegistryTab === "inventory" && inventoryActor && (
           <section className="agent-form-frame" aria-label="Inventaire">
-            <UserInventoryWorkspace actor={inventoryActor} dashboard={emptyInventoryDashboard} view="dashboard" />
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} view="dashboard" />
           </section>
         )}
       </main>
@@ -1342,12 +1374,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             sites={sites}
             totals={totals}
           />
-        )}
-
-        {activeView === "Dashboard inventaire" && inventoryActor && (
-          <section className="agent-form-frame" aria-label="Dashboard inventaire">
-            <UserInventoryWorkspace actor={inventoryActor} dashboard={emptyInventoryDashboard} view="dashboard" defaultOverview />
-          </section>
         )}
 
         {activeView === "Gestion des comptes" && (
