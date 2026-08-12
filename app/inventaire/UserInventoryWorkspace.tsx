@@ -101,6 +101,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
+  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Dashboard inventaire" : "Nouvelle fiche";
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -337,7 +338,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
         <header className="inventory-header-card">
           <div>
             <p className="panel-label">Registre terrain</p>
-            <h1>{view === "registre" ? "Registre des fiches" : "Nouvelle fiche"}</h1>
+            <h1>{workspaceTitle}</h1>
           </div>
           <div className="inventory-status-row">
             <ConnectionStatus online={online} />
