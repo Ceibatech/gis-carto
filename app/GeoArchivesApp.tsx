@@ -332,13 +332,14 @@ const viewIconMap: Record<string, string> = {
 };
 
 const roleViewAccess: Record<AuthRole, string[]> = {
-  admin: ["Registre des sites"],
+  admin: ["Gestion des comptes"],
   agent: ["Registre des sites"],
   executive: ["Registre des sites"],
 };
 
 function landingViewForSession(session: AuthSession | null) {
-  if (session?.role === "admin" || session?.role === "executive") return "Registre des sites";
+  if (session?.role === "admin") return "Gestion des comptes";
+  if (session?.role === "executive") return "Registre des sites";
   const requested = session?.landingView;
   return requested ?? "Registre des sites";
 }
@@ -1175,7 +1176,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         {agentRegistryTab === "inventory" && inventoryActor && (
           <section className="agent-form-frame" aria-label="Inventaire">
-            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="dashboard" />
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="registre" />
           </section>
         )}
 

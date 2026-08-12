@@ -25,7 +25,7 @@ type Props = {
   reportDispatches: CeibaInventoryReportDispatch[];
   tableReady: boolean;
   tableMessage: string | null;
-  section: "dashboard" | "overview" | "users" | "roles" | "audit" | "reporting" | "settings";
+  section: "dashboard" | "users";
 };
 
 const roleOptions: CeibaInventoryRole[] = ["admin", "supervisor", "operator"];
@@ -192,12 +192,8 @@ export default function AdminInventoryWorkspace({
   }, [dailyProduction, filteredProduction]);
 
   const nav = [
-    { key: "dashboard", label: "Dashboard", href: "/inventaire/admin?section=dashboard" },
-    ...(canManageUsers ? [{ key: "users", label: "Utilisateurs", href: "/inventaire/admin?section=users" }] : []),
-    ...(canManageRoles ? [{ key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" }] : []),
-    ...(canViewAudit ? [{ key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" }] : []),
-    ...(canExportReports || canViewAudit ? [{ key: "reporting", label: "Suivi des envois", href: "/inventaire/admin?section=reporting" }] : []),
-    ...(canManageUsers || canManageRoles ? [{ key: "settings", label: "Parametres", href: "/inventaire/admin?section=settings" }] : []),
+    { key: "dashboard", label: "Dashboard métier", href: "/inventaire/admin?section=dashboard" },
+    ...(canManageUsers ? [{ key: "users", label: "Création utilisateur", href: "/inventaire/admin?section=users" }] : []),
   ];
 
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
@@ -314,7 +310,7 @@ export default function AdminInventoryWorkspace({
 
         {message && <div className="inventory-banner">{message}</div>}
 
-        {(section === "dashboard" || section === "overview") && (
+        {section === "dashboard" && (
           <>
             <section className="ceiba-panel inventory-print-hide">
               <div className="ceiba-filter-row">
@@ -444,227 +440,6 @@ export default function AdminInventoryWorkspace({
           </>
         )}
 
-        {section === "users" && (
-          <section className="ceiba-panel">
-            <div className="ceiba-panel-head">
-              <div>
-                <p className="panel-label">Utilisateurs</p>
-                <h3>Gestion des comptes et acces</h3>
-              </div>
-              {canManageUsers && (
-                <button type="button" className="primary-button" onClick={() => setDrawerOpen(true)}>Ajouter un utilisateur</button>
-              )}
-            </div>
-
-            {!tableReady && <EmptyState title="Comptes CEIBA indisponibles" description={tableMessage || "Verifier la connexion API ou la configuration base de donnees CEIBA."} />}
-
-            {!canManageUsers && (
-              <div className="inventory-banner">Acces limite : seul un administrateur peut creer ou modifier des comptes utilisateur.</div>
-            )}
-
-            {canManageUsers && (
-              <div className="ceiba-filter-row">
-                <label>
-                  <span>Recherche</span>
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom ou login" />
-                </label>
-                <label>
-                  <span>Role</span>
-                  <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as "all" | CeibaInventoryRole)}>
-                    <option value="all">Tous</option>
-                    {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Statut</span>
-                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "active" | "disabled") }>
-                    <option value="all">Tous</option>
-                    <option value="active">Actif</option>
-                    <option value="disabled">Desactive</option>
-                  </select>
-                </label>
-              </div>
-            )}
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Utilisateur</th>
-                    <th>Login</th>
-                    <th>Profil operationnel</th>
-                    <th>Role</th>
-                    <th>Statut</th>
-                    <th>Derniere connexion</th>
-                    <th>Date creation</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAccounts.map((account) => (
-                    <tr key={account.id}>
-                      <td>{account.name}</td>
-                      <td>{account.login}</td>
-                      <td>{[account.employeeId, account.jobTitle, account.assignedRoom, account.phone].filter(Boolean).join(" · ") || "Non renseigne"}</td>
-                      <td>{roleLabel(account.role)}</td>
-                      <td><StatusBadge status={statusLabel(account.status)} /></td>
-                      <td>{account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString("fr-FR") : "Jamais"}</td>
-                      <td>{new Date(account.createdAt).toLocaleDateString("fr-FR")}</td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => void patchUser("update", { id: account.id, status: account.status === "active" ? "disabled" : "active" })}
-                          >
-                            {account.status === "active" ? "Desactiver" : "Activer"}
-                          </button>
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => void patchUser("update", { id: account.id, role: account.role === "operator" ? "supervisor" : account.role === "supervisor" ? "admin" : "operator" })}
-                          >
-                            Changer role
-                          </button>
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => {
-                              const password = window.prompt("Nouveau mot de passe (8 caracteres min):", "");
-                              if (password) {
-                                void patchUser("reset-password", { id: account.id, password });
-                              }
-                            }}
-                          >
-                            Reinit. MDP
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!filteredAccounts.length && tableReady && (
-                <EmptyState title="Aucun utilisateur" description="Utilisez le bouton Ajouter un utilisateur pour creer le premier compte." />
-              )}
-            </div>
-
-            {canManageUsers && (
-              <UserDrawer open={drawerOpen} title="Ajouter un utilisateur" onClose={() => setDrawerOpen(false)}>
-                <form className="ceiba-drawer-form" onSubmit={createUser}>
-                  <label><span>Nom et prenoms</span><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-                  <label><span>Matricule</span><input value={form.employeeId} onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))} /></label>
-                  <label><span>Login</span><input required value={form.login} onChange={(event) => setForm((current) => ({ ...current, login: event.target.value }))} /></label>
-                  <label><span>E-mail professionnel</span><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} /></label>
-                  <label><span>Telephone</span><input inputMode="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label>
-                  <label><span>Fonction</span><input placeholder="Ex: Agent d'inventaire" value={form.jobTitle} onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))} /></label>
-                  <label><span>Salle ou zone affectee</span><input placeholder="Ex: Salle 1 - Marcory" value={form.assignedRoom} onChange={(event) => setForm((current) => ({ ...current, assignedRoom: event.target.value }))} /></label>
-                  <label><span>Role</span><select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CeibaInventoryRole }))}>{roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
-                  <label><span>Mot de passe provisoire</span><input required minLength={8} type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} /></label>
-                  <div className="ceiba-drawer-actions">
-                    <button type="button" className="ghost-button" onClick={() => setDrawerOpen(false)}>Annuler</button>
-                    <button type="submit" className="primary-button">Creer</button>
-                  </div>
-                </form>
-              </UserDrawer>
-            )}
-          </section>
-        )}
-
-        {section === "roles" && (
-          <section className="ceiba-panel">
-            <div className="ceiba-filter-row">
-              <label>
-                <span>Role cible</span>
-                <select value={roleEditorRole} onChange={(event) => setRoleEditorRole(event.target.value as InventoryAppRole)}>
-                  <option value="AGENT">AGENT</option>
-                  <option value="SUPERVISEUR">SUPERVISEUR</option>
-                  <option value="RESPONSABLE_CEIBA">RESPONSABLE_CEIBA</option>
-                  <option value="ADMIN_CEIBA">ADMIN_CEIBA</option>
-                </select>
-              </label>
-            </div>
-            <RolePermissionEditor
-              role={roleEditorRole}
-              permissions={[...inventoryPermissions]}
-              enabled={customRolePermissions[roleEditorRole]}
-              onToggle={togglePermission}
-            />
-            <p className="capture-helper">Configuration locale de reference RBAC. Pour une persistance base de donnees, ajouter une table roles_permissions dediee.</p>
-          </section>
-        )}
-
-        {section === "audit" && (
-          <section className="ceiba-panel">
-            <AuditLogTable
-              rows={dashboard.recentRecords.slice(0, 12).map((record) => ({
-                at: record.createdAt,
-                actor: record.createdBy || "system",
-                action: "inventory.record.created",
-                description: `${record.lastName} ${record.firstNames} - ${record.commune}`,
-              }))}
-            />
-          </section>
-        )}
-
-        {section === "reporting" && (
-          <section className="ceiba-panel">
-            <div className="ceiba-panel-head">
-              <div>
-                <p className="panel-label">Supervision operationnelle</p>
-                <h3>Suivi des envois de rapports</h3>
-              </div>
-            </div>
-
-            <div className="ceiba-kpi-grid">
-              <article className="ceiba-stat-card"><p>Rapports envoyes</p><strong>{reportDispatches.filter((item) => item.status === "sent").length}</strong></article>
-              <article className="ceiba-stat-card"><p>En echecs</p><strong>{reportDispatches.filter((item) => item.status === "failed").length}</strong></article>
-              <article className="ceiba-stat-card"><p>Dernier envoi</p><strong>{reportDispatches[0]?.sentAt ? new Date(reportDispatches[0].sentAt).toLocaleDateString("fr-FR") : "Aucun"}</strong></article>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Période</th>
-                    <th>Date</th>
-                    <th>Statut</th>
-                    <th>Destinataires</th>
-                    <th>Erreur</th>
-                    <th>Envoi</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportDispatches.map((item) => (
-                    <tr key={`${item.reportDate}-${item.period}`}>
-                      <td>{item.period === "day" ? "Journalier" : item.period === "week" ? "Hebdomadaire" : "Mensuel"}</td>
-                      <td>{new Date(`${item.reportDate}T00:00:00`).toLocaleDateString("fr-FR")}</td>
-                      <td><StatusBadge status={item.status === "sent" ? "Actif" : item.status === "failed" ? "Desactive" : "En attente"} /></td>
-                      <td>{item.recipientsCount}</td>
-                      <td>{item.errorMessage || "Aucune"}</td>
-                      <td>{item.sentAt ? new Date(item.sentAt).toLocaleString("fr-FR") : "Jamais"}</td>
-                      <td>
-                        <button type="button" className="ghost-button" onClick={() => void resendReport(item.period)}>
-                          Relancer
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!reportDispatches.length && (
-                <EmptyState title="Aucun envoi registre" description="Les rapports envoyes par Resend apparaissent ici lorsque l'administration les active pour la supervision." />
-              )}
-            </div>
-          </section>
-        )}
-
-        {section === "settings" && (
-          <section className="ceiba-panel">
-            <EmptyState title="Parametres du module" description="Supervision technique, options de synchronisation et securite API." />
-          </section>
-        )}
 
       </main>
     </div>

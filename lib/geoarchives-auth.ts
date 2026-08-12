@@ -28,7 +28,8 @@ function authSecret() {
 
 function landingViewForRole(role: AuthRole) {
   if (role === "agent") return "Registre des sites";
-  if (role === "admin" || role === "executive") return "Registre des sites";
+  if (role === "admin") return "Gestion des comptes";
+  if (role === "executive") return "Registre des sites";
   return "Registre des sites";
 }
 

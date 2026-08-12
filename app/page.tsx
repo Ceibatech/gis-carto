@@ -32,6 +32,10 @@ export default async function Home() {
     redirect("/inventaire/admin");
   }
 
+  if (geoSession && geoSession.role === "admin") {
+    redirect("/inventaire/admin");
+  }
+
   if (ceibaSession && (ceibaSession.role === "admin" || ceibaSession.role === "supervisor")) {
     redirect("/inventaire/admin");
   }
