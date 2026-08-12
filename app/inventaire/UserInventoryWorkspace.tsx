@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { buildCeibaProductionMetrics } from "../../lib/ceiba-inventory-reports";
 import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
 import { abidjanSubPrefectures, rgphDistricts } from "../../lib/rgph-territories";
 import type { InventoryActor, InventoryPermission } from "../../lib/inventory-rbac";
@@ -75,15 +73,13 @@ type Props = {
   dashboard: CeibaInventoryDashboard;
   dailyProduction?: CeibaInventoryDailyProduction[];
   view: "dashboard" | "registre";
-  defaultOverview?: boolean;
 };
 
 function has(permissions: InventoryPermission[], permission: InventoryPermission) {
   return permissions.includes(permission);
 }
 
-export default function UserInventoryWorkspace({ actor, dashboard, dailyProduction = [], view, defaultOverview = false }: Props) {
-  const searchParams = useSearchParams();
+export default function UserInventoryWorkspace({ actor, dashboard, dailyProduction = [], view }: Props) {
   const [online, setOnline] = useState(true);
   const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
   const [banner, setBanner] = useState<string | null>(null);
@@ -102,50 +98,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
   const canEditAll = has(actor.permissions, "inventory.record.update_all");
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
-  const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
-  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Tableau de bord" : "Inventaire";
-  const productionRows = useMemo(() => {
-    if (dailyProduction.length) {
-      return [...dailyProduction].sort((a, b) => {
-        const dateCompare = new Date(b.productionDate).getTime() - new Date(a.productionDate).getTime();
-        if (dateCompare !== 0) return dateCompare;
-        return (b.cartonsCount + b.dossiersCount) - (a.cartonsCount + a.dossiersCount);
-      });
-    }
-
-    return dashboard.recentRecords.slice(0, 8).map((record) => ({
-      operatorLogin: record.createdBy ?? "inconnu",
-      operatorName: record.createdBy ?? "Inconnu",
-      productionDate: record.createdAt,
-      assignedRoom: "Non renseignée",
-      cartonsCount: record.cartonId ? 1 : 0,
-      dossiersCount: record.caseNature ? 1 : 0,
-      damagedCartonsCount: record.cartonDamaged ? 1 : 0,
-      damagedDossiersCount: record.dossierDamaged ? 1 : 0,
-      source: "historical" as const,
-    }));
-  }, [dailyProduction, dashboard.recentRecords]);
-
-  const productionMetrics = useMemo(() => buildCeibaProductionMetrics(
-    productionRows.map((entry) => ({
-      agent: entry.operatorName || entry.operatorLogin || "inconnu",
-      createdAt: entry.productionDate,
-      cartonsCount: Number(entry.cartonsCount) || 0,
-    })),
-    new Date(),
-  ), [productionRows]);
-
-  const productionChartRows = useMemo(() => {
-    const rows = productionMetrics.byAgent.length
-      ? productionMetrics.byAgent
-      : [{ agent: "Aucun opérateur", today: 0, week: 0, month: 0, total: 0 }];
-
-    const maxValue = Math.max(1, ...rows.map((row) => Number(row.total || 0)));
-    return rows.slice(0, 5).map((row) => ({
-      ...row,
-      width: Math.max(10, (Number(row.total || 0) / maxValue) * 100),
-    }));
-  }, [productionMetrics.byAgent]);
+  const workspaceTitle = view === "registre" ? "Registre des fiches" : "Inventaire";
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -392,82 +345,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
 
         {banner && <div className="inventory-banner">{banner}</div>}
 
-        {view === "dashboard" && isOverviewTab && has(actor.permissions, "inventory.dashboard.view") && (
-          <section className="ceiba-panel">
-            <div className="ceiba-kpi-grid">
-              <article className="ceiba-stat-card"><p>Production aujourd&apos;hui</p><strong>{productionMetrics.todayProduction}</strong><small>cartons</small></article>
-              <article className="ceiba-stat-card"><p>Production semaine</p><strong>{productionMetrics.weekProduction}</strong><small>cartons</small></article>
-              <article className="ceiba-stat-card"><p>Production mois</p><strong>{productionMetrics.monthProduction}</strong><small>cartons</small></article>
-              <article className="ceiba-stat-card"><p>Cumul</p><strong>{productionMetrics.totalProduction}</strong><small>cartons</small></article>
-            </div>
-
-            <div className="ceiba-analytics-grid">
-              <article className="ceiba-panel-sub">
-                <h3>Suivi de production par opérateur</h3>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Opérateur</th>
-                        <th>Salle / localisation</th>
-                        <th>Date production</th>
-                        <th>Cartons</th>
-                        <th>Dossiers</th>
-                        <th>Cartons dégradés</th>
-                        <th>Dossiers dégradés</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {productionRows.map((item) => (
-                        <tr key={`${item.operatorLogin}-${item.productionDate}`}>
-                          <td><strong>{item.operatorName}</strong><span>{item.operatorLogin}</span></td>
-                          <td>{item.assignedRoom || "Non renseignée"}</td>
-                          <td>{new Date(item.productionDate).toLocaleDateString("fr-FR")}</td>
-                          <td>{item.cartonsCount || 0}</td>
-                          <td>{item.dossiersCount || 0}</td>
-                          <td>{item.damagedCartonsCount ?? 0}</td>
-                          <td>{item.damagedDossiersCount ?? 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-
-              <article className="ceiba-panel-sub">
-                <h3>Répartition par opérateur</h3>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Opérateur</th>
-                        <th>Total</th>
-                        <th>Part</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {productionChartRows.map((item) => (
-                        <tr key={item.agent}>
-                          <td>{item.agent}</td>
-                          <td>{item.total || 0}</td>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <div style={{ flex: 1, height: 8, background: "#e7efe9", borderRadius: 999 }}>
-                                <div style={{ width: `${item.width}%`, height: "100%", background: "linear-gradient(90deg, #0d5a4e, #9ebf8f)", borderRadius: 999 }} />
-                              </div>
-                              <span>{Math.round(item.width)}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            </div>
-          </section>
-        )}
-
         {view === "registre" && (
           <section className="ceiba-panel">
             <div className="ceiba-filter-row">
@@ -500,7 +377,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
           </section>
         )}
 
-        {view === "dashboard" && !isOverviewTab && (
+        {view === "dashboard" && (
           <PermissionGuard allowed={canCreate} fallback={<EmptyState title="Formulaire indisponible" description="Votre role ne permet pas la creation de fiche." />}>
             <section className="inventory-draft-summary">
               <div>

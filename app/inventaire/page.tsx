@@ -13,5 +13,5 @@ export default async function InventairePage() {
 
   const { dashboard, dailyProduction } = await getCeibaInventoryProductionSnapshot();
 
-  return <UserInventoryWorkspace actor={actor} dashboard={dashboard} dailyProduction={dailyProduction} view="dashboard" defaultOverview />;
+  return <UserInventoryWorkspace actor={actor} dashboard={dashboard} dailyProduction={dailyProduction} view="registre" />;
 }
