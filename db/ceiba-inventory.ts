@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
-import type { CeibaInventoryAgentPeriodPoint, CeibaInventoryDailyProduction, CeibaInventoryDailyProductionInput, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryReportSeries, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryAgentPeriodPoint, CeibaInventoryDailyProduction, CeibaInventoryDailyProductionInput, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryReportDispatch, CeibaInventoryReportSeries, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
 import { buildCeibaInventoryReportSeries, summarizeCeibaInventorySnapshot } from "../lib/ceiba-inventory-reports";
 import { getPool, isDatabaseConfigured } from "./index";
 
