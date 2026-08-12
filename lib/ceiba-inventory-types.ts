@@ -93,3 +93,21 @@ export type CeibaInventoryDashboard = {
   recentRecords: CeibaInventoryRecord[];
   activityByCommune: Array<{ commune: string; count: number }>;
 };
+
+export type CeibaInventoryAgentPeriodPoint = {
+  agentLogin: string;
+  agentName: string;
+  periodKey: string;
+  label: string;
+  records: number;
+  uniqueCartons: number;
+  degradedCartons: number;
+  dossiers: number;
+  degradedDossiers: number;
+};
+
+export type CeibaInventoryReportSeries = {
+  day: CeibaInventoryAgentPeriodPoint[];
+  week: CeibaInventoryAgentPeriodPoint[];
+  month: CeibaInventoryAgentPeriodPoint[];
+};

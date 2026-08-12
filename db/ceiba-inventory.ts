@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
-import type { CeibaInventoryDailyProduction, CeibaInventoryDailyProductionInput, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryAgentPeriodPoint, CeibaInventoryDailyProduction, CeibaInventoryDailyProductionInput, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryOperatorPerformance, CeibaInventoryProductionSnapshot, CeibaInventoryRecord, CeibaInventoryReportSeries, CeibaInventoryStatusLabel } from "../lib/ceiba-inventory-types";
+import { buildCeibaInventoryReportSeries, summarizeCeibaInventorySnapshot } from "../lib/ceiba-inventory-reports";
 import { getPool, isDatabaseConfigured } from "./index";
 
 const statusValues: Record<CeibaInventoryStatusLabel, string> = {
@@ -153,7 +154,7 @@ export async function getCeibaInventoryDashboard(): Promise<CeibaInventoryDashbo
         sum(case when status = 'review' then 1 else 0 end) as reviewed_records,
         sum(case when status = 'processed' then 1 else 0 end) as processed_records,
         sum(case when status = 'blocked' then 1 else 0 end) as blocked_records,
-        sum(case when carton_damaged = 1 then 1 else 0 end) as damaged_cartons,
+        count(distinct case when carton_damaged = 1 and nullif(trim(carton_id), '') is not null then carton_id end) as damaged_cartons,
         sum(case when dossier_damaged = 1 then 1 else 0 end) as damaged_dossiers,
         sum(case when date(created_at) = current_date then 1 else 0 end) as today_records,
         count(distinct nullif(trim(commune), '')) as unique_communes,
@@ -276,6 +277,113 @@ export async function getCeibaInventoryProductionSnapshot(): Promise<CeibaInvent
   ]);
 
   return { dashboard, operatorPerformance, dailyProduction };
+}
+
+export async function getCeibaInventoryReportSeries(period: "day" | "week" | "month" = "day"): Promise<CeibaInventoryAgentPeriodPoint[]> {
+  if (!isDatabaseConfigured()) return [];
+
+  try {
+    const pool = getPool();
+    const [rows] = await pool.query<Array<RowDataPacket & { created_at: string; created_by: string | null; carton_id: string | null; carton_damaged: number | null; dossier_damaged: number | null }>>(`
+      select created_at, created_by, carton_id, carton_damaged, dossier_damaged
+      from ceiba_inventory_forms
+      where created_at is not null
+      order by created_at asc
+    `);
+
+    const normalized = rows.map((row) => ({
+      agentLogin: String(row.created_by ?? "inconnu").trim() || "inconnu",
+      agentName: String(row.created_by ?? "Inconnu").trim() || "Inconnu",
+      created_at: String(row.created_at),
+      carton_id: row.carton_id ?? null,
+      carton_damaged: row.carton_damaged ?? 0,
+      dossier_damaged: row.dossier_damaged ?? 0,
+      status: "processed",
+      commune: "",
+    }));
+
+    return buildCeibaInventoryReportSeries(normalized, period);
+  } catch {
+    return [];
+  }
+}
+
+export async function dispatchCeibaInventoryExecutiveReports(period: "day" | "week" | "month" = "day") {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, sent: 0, recipients: [], reason: "DATABASE_URL n'est pas configuré." };
+  }
+
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "support@ceiba-analytics.com";
+  if (!apiKey) {
+    return { ok: false, sent: 0, recipients: [], reason: "RESEND_API_KEY n'est pas configuré." };
+  }
+
+  const pool = getPool();
+  const [recipientRows] = await pool.query<Array<RowDataPacket & { email: string }>>(`
+    select distinct email
+    from ceiba_inventory_users
+    where status = 'active'
+      and email is not null
+      and trim(email) <> ''
+      and role in ('admin', 'supervisor')
+  `);
+
+  const recipients = recipientRows.map((row) => row.email).filter(Boolean);
+  if (!recipients.length) {
+    return { ok: false, sent: 0, recipients: [], reason: "Aucun destinataire exécutif n'a été trouvé." };
+  }
+
+  const series = await getCeibaInventoryReportSeries(period);
+  const summary = summarizeCeibaInventorySnapshot((await pool.query<Array<RowDataPacket & { created_at: string; created_by: string | null; carton_id: string | null; carton_damaged: number | null; dossier_damaged: number | null; status: string; commune: string }>>(`
+    select created_at, created_by, carton_id, carton_damaged, dossier_damaged, status, commune
+    from ceiba_inventory_forms
+    order by created_at asc
+  `))[0] ?? []);
+
+  const title = period === "day" ? "Rapport journalier CEIBA" : period === "week" ? "Rapport hebdomadaire CEIBA" : "Rapport mensuel CEIBA";
+  const rowsHtml = series.slice(0, 12).map((point) => `
+    <tr>
+      <td>${escapeHtml(point.agentName)}</td>
+      <td>${escapeHtml(point.label)}</td>
+      <td>${point.records}</td>
+      <td>${point.uniqueCartons}</td>
+      <td>${point.degradedCartons}</td>
+      <td>${point.dossiers}</td>
+    </tr>
+  `).join("");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: recipients,
+      subject: `${title} — CEIBA analytics`,
+      html: `<h2>${title}</h2><p>Nombre de fiches: ${summary.totalRecords}</p><p>Cartons uniques: ${summary.uniqueCartons}</p><p>Cartons dégradés: ${summary.degradedCartons}</p><table><thead><tr><th>Agent</th><th>Période</th><th>Fiches</th><th>Cartons</th><th>Cartons dégradés</th><th>Dossiers</th></tr></thead><tbody>${rowsHtml}</tbody></table>`,
+      text: `${title}\n\nFiches: ${summary.totalRecords}\nCartons uniques: ${summary.uniqueCartons}\nCartons dégradés: ${summary.degradedCartons}\n\nDétail par agent:\n${series.map((point) => `${point.agentName} (${point.label}): ${point.records} fiches, ${point.uniqueCartons} cartons, ${point.degradedCartons} dégradés`).join("\n")}`,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.text();
+    return { ok: false, sent: 0, recipients, reason: `Resend error: ${response.status} - ${payload}` };
+  }
+
+  return { ok: true, sent: recipients.length, recipients, reason: "Email envoyé" };
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[character] ?? character));
 }
 
 export async function getCeibaInventoryDailyProduction(): Promise<CeibaInventoryDailyProduction[]> {
