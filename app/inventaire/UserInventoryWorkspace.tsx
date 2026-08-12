@@ -103,7 +103,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
-  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Dashboard production" : "Inventaire";
+  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Tableau de bord" : "Inventaire";
   const productionRows = useMemo(() => {
     if (dailyProduction.length) {
       return [...dailyProduction].sort((a, b) => {
@@ -130,10 +130,22 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
     productionRows.map((entry) => ({
       agent: entry.operatorName || entry.operatorLogin || "inconnu",
       createdAt: entry.productionDate,
-      cartonsCount: entry.cartonsCount,
+      cartonsCount: Number(entry.cartonsCount) || 0,
     })),
     new Date(),
   ), [productionRows]);
+
+  const productionChartRows = useMemo(() => {
+    const rows = productionMetrics.byAgent.length
+      ? productionMetrics.byAgent
+      : [{ agent: "Aucun opérateur", today: 0, week: 0, month: 0, total: 0 }];
+
+    const maxValue = Math.max(1, ...rows.map((row) => Number(row.total || 0)));
+    return rows.slice(0, 5).map((row) => ({
+      ...row,
+      width: Math.max(10, (Number(row.total || 0) / maxValue) * 100),
+    }));
+  }, [productionMetrics.byAgent]);
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -411,10 +423,41 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
                           <td><strong>{item.operatorName}</strong><span>{item.operatorLogin}</span></td>
                           <td>{item.assignedRoom || "Non renseignée"}</td>
                           <td>{new Date(item.productionDate).toLocaleDateString("fr-FR")}</td>
-                          <td>{item.cartonsCount}</td>
-                          <td>{item.dossiersCount}</td>
+                          <td>{item.cartonsCount || 0}</td>
+                          <td>{item.dossiersCount || 0}</td>
                           <td>{item.damagedCartonsCount ?? 0}</td>
                           <td>{item.damagedDossiersCount ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article className="ceiba-panel-sub">
+                <h3>Répartition par opérateur</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Opérateur</th>
+                        <th>Total</th>
+                        <th>Part</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productionChartRows.map((item) => (
+                        <tr key={item.agent}>
+                          <td>{item.agent}</td>
+                          <td>{item.total || 0}</td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ flex: 1, height: 8, background: "#e7efe9", borderRadius: 999 }}>
+                                <div style={{ width: `${item.width}%`, height: "100%", background: "linear-gradient(90deg, #0d5a4e, #9ebf8f)", borderRadius: 999 }} />
+                              </div>
+                              <span>{Math.round(item.width)}%</span>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
