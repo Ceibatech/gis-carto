@@ -59,6 +59,7 @@ export type CeibaInventoryProductionSnapshot = {
 export type CeibaInventoryDailyProduction = {
   operatorLogin: string;
   operatorName: string;
+  productionDate: string;
   assignedRoom: string | null;
   cartonsCount: number;
   dossiersCount: number;

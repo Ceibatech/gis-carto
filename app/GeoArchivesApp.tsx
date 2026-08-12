@@ -1141,7 +1141,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "terrain" | "inventory">("dashboard");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
     const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
@@ -1165,29 +1165,38 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     uniqueCommunes: 0,
   }), []);
   const [inventoryDashboard, setInventoryDashboard] = useState<CeibaInventoryDashboard>(emptyInventoryDashboard);
+  const [dailyProduction, setDailyProduction] = useState<Array<{ operatorName: string; productionDate: string; cartonsCount: number; dossiersCount: number }>>([]);
 
   const loadInventoryDashboard = useCallback(async () => {
     if (!inventoryActor) {
       setInventoryDashboard(emptyInventoryDashboard);
+      setDailyProduction([]);
       return;
     }
 
     try {
-      const response = await fetch("/api/inventaire-ceiba", {
+      const response = await fetch("/api/inventaire-ceiba?view=production", {
         headers: { accept: "application/json" },
       });
-      const payload = await readJsonResponse<CeibaInventoryDashboard | { message?: string }>(response);
+      const payload = await readJsonResponse<{ dashboard?: CeibaInventoryDashboard; dailyProduction?: Array<{ operatorName: string; productionDate: string; cartonsCount: number; dossiersCount: number }>; message?: string }>(response);
 
-      if (!response.ok || !payload || typeof payload !== "object" || !("totalRecords" in payload)) {
+      if (!response.ok || !payload || typeof payload !== "object") {
         throw new Error("message" in payload && typeof payload.message === "string" && payload.message ? payload.message : "Dashboard inventaire indisponible.");
       }
 
-      setInventoryDashboard(payload as CeibaInventoryDashboard);
+      const nextDashboard = payload.dashboard ?? payload;
+      if (!nextDashboard || typeof nextDashboard !== "object" || !("totalRecords" in nextDashboard)) {
+        throw new Error("Dashboard inventaire indisponible.");
+      }
+
+      setInventoryDashboard(nextDashboard as CeibaInventoryDashboard);
+      setDailyProduction(Array.isArray(payload.dailyProduction) ? payload.dailyProduction : []);
     } catch (error) {
       setInventoryDashboard({
         ...emptyInventoryDashboard,
         message: error instanceof Error ? error.message : "Dashboard inventaire indisponible.",
       });
+      setDailyProduction([]);
     }
   }, [emptyInventoryDashboard, inventoryActor]);
 
@@ -1223,6 +1232,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
           {([
+            { key: "dashboard", label: "Dashboard" },
             { key: "terrain", label: "Fiche du site" },
             { key: "inventory", label: "Inventaire" },
           ] as const).map((tab) => (
@@ -1237,6 +1247,12 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           ))}
         </nav>
 
+        {agentRegistryTab === "dashboard" && inventoryActor && (
+          <section className="agent-form-frame" aria-label="Dashboard production">
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="dashboard" defaultOverview />
+          </section>
+        )}
+
         {agentRegistryTab === "terrain" && (
           <section className="agent-form-frame" aria-label="Fiche du site">
             <CapturePanel capture={capture} captureSyncStatus={captureSyncStatus} databaseUsable={databaseUsable} draftRestored={draftRestored} formMessage={formMessage} isOnline={isOnline} isSaving={isSaving} onChange={setCapture} onFlushPending={flushPendingCaptures} onSubmit={submitCapture} pendingCount={pendingCaptures.length} rgphRegions={rgphRegionsForCapture} />
@@ -1245,7 +1261,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         {agentRegistryTab === "inventory" && inventoryActor && (
           <section className="agent-form-frame" aria-label="Inventaire">
-            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} view="dashboard" />
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="dashboard" />
           </section>
         )}
       </main>

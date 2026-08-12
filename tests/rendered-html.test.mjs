@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { buildCeibaProductionMetrics } from "../lib/ceiba-inventory-reports.js";
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -36,6 +37,24 @@ test("server-renders GeoArchives login shell", async () => {
   assert.match(html, /Pilotage ex\u00e9cutif/);
   assert.match(html, /Registre des sites/);
   assert.doesNotMatch(html, /DATABASE_URL est manquant|Configuration requise|db:seed|seed/i);
+});
+
+test("buildCeibaProductionMetrics uses real production quantities by agent", () => {
+  const metrics = buildCeibaProductionMetrics([
+    { agent: "Alice", createdAt: "2026-08-12T08:00:00Z", cartonsCount: 12, dossiersCount: 10 },
+    { agent: "Alice", createdAt: "2026-08-12T10:00:00Z", cartonsCount: 8, dossiersCount: 6 },
+    { agent: "Bob", createdAt: "2026-08-10T09:00:00Z", cartonsCount: 5, dossiersCount: 4 },
+  ], new Date("2026-08-12T12:00:00Z"));
+
+  assert.equal(metrics.todayProduction, 20);
+  assert.equal(metrics.weekProduction, 25);
+  assert.equal(metrics.monthProduction, 25);
+  assert.equal(metrics.totalProduction, 25);
+  assert.equal(metrics.activeAgents, 2);
+  assert.deepEqual(metrics.byAgent.map((item) => ({ agent: item.agent, today: item.today, week: item.week, month: item.month, total: item.total })), [
+    { agent: "Alice", today: 20, week: 20, month: 20, total: 20 },
+    { agent: "Bob", today: 0, week: 5, month: 5, total: 5 },
+  ]);
 });
 
 test("keeps the database contract on MySQL tables", async () => {

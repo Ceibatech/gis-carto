@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { buildCeibaProductionMetrics } from "../../lib/ceiba-inventory-reports";
 import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
 import { abidjanSubPrefectures, rgphDistricts } from "../../lib/rgph-territories";
 import type { InventoryActor, InventoryPermission } from "../../lib/inventory-rbac";
@@ -72,6 +73,12 @@ type StepId = (typeof stepDefs)[number]["id"];
 type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
+  dailyProduction?: Array<{
+    operatorName: string;
+    productionDate: string;
+    cartonsCount: number;
+    dossiersCount: number;
+  }>;
   view: "dashboard" | "registre";
   defaultOverview?: boolean;
 };
@@ -80,7 +87,7 @@ function has(permissions: InventoryPermission[], permission: InventoryPermission
   return permissions.includes(permission);
 }
 
-export default function UserInventoryWorkspace({ actor, dashboard, view, defaultOverview = false }: Props) {
+export default function UserInventoryWorkspace({ actor, dashboard, dailyProduction = [], view, defaultOverview = false }: Props) {
   const searchParams = useSearchParams();
   const [online, setOnline] = useState(true);
   const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
@@ -101,7 +108,21 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
-  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Dashboard inventaire" : "Nouvelle fiche";
+  const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Dashboard production" : "Inventaire";
+  const productionMetrics = useMemo(() => buildCeibaProductionMetrics(
+    dailyProduction.length
+      ? dailyProduction.map((entry) => ({
+          agent: entry.operatorName || "inconnu",
+          createdAt: entry.productionDate,
+          cartonsCount: entry.cartonsCount,
+        }))
+      : dashboard.recentRecords.map((record) => ({
+          agent: record.createdBy ?? "inconnu",
+          createdAt: record.createdAt,
+          cartonsCount: record.cartonId ? 1 : 0,
+        })),
+    new Date(),
+  ), [dailyProduction, dashboard.recentRecords]);
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -351,16 +372,39 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
         {view === "dashboard" && isOverviewTab && has(actor.permissions, "inventory.dashboard.view") && (
           <section className="ceiba-panel">
             <div className="ceiba-kpi-grid">
-              <article className="ceiba-stat-card"><p>Total des fiches</p><strong>{dashboard.totalRecords}</strong></article>
-              <article className="ceiba-stat-card"><p>En attente</p><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong></article>
-              <article className="ceiba-stat-card"><p>Validees</p><strong>{dashboard.processedRecords}</strong></article>
-              <article className="ceiba-stat-card"><p>Rejetees</p><strong>{dashboard.blockedRecords}</strong></article>
-              <article className="ceiba-stat-card"><p>En attente sync</p><strong>{queue.filter((item) => item.status === "queued" || item.status === "failed").length}</strong></article>
+              <article className="ceiba-stat-card"><p>Production aujourd&apos;hui</p><strong>{productionMetrics.todayProduction}</strong><small>points</small></article>
+              <article className="ceiba-stat-card"><p>Cette semaine</p><strong>{productionMetrics.weekProduction}</strong><small>points</small></article>
+              <article className="ceiba-stat-card"><p>Ce mois</p><strong>{productionMetrics.monthProduction}</strong><small>points</small></article>
+              <article className="ceiba-stat-card"><p>Agents actifs</p><strong>{productionMetrics.activeAgents}</strong><small>opérateurs</small></article>
             </div>
+
             <div className="ceiba-analytics-grid">
               <article className="ceiba-panel-sub">
-                <h3>Activite recente</h3>
-                <InventoryTable rows={dashboard.recentRecords.slice(0, 6)} canEdit={canEditAll || canEditOwn} canReview={canReview} />
+                <h3>Performance des agents</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Agent</th>
+                        <th>Aujourd&apos;hui</th>
+                        <th>Semaine</th>
+                        <th>Mois</th>
+                        <th>Cumul</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productionMetrics.byAgent.slice(0, 6).map((item) => (
+                        <tr key={item.agent}>
+                          <td>{item.agent}</td>
+                          <td>{item.today}</td>
+                          <td>{item.week}</td>
+                          <td>{item.month}</td>
+                          <td>{item.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </article>
             </div>
           </section>
@@ -492,6 +536,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, view, default
                 onDraft={queueCurrentDraft}
                 onNext={nextStep}
                 submitMode={activeStep === "validation"}
+                hideBack
               />
             </section>
           </PermissionGuard>
