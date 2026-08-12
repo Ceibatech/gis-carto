@@ -29,15 +29,19 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
   const validSections = new Set(["overview", "users", "roles", "audit", "reporting", "settings"]);
   const section = validSections.has(requested || "") ? requested as "overview" | "users" | "roles" | "audit" | "reporting" | "settings" : "overview";
 
-  const dashboard = await getCeibaInventoryDashboard();
-  const users = await getUsersSnapshot();
-  const operatorPerformance = await getCeibaInventoryOperatorPerformance();
-  const reportDispatches = await getCeibaInventoryReportDispatches();
+  const [dashboard, users, operatorPerformance, reportDispatches, dailyProduction] = await Promise.all([
+    getCeibaInventoryDashboard(),
+    getUsersSnapshot(),
+    getCeibaInventoryOperatorPerformance(),
+    getCeibaInventoryReportDispatches(),
+    import("../../../db/ceiba-inventory").then((module) => module.getCeibaInventoryDailyProduction()),
+  ]);
 
   return (
     <AdminInventoryWorkspace
       actor={actor}
       dashboard={dashboard}
+      dailyProduction={dailyProduction}
       initialAccounts={users.accounts}
       operatorPerformance={operatorPerformance}
       reportDispatches={reportDispatches}

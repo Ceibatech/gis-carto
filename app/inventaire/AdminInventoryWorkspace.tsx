@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { CeibaInventoryDashboard, CeibaInventoryOperatorPerformance, CeibaInventoryReportDispatch } from "../../lib/ceiba-inventory-types";
+import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard, CeibaInventoryOperatorPerformance, CeibaInventoryReportDispatch } from "../../lib/ceiba-inventory-types";
 import type { CeibaInventoryRole, CeibaInventoryUserAccount } from "../../lib/ceiba-inventory-auth-types";
 import { inventoryPermissions, rolePermissionMatrix, type InventoryActor, type InventoryAppRole, type InventoryPermission } from "../../lib/inventory-rbac";
 import {
@@ -19,6 +19,7 @@ import {
 type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
+  dailyProduction: CeibaInventoryDailyProduction[];
   initialAccounts: CeibaInventoryUserAccount[];
   operatorPerformance: CeibaInventoryOperatorPerformance[];
   reportDispatches: CeibaInventoryReportDispatch[];
@@ -29,9 +30,42 @@ type Props = {
 
 const roleOptions: CeibaInventoryRole[] = ["admin", "supervisor", "operator"];
 
+type PeriodKey = "today" | "week" | "month" | "custom";
+
+type AgentAggregate = {
+  login: string;
+  name: string;
+  cartons: number;
+  dossiers: number;
+  damagedCartons: number;
+  damagedDossiers: number;
+  total: number;
+};
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function endOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(23, 59, 59, 999);
+  return copy;
+}
+
+function formatDateDisplay(value: string) {
+  return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export default function AdminInventoryWorkspace({
   actor,
   dashboard,
+  dailyProduction,
   initialAccounts,
   operatorPerformance,
   reportDispatches,
@@ -47,6 +81,10 @@ export default function AdminInventoryWorkspace({
   const [message, setMessage] = useState<string | null>(tableMessage);
   const [form, setForm] = useState({ assignedRoom: "", email: "", employeeId: "", jobTitle: "", login: "", name: "", password: "", phone: "", role: "operator" as CeibaInventoryRole });
   const [roleEditorRole, setRoleEditorRole] = useState<InventoryAppRole>("ADMIN_CEIBA");
+  const [period, setPeriod] = useState<PeriodKey>("week");
+  const [customStart, setCustomStart] = useState(() => new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [customRolePermissions, setCustomRolePermissions] = useState<Record<InventoryAppRole, InventoryPermission[]>>({
     AGENT: rolePermissionMatrix.AGENT,
     SUPERVISEUR: rolePermissionMatrix.SUPERVISEUR,
@@ -65,6 +103,89 @@ export default function AdminInventoryWorkspace({
       return true;
     });
   }, [accounts, roleFilter, search, statusFilter]);
+
+  const selectedRange = useMemo(() => {
+    const today = new Date();
+    if (period === "today") return { start: startOfDay(today), end: endOfDay(today), label: "Aujourd'hui" };
+
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    if (period === "week") return { start: weekStart, end: weekEnd, label: "Cette semaine" };
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+    if (period === "month") return { start: monthStart, end: monthEnd, label: "Ce mois" };
+
+    const from = customStart ? new Date(`${customStart}T00:00:00`) : new Date(today.getFullYear(), today.getMonth(), 1);
+    const to = customEnd ? new Date(`${customEnd}T23:59:59`) : new Date();
+    return { start: from, end: to, label: "Période personnalisée" };
+  }, [customEnd, customStart, period]);
+
+  const filteredProduction = useMemo(() => {
+    if (!dailyProduction.length) return [];
+    return dailyProduction.filter((entry) => {
+      const value = new Date(entry.productionDate);
+      return value >= selectedRange.start && value <= selectedRange.end;
+    });
+  }, [dailyProduction, selectedRange]);
+
+  const productionSummary = useMemo(() => {
+    const source = filteredProduction.length ? filteredProduction : dailyProduction;
+    return source.reduce(
+      (totals, row) => {
+        totals.cartons += Number(row.cartonsCount ?? 0);
+        totals.dossiers += Number(row.dossiersCount ?? 0);
+        totals.damagedCartons += Number(row.damagedCartonsCount ?? 0);
+        totals.damagedDossiers += Number(row.damagedDossiersCount ?? 0);
+        return totals;
+      },
+      { cartons: 0, dossiers: 0, damagedCartons: 0, damagedDossiers: 0 },
+    );
+  }, [dailyProduction, filteredProduction]);
+
+  const agentRows = useMemo<AgentAggregate[]>(() => {
+    const map = new Map<string, AgentAggregate>();
+    const source = filteredProduction.length ? filteredProduction : dailyProduction;
+
+    for (const row of source) {
+      const key = row.operatorLogin || row.operatorName || "inconnu";
+      const current = map.get(key) ?? { login: key, name: row.operatorName || "Inconnu", cartons: 0, dossiers: 0, damagedCartons: 0, damagedDossiers: 0, total: 0 };
+      current.cartons += Number(row.cartonsCount ?? 0);
+      current.dossiers += Number(row.dossiersCount ?? 0);
+      current.damagedCartons += Number(row.damagedCartonsCount ?? 0);
+      current.damagedDossiers += Number(row.damagedDossiersCount ?? 0);
+      current.total = current.cartons + current.dossiers;
+      map.set(key, current);
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [dailyProduction, filteredProduction]);
+
+  const topAgents = agentRows.slice(0, 5);
+  const maxAgentValue = Math.max(...agentRows.map((row) => row.total), 1);
+  const selectedAgentRow = selectedAgent ? agentRows.find((row) => row.name === selectedAgent) ?? agentRows[0] ?? null : agentRows[0] ?? null;
+
+  const dateSeries = useMemo(() => {
+    const map = new Map<string, { cartons: number; dossiers: number; damagedCartons: number; damagedDossiers: number }>();
+    const source = filteredProduction.length ? filteredProduction : dailyProduction;
+
+    for (const row of source) {
+      const key = formatDateDisplay(row.productionDate);
+      const current = map.get(key) ?? { cartons: 0, dossiers: 0, damagedCartons: 0, damagedDossiers: 0 };
+      current.cartons += Number(row.cartonsCount ?? 0);
+      current.dossiers += Number(row.dossiersCount ?? 0);
+      current.damagedCartons += Number(row.damagedCartonsCount ?? 0);
+      current.damagedDossiers += Number(row.damagedDossiersCount ?? 0);
+      map.set(key, current);
+    }
+
+    return Array.from(map.entries()).map(([label, values]) => ({ label, values }));
+  }, [dailyProduction, filteredProduction]);
 
   const nav = [
     { key: "overview", label: "Vue d'ensemble", href: "/inventaire/admin" },
@@ -192,45 +313,130 @@ export default function AdminInventoryWorkspace({
         {section === "overview" && (
           <>
             <section className="ceiba-panel inventory-print-hide">
-              <div className="ceiba-kpi-grid">
-                <article className="ceiba-stat-card"><p>Total comptes</p><strong>{accounts.length}</strong></article>
-                <article className="ceiba-stat-card"><p>Comptes actifs</p><strong>{accounts.filter((account) => account.status === "active").length}</strong></article>
-                <article className="ceiba-stat-card"><p>Fiches total</p><strong>{dashboard.totalRecords}</strong></article>
-                <article className="ceiba-stat-card"><p>Fiches en attente</p><strong>{dashboard.newRecords + dashboard.reviewedRecords}</strong></article>
+              <div className="ceiba-filter-row">
+                <div className="segmented-control" role="tablist" aria-label="Période du dashboard">
+                  {(["today", "week", "month"]).map((option) => (
+                    <button key={option} type="button" className={period === option ? "active" : ""} onClick={() => setPeriod(option as PeriodKey)}>
+                      {option === "today" ? "Aujourd'hui" : option === "week" ? "Cette semaine" : "Ce mois"}
+                    </button>
+                  ))}
+                  <button type="button" className={period === "custom" ? "active" : ""} onClick={() => setPeriod("custom")}>Personnalisé</button>
+                </div>
+
+                {period === "custom" && (
+                  <div className="date-range-row">
+                    <label>
+                      <span>Début</span>
+                      <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
+                    </label>
+                    <label>
+                      <span>Fin</span>
+                      <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
+                    </label>
+                  </div>
+                )}
               </div>
             </section>
-            <section className="ceiba-panel operator-performance-panel">
+
+            <section className="ceiba-panel">
+              <div className="ceiba-kpi-grid">
+                <article className="ceiba-stat-card"><p>Cartons traités</p><strong>{productionSummary.cartons.toLocaleString("fr-FR")}</strong><small>{selectedRange.label}</small></article>
+                <article className="ceiba-stat-card"><p>Dossiers traités</p><strong>{productionSummary.dossiers.toLocaleString("fr-FR")}</strong><small>{selectedRange.label}</small></article>
+                <article className="ceiba-stat-card"><p>Cartons dégradés</p><strong>{productionSummary.damagedCartons.toLocaleString("fr-FR")}</strong><small>À surveiller</small></article>
+                <article className="ceiba-stat-card"><p>Dossiers dégradés</p><strong>{productionSummary.damagedDossiers.toLocaleString("fr-FR")}</strong><small>État documentaire</small></article>
+              </div>
+            </section>
+
+            <section className="ceiba-panel">
               <div className="ceiba-panel-head inventory-print-head">
                 <div>
-                  <p className="panel-label">Production terrain</p>
-                  <h3>Suivi des operateurs d&apos;inventaire</h3>
+                  <p className="panel-label">Évolution de la production</p>
+                  <h3>{selectedRange.label}</h3>
                 </div>
                 <div className="table-actions inventory-print-hide">
                   <button className="secondary-button" onClick={exportOperatorPerformance} type="button">Exporter Excel (CSV)</button>
                   <button className="primary-button" onClick={printOperatorPerformance} type="button">Exporter PDF</button>
                 </div>
               </div>
-              <div className="operator-performance-summary">
-                <span>{operatorPerformance.length} operateur(s) actif(s)</span>
-                <span>{operatorPerformance.reduce((sum, item) => sum + item.processedRecords, 0)} dossier(s) traite(s)</span>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Operateur</th><th>Fiches creees</th><th>Nouveau</th><th>En revue</th><th>Traite</th><th>Bloque</th><th>Avancement</th></tr></thead>
-                  <tbody>
-                    {operatorPerformance.map((item) => {
-                      const completion = item.totalRecords ? Math.round((item.processedRecords / item.totalRecords) * 100) : 0;
-                      return <tr key={item.login}>
-                        <td><strong>{item.name}</strong><span>{[item.employeeId, item.assignedRoom, item.login].filter(Boolean).join(" · ")}</span></td>
-                        <td>{item.totalRecords}</td><td>{item.newRecords}</td><td>{item.reviewedRecords}</td><td>{item.processedRecords}</td><td>{item.blockedRecords}</td>
-                        <td><div className="operator-progress"><div><i style={{ width: `${completion}%` }} /></div><strong>{completion}%</strong></div></td>
-                      </tr>;
-                    })}
-                  </tbody>
-                </table>
-                {!operatorPerformance.length && <EmptyState title="Aucun operateur actif" description="Les statistiques apparaissent dès que des comptes operateurs et des fiches sont disponibles dans la base CEIBA." />}
+
+              <div className="chart-bars">
+                {dateSeries.length ? dateSeries.map(({ label, values }) => {
+                  const height = clamp((values.cartons / Math.max(...dateSeries.map((point) => point.values.cartons), 1)) * 100, 8, 100);
+                  return (
+                    <div key={label} className="chart-bar-group">
+                      <div className="chart-bar" style={{ height: `${height}%` }} title={`${label}: ${values.cartons} cartons`} />
+                      <span>{label}</span>
+                    </div>
+                  );
+                }) : <p className="empty-text">Aucune donnée de production disponible pour cette période.</p>}
               </div>
             </section>
+
+            <section className="ceiba-panel">
+              <div className="ceiba-panel-head">
+                <div>
+                  <p className="panel-label">Performance des agents</p>
+                  <h3>Production par opérateur</h3>
+                </div>
+              </div>
+
+              <div className="dashboard-double-column">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Agent</th><th>Cartons</th><th>Dossiers</th><th>Dégradés</th><th>Total</th></tr></thead>
+                    <tbody>
+                      {agentRows.map((row) => (
+                        <tr key={row.login} className={selectedAgentRow?.name === row.name ? "selected-row" : ""} onClick={() => setSelectedAgent(row.name)}>
+                          <td><strong>{row.name}</strong></td>
+                          <td>{row.cartons}</td>
+                          <td>{row.dossiers}</td>
+                          <td>{row.damagedCartons + row.damagedDossiers}</td>
+                          <td>{row.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="chart-vertical-panel">
+                  <p className="panel-label">Top opérateurs</p>
+                  <div className="ranking-list">
+                    {topAgents.map((row, index) => (
+                      <div key={row.login} className="ranking-row">
+                        <span>{index + 1}.</span>
+                        <div className="ranking-bar-wrap">
+                          <div className="ranking-meta">
+                            <strong>{row.name}</strong>
+                            <small>{row.total} points</small>
+                          </div>
+                          <div className="ranking-bar">
+                            <i style={{ width: `${(row.total / maxAgentValue) * 100}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {selectedAgentRow && (
+              <section className="ceiba-panel">
+                <div className="ceiba-panel-head">
+                  <div>
+                    <p className="panel-label">Performance détaillée</p>
+                    <h3>{selectedAgentRow.name}</h3>
+                  </div>
+                  <span className="production-date">Total {selectedAgentRow.total}</span>
+                </div>
+                <div className="agent-detail-grid">
+                  <article><span>Cartons</span><strong>{selectedAgentRow.cartons}</strong></article>
+                  <article><span>Dossiers</span><strong>{selectedAgentRow.dossiers}</strong></article>
+                  <article><span>Cartons dégradés</span><strong>{selectedAgentRow.damagedCartons}</strong></article>
+                  <article><span>Dossiers dégradés</span><strong>{selectedAgentRow.damagedDossiers}</strong></article>
+                </div>
+              </section>
+            )}
           </>
         )}
 
