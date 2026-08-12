@@ -536,7 +536,7 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
                 onDraft={queueCurrentDraft}
                 onNext={nextStep}
                 submitMode={activeStep === "validation"}
-                hideBack
+                hideBack={true}
               />
             </section>
           </PermissionGuard>
