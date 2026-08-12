@@ -10,7 +10,7 @@ export default async function CeibaInventoryPage() {
     redirect("/inventaire/login");
   }
 
-  if (hasInventoryPermission(actor.permissions, "inventory.users.manage")) {
+  if (hasInventoryPermission(actor.permissions, "inventory.dashboard.view")) {
     redirect("/inventaire/admin");
   }
 

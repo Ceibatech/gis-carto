@@ -20,7 +20,7 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
     redirect("/inventaire/login");
   }
 
-  if (!hasAnyInventoryPermission(actor.permissions, ["inventory.users.manage", "inventory.roles.manage", "inventory.audit.view"])) {
+  if (!hasAnyInventoryPermission(actor.permissions, ["inventory.dashboard.view", "inventory.users.manage", "inventory.roles.manage", "inventory.audit.view", "inventory.record.export"])) {
     redirect("/inventaire/acces-refuse");
   }
 

@@ -11,6 +11,10 @@ export default async function InventairePage() {
   const actor = await getInventoryActorFromServerCookies();
   if (!actor) redirect("/inventaire/login");
 
+  if (hasInventoryPermission(actor.permissions, "inventory.dashboard.view") && !hasInventoryPermission(actor.permissions, "inventory.record.create")) {
+    redirect("/inventaire/admin");
+  }
+
   const { dashboard, dailyProduction } = await getCeibaInventoryProductionSnapshot();
 
   return <UserInventoryWorkspace actor={actor} dashboard={dashboard} dailyProduction={dailyProduction} view="registre" />;
