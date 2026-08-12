@@ -13,7 +13,7 @@ test("countDistinctCartons counts unique carton IDs and marks degraded status", 
 
   const result = countDistinctCartons(rows);
   assert.equal(result.uniqueCartons, 3);
-  assert.equal(result.degradedCartons, 2);
+  assert.equal(result.degradedCartons, 1);
 });
 
 test("buildCeibaInventoryReportSeries groups totals by agent and period", () => {

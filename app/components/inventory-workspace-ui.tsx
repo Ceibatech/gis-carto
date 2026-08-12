@@ -179,16 +179,18 @@ export function StickyActions({
   onNext,
   submitMode,
   disabled,
+  hideBack = false,
 }: {
   onBack: () => void;
   onDraft: () => void;
   onNext: () => void;
   submitMode: boolean;
   disabled?: boolean;
+  hideBack?: boolean;
 }) {
   return (
     <div className="inventory-sticky-actions">
-      <button type="button" className="ghost-button" onClick={onBack}>Retour</button>
+      {!hideBack && <button type="button" className="ghost-button" onClick={onBack}>Retour</button>}
       <button type="button" className="secondary-button" onClick={onDraft}>Enregistrer comme brouillon</button>
       <button type="button" className="primary-button" onClick={onNext} disabled={disabled}>
         {submitMode ? "Soumettre la fiche" : "Continuer"}
