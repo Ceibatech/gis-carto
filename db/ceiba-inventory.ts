@@ -238,19 +238,18 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
     const pool = getPool();
     const [rows] = await pool.query<OperatorPerformanceRow[]>(`
       select
-        coalesce(users.login, forms.created_by) as login,
-        coalesce(users.full_name, forms.created_by) as name,
-        users.employee_id,
-        users.assigned_room,
-        count(forms.id) as total_records,
-        sum(case when forms.status = 'new' then 1 else 0 end) as new_records,
-        sum(case when forms.status = 'review' then 1 else 0 end) as reviewed_records,
-        sum(case when forms.status = 'processed' then 1 else 0 end) as processed_records,
-        sum(case when forms.status = 'blocked' then 1 else 0 end) as blocked_records
-      from ceiba_inventory_forms forms
-      left join ceiba_inventory_users users on lower(users.login) = lower(forms.created_by)
-      group by users.id, users.login, users.full_name, users.employee_id, users.assigned_room, forms.created_by
-      order by total_records desc, processed_records desc, name asc
+        agent_login as login,
+        agent_name as name,
+        null as employee_id,
+        null as assigned_room,
+        sum(cartons_count + dossiers_count) as total_records,
+        0 as new_records,
+        0 as reviewed_records,
+        sum(cartons_count + dossiers_count) as processed_records,
+        0 as blocked_records
+      from ceiba_inventory_agent_daily_points
+      group by agent_login, agent_name
+      order by total_records desc, name asc
     `);
 
     return rows.map((row) => ({
@@ -265,7 +264,39 @@ export async function getCeibaInventoryOperatorPerformance(): Promise<CeibaInven
       totalRecords: Number(row.total_records ?? 0),
     }));
   } catch {
-    return [];
+    try {
+      const pool = getPool();
+      const [rows] = await pool.query<OperatorPerformanceRow[]>(`
+        select
+          coalesce(users.login, forms.created_by) as login,
+          coalesce(users.full_name, forms.created_by) as name,
+          users.employee_id,
+          users.assigned_room,
+          count(forms.id) as total_records,
+          sum(case when forms.status = 'new' then 1 else 0 end) as new_records,
+          sum(case when forms.status = 'review' then 1 else 0 end) as reviewed_records,
+          sum(case when forms.status = 'processed' then 1 else 0 end) as processed_records,
+          sum(case when forms.status = 'blocked' then 1 else 0 end) as blocked_records
+        from ceiba_inventory_forms forms
+        left join ceiba_inventory_users users on lower(users.login) = lower(forms.created_by)
+        group by users.id, users.login, users.full_name, users.employee_id, users.assigned_room, forms.created_by
+        order by total_records desc, processed_records desc, name asc
+      `);
+
+      return rows.map((row) => ({
+        blockedRecords: Number(row.blocked_records ?? 0),
+        assignedRoom: row.assigned_room,
+        employeeId: row.employee_id,
+        login: row.login,
+        name: row.name,
+        newRecords: Number(row.new_records ?? 0),
+        processedRecords: Number(row.processed_records ?? 0),
+        reviewedRecords: Number(row.reviewed_records ?? 0),
+        totalRecords: Number(row.total_records ?? 0),
+      }));
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -497,32 +528,69 @@ function escapeHtml(value: string) {
 
 export async function getCeibaInventoryDailyProduction(): Promise<CeibaInventoryDailyProduction[]> {
   if (!isDatabaseConfigured()) return [];
+
   try {
     const pool = getPool();
-    const [rows] = await pool.query<Array<RowDataPacket & { production_date: string; operator_login: string; operator_name: string; assigned_room: string | null; cartons_count: number; dossiers_count: number; damaged_cartons_count: number | null; damaged_dossiers_count: number | null; source: "daily" | "historical" }>>(`
-      select production_date, operator_login, operator_name, assigned_room, cartons_count, dossiers_count,
-        damaged_cartons_count, damaged_dossiers_count, source
-      from (
-        select production_date, operator_login, operator_name, assigned_room,
-          sum(cartons_count) as cartons_count, sum(dossiers_count) as dossiers_count,
-          sum(damaged_cartons_count) as damaged_cartons_count, sum(damaged_dossiers_count) as damaged_dossiers_count,
-          'daily' as source
-        from ceiba_inventory_daily_production
-        group by production_date, operator_login, operator_name, assigned_room
-        union all
-        select date(forms.created_at) as production_date, forms.created_by as operator_login, forms.created_by as operator_name, null as assigned_room,
-          count(forms.id) as cartons_count, count(forms.id) as dossiers_count,
-          null as damaged_cartons_count, null as damaged_dossiers_count, 'historical' as source
-        from ceiba_inventory_forms forms
-        where forms.created_by is not null
-          and not exists (select 1 from ceiba_inventory_daily_production daily where lower(daily.operator_login) = lower(forms.created_by))
-        group by date(forms.created_at), forms.created_by
-      ) production
-      order by production_date desc, dossiers_count desc, operator_name asc
+    const [rows] = await pool.query<Array<RowDataPacket & {
+      production_day: string;
+      agent_login: string;
+      agent_name: string;
+      cartons_count: number;
+      dossiers_count: number;
+      damaged_cartons_count: number | null;
+      damaged_dossiers_count: number | null;
+    }>>(`
+      select
+        production_day,
+        agent_login,
+        agent_name,
+        cartons_count,
+        dossiers_count,
+        damaged_cartons_count,
+        damaged_dossiers_count
+      from ceiba_inventory_agent_daily_points
+      order by production_day desc, agent_name asc
     `);
-    return rows.map((row) => ({ productionDate: row.production_date, operatorLogin: row.operator_login, operatorName: row.operator_name, assignedRoom: row.assigned_room, cartonsCount: Number(row.cartons_count), dossiersCount: Number(row.dossiers_count), damagedCartonsCount: row.damaged_cartons_count === null ? null : Number(row.damaged_cartons_count), damagedDossiersCount: row.damaged_dossiers_count === null ? null : Number(row.damaged_dossiers_count), source: row.source }));
+
+    return rows.map((row) => ({
+      productionDate: row.production_day,
+      operatorLogin: row.agent_login,
+      operatorName: row.agent_name,
+      assignedRoom: null,
+      cartonsCount: Number(row.cartons_count ?? 0),
+      dossiersCount: Number(row.dossiers_count ?? 0),
+      damagedCartonsCount: row.damaged_cartons_count === null ? null : Number(row.damaged_cartons_count),
+      damagedDossiersCount: row.damaged_dossiers_count === null ? null : Number(row.damaged_dossiers_count),
+      source: "daily",
+    }));
   } catch {
-    return [];
+    try {
+      const pool = getPool();
+      const [rows] = await pool.query<Array<RowDataPacket & { production_date: string; operator_login: string; operator_name: string; assigned_room: string | null; cartons_count: number; dossiers_count: number; damaged_cartons_count: number | null; damaged_dossiers_count: number | null; source: "daily" | "historical" }>>(`
+        select production_date, operator_login, operator_name, assigned_room, cartons_count, dossiers_count,
+          damaged_cartons_count, damaged_dossiers_count, source
+        from (
+          select production_date, operator_login, operator_name, assigned_room,
+            sum(cartons_count) as cartons_count, sum(dossiers_count) as dossiers_count,
+            sum(damaged_cartons_count) as damaged_cartons_count, sum(damaged_dossiers_count) as damaged_dossiers_count,
+            'daily' as source
+          from ceiba_inventory_daily_production
+          group by production_date, operator_login, operator_name, assigned_room
+          union all
+          select date(forms.created_at) as production_date, forms.created_by as operator_login, forms.created_by as operator_name, null as assigned_room,
+            count(forms.id) as cartons_count, count(forms.id) as dossiers_count,
+            null as damaged_cartons_count, null as damaged_dossiers_count, 'historical' as source
+          from ceiba_inventory_forms forms
+          where forms.created_by is not null
+            and not exists (select 1 from ceiba_inventory_daily_production daily where lower(daily.operator_login) = lower(forms.created_by))
+          group by date(forms.created_at), forms.created_by
+        ) production
+        order by production_date desc, dossiers_count desc, operator_name asc
+      `);
+      return rows.map((row) => ({ productionDate: row.production_date, operatorLogin: row.operator_login, operatorName: row.operator_name, assignedRoom: row.assigned_room, cartonsCount: Number(row.cartons_count), dossiersCount: Number(row.dossiers_count), damagedCartonsCount: row.damaged_cartons_count === null ? null : Number(row.damaged_cartons_count), damagedDossiersCount: row.damaged_dossiers_count === null ? null : Number(row.damaged_dossiers_count), source: row.source }));
+    } catch {
+      return [];
+    }
   }
 }
 
