@@ -1141,7 +1141,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const isAccountsView = activeView === "Gestion des comptes";
   const showWorkspaceFilters = !isAccountsView && activeView !== "Vue executive";
-  const [agentRegistryTab, setAgentRegistryTab] = useState<"dashboard" | "terrain" | "inventory">("dashboard");
+  const [agentRegistryTab, setAgentRegistryTab] = useState<"terrain" | "inventory">("terrain");
   const inventoryActor = useMemo(() => {
     if (!session) return null;
     const role = session.role === "admin" ? "root-admin" : session.role === "executive" ? "supervisor" : "operator";
@@ -1232,7 +1232,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         <nav className="agent-registry-tabs" aria-label="Navigation du registre terrain">
           {([
-            { key: "dashboard", label: "Dashboard" },
             { key: "terrain", label: "Fiche du site" },
             { key: "inventory", label: "Inventaire" },
           ] as const).map((tab) => (
@@ -1246,12 +1245,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             </button>
           ))}
         </nav>
-
-        {agentRegistryTab === "dashboard" && inventoryActor && (
-          <section className="agent-form-frame" aria-label="Dashboard production">
-            <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="dashboard" defaultOverview />
-          </section>
-        )}
 
         {agentRegistryTab === "terrain" && (
           <section className="agent-form-frame" aria-label="Fiche du site">
@@ -1624,6 +1617,88 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
           <p>Suivi des indicateurs de production calculés sur les données journalières enregistrées.</p>
         </div>
       </article>
+
+      <div className="executive-kpi-strip" aria-label="Indicateurs de production">
+        <ExecutiveMetric label="Sites recensés" value={formatNumber(totals.sites)} detail={`${formatNumber(totals.evaluated)} évalués`} tone={totals.sites ? "good" : "neutral"} />
+        <ExecutiveMetric label="Volume déclaré" value={`${formatNumber(totals.meters)} ml`} detail={`${formatNumber(totals.pages)} pages`} tone={totals.meters ? "good" : "neutral"} />
+        <ExecutiveMetric label="Avancement moyen" value={`${totals.progress}%`} detail="Suivi global" tone={totals.progress >= 50 ? "good" : "watch"} />
+        <ExecutiveMetric label="Sites critiques" value={formatNumber(totals.critical)} detail={totals.critical ? "Action immédiate" : "Aucun blocage immédiat"} tone={totals.critical ? "critical" : "good"} />
+      </div>
+
+      <div className="executive-panel-grid">
+        <article className="executive-panel">
+          <div className="section-head">
+            <div>
+              <p className="panel-label">Répartition du risque</p>
+              <h3>Portefeuille</h3>
+            </div>
+          </div>
+          <div className="executive-band-list">
+            {riskBands.map((item) => (
+              <div className="executive-band-row" key={item.label}>
+                <span>{item.label}</span>
+                <div className="mini-progress"><div style={{ width: `${totalSites ? Math.max(8, (item.value / totalSites) * 100) : 0}%` }} className={`tone-${item.tone}`} /></div>
+                <strong>{formatNumber(item.value)}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="executive-panel">
+          <div className="section-head">
+            <div>
+              <p className="panel-label">Qualité des données</p>
+              <h3>État du portefeuille</h3>
+            </div>
+          </div>
+          <div className="executive-band-list">
+            {dataQualityItems.map((item) => (
+              <div className="executive-band-row" key={item.label}>
+                <span>{item.label}</span>
+                <div className="mini-progress"><div style={{ width: `${Math.max(8, item.value)}%` }} className="tone-good" /></div>
+                <strong>{item.value}%</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="executive-panel full-width">
+          <div className="section-head">
+            <div>
+              <p className="panel-label">Synthèse régionale</p>
+              <h3>Performance par région</h3>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Région</th>
+                  <th>Sites</th>
+                  <th>Risque moyen</th>
+                  <th>Progression</th>
+                  <th>GPS manquant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regionalPortfolio.length ? regionalPortfolio.map((item) => (
+                  <tr key={item.region}>
+                    <td>{item.region}</td>
+                    <td>{formatNumber(item.sites)}</td>
+                    <td>{item.averageRisk}</td>
+                    <td>{item.averageProgress}%</td>
+                    <td>{formatNumber(item.gpsMissing)}</td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="empty-text">Aucune donnée régionale disponible.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
     </section>
   );
 }
