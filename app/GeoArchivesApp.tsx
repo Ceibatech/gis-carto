@@ -639,7 +639,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
   const [missionPhase, setMissionPhase] = useState("Tous");
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState(initialData.sites[0]?.code ?? "");
-  const [inventoryDashboardTab, setInventoryDashboardTab] = useState<"dashboard" | "form">("dashboard");
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [captureSyncStatus, setCaptureSyncStatus] = useState<CaptureSyncStatus>("offlineSaved");
@@ -1347,33 +1346,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
         {activeView === "Dashboard inventaire" && inventoryActor && (
           <section className="agent-form-frame" aria-label="Dashboard inventaire">
-            <div className="inventory-subtabs" role="tablist" aria-label="Sous-onglets inventaire">
-              <button
-                type="button"
-                className={inventoryDashboardTab === "dashboard" ? "secondary-button active" : "secondary-button"}
-                onClick={() => setInventoryDashboardTab("dashboard")}
-                role="tab"
-                aria-selected={inventoryDashboardTab === "dashboard"}
-              >
-                Dashboard
-              </button>
-              <button
-                type="button"
-                className={inventoryDashboardTab === "form" ? "secondary-button active" : "secondary-button"}
-                onClick={() => setInventoryDashboardTab("form")}
-                role="tab"
-                aria-selected={inventoryDashboardTab === "form"}
-              >
-                Fiche inventaire
-              </button>
-            </div>
-            <UserInventoryWorkspace
-              actor={inventoryActor}
-              dashboard={emptyInventoryDashboard}
-              view="dashboard"
-              defaultOverview={inventoryDashboardTab === "dashboard"}
-              inventoryTab={inventoryDashboardTab}
-            />
+            <UserInventoryWorkspace actor={inventoryActor} dashboard={emptyInventoryDashboard} view="dashboard" defaultOverview />
           </section>
         )}
 
