@@ -15,7 +15,7 @@ import type {
 } from "../lib/geoarchives-types";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import type { AuthRole, AuthSession, LoginResponse, UserAccount, UserAccountsResponse, UserStartApplication } from "../lib/geoarchives-auth-types";
-import type { CeibaInventoryDashboard } from "../lib/ceiba-inventory-types";
+import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard } from "../lib/ceiba-inventory-types";
 import { buildInventoryActor } from "../lib/inventory-rbac";
 import { abidjanDepartment, abidjanDistrictName, abidjanRegionLabel, abidjanSubPrefectures, abidjanUrbanSubPrefecture, allRgphRegions, rgphDistricts } from "../lib/rgph-territories";
 import UserInventoryWorkspace from "./inventaire/UserInventoryWorkspace";
@@ -1165,7 +1165,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
     uniqueCommunes: 0,
   }), []);
   const [inventoryDashboard, setInventoryDashboard] = useState<CeibaInventoryDashboard>(emptyInventoryDashboard);
-  const [dailyProduction, setDailyProduction] = useState<Array<{ operatorName: string; productionDate: string; cartonsCount: number; dossiersCount: number }>>([]);
+  const [dailyProduction, setDailyProduction] = useState<CeibaInventoryDailyProduction[]>([]);
 
   const loadInventoryDashboard = useCallback(async () => {
     if (!inventoryActor) {
@@ -1178,7 +1178,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
       const response = await fetch("/api/inventaire-ceiba?view=production", {
         headers: { accept: "application/json" },
       });
-      const payload = await readJsonResponse<{ dashboard?: CeibaInventoryDashboard; dailyProduction?: Array<{ operatorName: string; productionDate: string; cartonsCount: number; dossiersCount: number }>; message?: string }>(response);
+      const payload = await readJsonResponse<{ dashboard?: CeibaInventoryDashboard; dailyProduction?: CeibaInventoryDailyProduction[]; message?: string }>(response);
 
       if (!response.ok || !payload || typeof payload !== "object") {
         throw new Error("message" in payload && typeof payload.message === "string" && payload.message ? payload.message : "Dashboard inventaire indisponible.");

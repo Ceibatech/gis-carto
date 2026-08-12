@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { buildCeibaProductionMetrics } from "../../lib/ceiba-inventory-reports";
-import type { CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
+import type { CeibaInventoryDailyProduction, CeibaInventoryDashboard, CeibaInventoryInput, CeibaInventoryRecord, CeibaInventoryStatusLabel } from "../../lib/ceiba-inventory-types";
 import { abidjanSubPrefectures, rgphDistricts } from "../../lib/rgph-territories";
 import type { InventoryActor, InventoryPermission } from "../../lib/inventory-rbac";
 import {
@@ -73,12 +73,7 @@ type StepId = (typeof stepDefs)[number]["id"];
 type Props = {
   actor: InventoryActor;
   dashboard: CeibaInventoryDashboard;
-  dailyProduction?: Array<{
-    operatorName: string;
-    productionDate: string;
-    cartonsCount: number;
-    dossiersCount: number;
-  }>;
+  dailyProduction?: CeibaInventoryDailyProduction[];
   view: "dashboard" | "registre";
   defaultOverview?: boolean;
 };
@@ -109,20 +104,36 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const isOverviewTab = searchParams.get("tab") === "overview" || defaultOverview;
   const workspaceTitle = view === "registre" ? "Registre des fiches" : isOverviewTab ? "Dashboard production" : "Inventaire";
+  const productionRows = useMemo(() => {
+    if (dailyProduction.length) {
+      return [...dailyProduction].sort((a, b) => {
+        const dateCompare = new Date(b.productionDate).getTime() - new Date(a.productionDate).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        return (b.cartonsCount + b.dossiersCount) - (a.cartonsCount + a.dossiersCount);
+      });
+    }
+
+    return dashboard.recentRecords.slice(0, 8).map((record) => ({
+      operatorLogin: record.createdBy ?? "inconnu",
+      operatorName: record.createdBy ?? "Inconnu",
+      productionDate: record.createdAt,
+      assignedRoom: "Non renseignée",
+      cartonsCount: record.cartonId ? 1 : 0,
+      dossiersCount: record.caseNature ? 1 : 0,
+      damagedCartonsCount: record.cartonDamaged ? 1 : 0,
+      damagedDossiersCount: record.dossierDamaged ? 1 : 0,
+      source: "historical" as const,
+    }));
+  }, [dailyProduction, dashboard.recentRecords]);
+
   const productionMetrics = useMemo(() => buildCeibaProductionMetrics(
-    dailyProduction.length
-      ? dailyProduction.map((entry) => ({
-          agent: entry.operatorName || "inconnu",
-          createdAt: entry.productionDate,
-          cartonsCount: entry.cartonsCount,
-        }))
-      : dashboard.recentRecords.map((record) => ({
-          agent: record.createdBy ?? "inconnu",
-          createdAt: record.createdAt,
-          cartonsCount: record.cartonId ? 1 : 0,
-        })),
+    productionRows.map((entry) => ({
+      agent: entry.operatorName || entry.operatorLogin || "inconnu",
+      createdAt: entry.productionDate,
+      cartonsCount: entry.cartonsCount,
+    })),
     new Date(),
-  ), [dailyProduction, dashboard.recentRecords]);
+  ), [productionRows]);
 
   const queueKey = `inventory-ceiba-queue-${actor.login}`;
   const draftKey = `inventory-ceiba-draft-${actor.login}`;
@@ -372,34 +383,38 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
         {view === "dashboard" && isOverviewTab && has(actor.permissions, "inventory.dashboard.view") && (
           <section className="ceiba-panel">
             <div className="ceiba-kpi-grid">
-              <article className="ceiba-stat-card"><p>Production aujourd&apos;hui</p><strong>{productionMetrics.todayProduction}</strong><small>points</small></article>
-              <article className="ceiba-stat-card"><p>Cette semaine</p><strong>{productionMetrics.weekProduction}</strong><small>points</small></article>
-              <article className="ceiba-stat-card"><p>Ce mois</p><strong>{productionMetrics.monthProduction}</strong><small>points</small></article>
-              <article className="ceiba-stat-card"><p>Agents actifs</p><strong>{productionMetrics.activeAgents}</strong><small>opérateurs</small></article>
+              <article className="ceiba-stat-card"><p>Production aujourd&apos;hui</p><strong>{productionMetrics.todayProduction}</strong><small>cartons</small></article>
+              <article className="ceiba-stat-card"><p>Production semaine</p><strong>{productionMetrics.weekProduction}</strong><small>cartons</small></article>
+              <article className="ceiba-stat-card"><p>Production mois</p><strong>{productionMetrics.monthProduction}</strong><small>cartons</small></article>
+              <article className="ceiba-stat-card"><p>Cumul</p><strong>{productionMetrics.totalProduction}</strong><small>cartons</small></article>
             </div>
 
             <div className="ceiba-analytics-grid">
               <article className="ceiba-panel-sub">
-                <h3>Performance des agents</h3>
+                <h3>Suivi de production par opérateur</h3>
                 <div className="table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        <th>Agent</th>
-                        <th>Aujourd&apos;hui</th>
-                        <th>Semaine</th>
-                        <th>Mois</th>
-                        <th>Cumul</th>
+                        <th>Opérateur</th>
+                        <th>Salle / localisation</th>
+                        <th>Date production</th>
+                        <th>Cartons</th>
+                        <th>Dossiers</th>
+                        <th>Cartons dégradés</th>
+                        <th>Dossiers dégradés</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {productionMetrics.byAgent.slice(0, 6).map((item) => (
-                        <tr key={item.agent}>
-                          <td>{item.agent}</td>
-                          <td>{item.today}</td>
-                          <td>{item.week}</td>
-                          <td>{item.month}</td>
-                          <td>{item.total}</td>
+                      {productionRows.map((item) => (
+                        <tr key={`${item.operatorLogin}-${item.productionDate}`}>
+                          <td><strong>{item.operatorName}</strong><span>{item.operatorLogin}</span></td>
+                          <td>{item.assignedRoom || "Non renseignée"}</td>
+                          <td>{new Date(item.productionDate).toLocaleDateString("fr-FR")}</td>
+                          <td>{item.cartonsCount}</td>
+                          <td>{item.dossiersCount}</td>
+                          <td>{item.damagedCartonsCount ?? 0}</td>
+                          <td>{item.damagedDossiersCount ?? 0}</td>
                         </tr>
                       ))}
                     </tbody>
