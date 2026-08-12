@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { ceibaInventoryAuthCookieName, verifyCeibaInventorySession } from "../lib/ceiba-inventory-auth";
 import { emptyGeoArchivesDashboard } from "../lib/empty-geoarchives-dashboard";
 import { getInitialGeoArchivesDashboard } from "../lib/geoarchives-dashboard-source";
 import { geoArchivesAuthCookieName, verifyAuthSession } from "../lib/geoarchives-auth";
@@ -16,9 +17,22 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const session = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
+  const geoSession = verifyAuthSession(cookieStore.get(geoArchivesAuthCookieName)?.value);
+  const ceibaSession = verifyCeibaInventorySession(cookieStore.get(ceibaInventoryAuthCookieName)?.value);
+  const session = geoSession ?? null;
 
-  if (session && (session.role === "admin" || session.role === "executive")) {
+  if (
+    geoSession && (
+      geoSession.role === "admin" ||
+      geoSession.role === "executive" ||
+      geoSession.startApplication === "inventory" ||
+      geoSession.landingView === "Gestion des comptes"
+    )
+  ) {
+    redirect("/inventaire/admin");
+  }
+
+  if (ceibaSession && (ceibaSession.role === "admin" || ceibaSession.role === "supervisor")) {
     redirect("/inventaire/admin");
   }
 
