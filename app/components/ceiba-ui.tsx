@@ -161,7 +161,7 @@ export function TopHeader({ title, breadcrumb, searchValue, onSearchChange, onCr
         </button>
         {onOpenGuide && (
           <button type="button" className="secondary-button" onClick={onOpenGuide}>
-            Guide d'utilisation
+            Guide d’utilisation
           </button>
         )}
         <div className="session-chip compact">

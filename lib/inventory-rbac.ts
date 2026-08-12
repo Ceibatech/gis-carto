@@ -23,7 +23,6 @@ export type InventoryAppRole = "AGENT" | "SUPERVISEUR" | "RESPONSABLE_CEIBA" | "
 
 export const rolePermissionMatrix: Record<InventoryAppRole, InventoryPermission[]> = {
   AGENT: [
-    "inventory.dashboard.view",
     "inventory.record.create",
     "inventory.record.read_own",
     "inventory.record.update_own",

@@ -1091,8 +1091,6 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   const loadInventoryDashboard = useCallback(async () => {
     if (!inventoryActor) {
-      setInventoryDashboard(emptyInventoryDashboard);
-      setDailyProduction([]);
       return;
     }
 
@@ -1124,11 +1122,29 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
 
   useEffect(() => {
     if (!inventoryActor) {
-      setInventoryDashboard(emptyInventoryDashboard);
       return;
     }
 
-    void loadInventoryDashboard();
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          await loadInventoryDashboard();
+        } catch (error) {
+          if (cancelled) return;
+          setInventoryDashboard({
+            ...emptyInventoryDashboard,
+            message: error instanceof Error ? error.message : "Dashboard inventaire indisponible.",
+          });
+          setDailyProduction([]);
+        }
+      })();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [emptyInventoryDashboard, inventoryActor, loadInventoryDashboard]);
 
   if (!session) {

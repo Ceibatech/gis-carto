@@ -125,8 +125,26 @@ export default function CeibaInventoryApp({
   mode?: CeibaInventoryAppMode;
   session: CeibaInventoryViewer;
 }) {
+  const [renderTime] = useState(() => Date.now());
+  const draftStorageKey = "ceiba-inventory-draft";
   const [dashboard, setDashboard] = useState(initialDashboard ?? defaultDashboard);
-  const [form, setForm] = useState<CeibaInventoryInput>(defaultForm);
+  const [form, setForm] = useState<CeibaInventoryInput>(() => {
+    if (typeof window === "undefined") {
+      return defaultForm;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(draftStorageKey);
+      if (!saved) {
+        return defaultForm;
+      }
+
+      return { ...defaultForm, ...JSON.parse(saved) as Partial<CeibaInventoryInput> };
+    } catch {
+      window.localStorage.removeItem(draftStorageKey);
+      return defaultForm;
+    }
+  });
   const [message, setMessage] = useState<string | null>(initialDashboard.message);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [login, setLogin] = useState("");
@@ -153,10 +171,7 @@ export default function CeibaInventoryApp({
   const [accountStatusFilter, setAccountStatusFilter] = useState<"all" | "active" | "disabled">("all");
   const [showUserDrawer, setShowUserDrawer] = useState(false);
   const [toast, setToast] = useState<UiToast | null>(null);
-  const [isUnsaved, setIsUnsaved] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-
-  const draftStorageKey = "ceiba-inventory-draft";
 
   const isAdmin = session?.role === "admin";
   const canSubmitInventory = session?.role === "admin" || session?.role === "operator";
@@ -182,7 +197,7 @@ export default function CeibaInventoryApp({
   }, [dashboard.recentRecords, form.caseNature]);
 
   const filteredOverviewRecords = useMemo(() => {
-    const now = Date.now();
+    const now = renderTime;
     const periodDays = periodFilter === "all" ? null : Number(periodFilter);
     return dashboard.recentRecords.filter((record) => {
       if (statusFilter !== "all" && record.status !== statusFilter) return false;
@@ -242,28 +257,13 @@ export default function CeibaInventoryApp({
     return !dashboard.schemaReady && !!process.env.NEXT_PUBLIC_GEOARCHIVES_API_BASE_URL;
   }, [dashboard.schemaReady]);
 
-  useEffect(() => {
-    setIsUnsaved(hasUnsavedChanges);
-  }, [hasUnsavedChanges]);
+  const isUnsaved = hasUnsavedChanges;
 
   useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [toast]);
-
-  useEffect(() => {
-    if (!session) return;
-    try {
-      const saved = window.localStorage.getItem(draftStorageKey);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as Partial<CeibaInventoryInput>;
-      setForm((current) => ({ ...current, ...parsed }));
-      setToast({ tone: "info", message: "Brouillon restaure localement." });
-    } catch {
-      window.localStorage.removeItem(draftStorageKey);
-    }
-  }, [session]);
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -367,27 +367,35 @@ export default function CeibaInventoryApp({
   }
 
   useEffect(() => {
-    if (isAdmin && accounts.length === 0 && !isLoadingAccounts) {
-      void refreshAccounts();
+    if (!(isAdmin && accounts.length === 0 && !isLoadingAccounts)) {
+      return;
     }
+
+    const timeout = window.setTimeout(() => {
+      void refreshAccounts();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [isAdmin, accounts.length, isLoadingAccounts]);
 
   useEffect(() => {
-    if (session) {
-      void refreshDashboard();
+    if (!session) {
+      return;
     }
-  }, [session]);
 
-  useEffect(() => {
-    setActiveSection(isQuestionnaireMode ? "new-record" : "overview");
-  }, [isQuestionnaireMode]);
+    const timeout = window.setTimeout(() => {
+      void refreshDashboard();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [session]);
 
   if (!session) {
     return (
       <main className="login-shell">
         <section className="login-hero" aria-label="Connexion CEIBA">
           <div className="login-brand"><span>CI</span><div><p className="eyebrow">CEIBA Inventory</p><strong>Module dédié</strong></div></div>
-          <div className="login-copy"><h1>Connexion CEIBA</h1><p>Accès réservé aux opérateurs et administrateurs du module Inventaire CEIBA. Après connexion, chaque profil est orienté vers son espace: questionnaire terrain ou portail d'administration.</p></div>
+          <div className="login-copy"><h1>Connexion CEIBA</h1><p>Accès réservé aux opérateurs et administrateurs du module Inventaire CEIBA. Après connexion, chaque profil est orienté vers son espace: questionnaire terrain ou portail d&apos;administration.</p></div>
         </section>
         <form className="login-panel" onSubmit={handleLogin}>
           <div className="login-panel-head"><p className="panel-label">Accès CEIBA</p><h2>Se connecter</h2></div>
@@ -491,7 +499,7 @@ export default function CeibaInventoryApp({
         {!isQuestionnaireMode && visibleSection === "overview" && <section className="ceiba-panel" id="overview">
           <div className="ceiba-panel-head">
             <div>
-              <p className="panel-label">Vue d'ensemble</p>
+              <p className="panel-label">Vue d&apos;ensemble</p>
               <h3>Indicateurs et activite fonciere</h3>
             </div>
             <div className="ceiba-filter-row">
@@ -644,7 +652,7 @@ export default function CeibaInventoryApp({
             {!accountsTableReady && (
               <TechnicalAlert
                 title="Configuration comptes CEIBA incomplete"
-                description={accountsMessage ?? "La table ceiba_inventory_users est indisponible. Executez sql/005_create_ceiba_inventory.sql puis relancez l'actualisation."}
+                description={accountsMessage ?? "La table ceiba_inventory_users est indisponible. Executez sql/005_create_ceiba_inventory.sql puis relancez l&apos;actualisation."}
                 actionLabel="Actualiser"
                 onAction={() => void refreshAccounts()}
               />
@@ -708,7 +716,7 @@ export default function CeibaInventoryApp({
                   </select>
                 </label>
                 <p className="capture-helper">Le statut est prepare pour le workflow admin. La creation conserve la logique API actuelle.</p>
-                <p className="capture-helper">Profil choisi: {adminForm.role === "admin" ? "peut gerer les comptes et suivre le dashboard" : adminForm.role === "supervisor" ? "peut consulter le dashboard sans saisir ni gerer les comptes" : "peut saisir les fiches et suivre l'activite"}.</p>
+                <p className="capture-helper">Profil choisi: {adminForm.role === "admin" ? "peut gerer les comptes et suivre le dashboard" : adminForm.role === "supervisor" ? "peut consulter le dashboard sans saisir ni gerer les comptes" : "peut saisir les fiches et suivre l&apos;activite"}.</p>
                 {adminFormMessage && <p className="form-message">{adminFormMessage}</p>}
                 <div className="ceiba-drawer-actions">
                   <button className="ghost-button" type="button" onClick={() => setShowUserDrawer(false)}>Annuler</button>
@@ -998,7 +1006,7 @@ export default function CeibaInventoryApp({
 
         {!isQuestionnaireMode && visibleSection === "settings" && isAdmin && (
           <section className="ceiba-panel" id="settings">
-            <EmptyState title="Guide d'utilisation disponible" description="Utilisez l'action Guide d'utilisation en haut de page." />
+            <EmptyState title="Guide d&apos;utilisation disponible" description="Utilisez l&apos;action Guide d&apos;utilisation en haut de page." />
           </section>
         )}
 
@@ -1006,13 +1014,13 @@ export default function CeibaInventoryApp({
           <div className="ceiba-drawer-backdrop open" aria-hidden="false" onClick={() => setShowGuide(false)}>
             <aside className="ceiba-drawer" role="dialog" aria-modal="true" aria-label="Guide d'utilisation" onClick={(event) => event.stopPropagation()}>
               <div className="ceiba-drawer-head">
-                <h3>Guide d'utilisation</h3>
+                <h3>Guide d&apos;utilisation</h3>
                 <button type="button" className="icon-button" onClick={() => setShowGuide(false)} aria-label="Fermer">x</button>
               </div>
               <div className="ceiba-drawer-form">
                 <p className="capture-helper">1. Creer les acces dans Utilisateurs.</p>
                 <p className="capture-helper">2. Les agents utilisent Nouvelle fiche.</p>
-                <p className="capture-helper">3. Les superviseurs consultent Vue d'ensemble.</p>
+                <p className="capture-helper">3. Les superviseurs consultent Vue d&apos;ensemble.</p>
               </div>
             </aside>
           </div>

@@ -80,12 +80,51 @@ function has(permissions: InventoryPermission[], permission: InventoryPermission
 }
 
 export default function UserInventoryWorkspace({ actor, dashboard, dailyProduction = [], view }: Props) {
-  const [online, setOnline] = useState(true);
-  const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">("idle");
-  const [banner, setBanner] = useState<string | null>(null);
-  const [form, setForm] = useState<CeibaInventoryInput>(defaultForm);
+  const queueKey = `inventory-ceiba-queue-${actor.login}`;
+  const draftKey = `inventory-ceiba-draft-${actor.login}`;
+
+  const [online, setOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  const [syncState, setSyncState] = useState<"idle" | "queued" | "syncing" | "synced" | "failed">(() => {
+    if (typeof window === "undefined") return "idle";
+    try {
+      const rawQueue = window.localStorage.getItem(queueKey);
+      if (!rawQueue) return "idle";
+      const restored = JSON.parse(rawQueue) as DraftQueueItem[];
+      return Array.isArray(restored) && restored.some((item) => item.status === "queued" || item.status === "failed") ? "queued" : "idle";
+    } catch {
+      return "idle";
+    }
+  });
+  const [banner, setBanner] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const rawDraft = window.localStorage.getItem(draftKey);
+      return rawDraft ? "Brouillon restaure sur cet appareil." : null;
+    } catch {
+      return "Impossible de restaurer certaines donnees locales.";
+    }
+  });
+  const [form, setForm] = useState<CeibaInventoryInput>(() => {
+    if (typeof window === "undefined") return defaultForm;
+    try {
+      const rawDraft = window.localStorage.getItem(draftKey);
+      return rawDraft ? { ...defaultForm, ...(JSON.parse(rawDraft) as Partial<CeibaInventoryInput>) } : defaultForm;
+    } catch {
+      return defaultForm;
+    }
+  });
   const [activeStep, setActiveStep] = useState<StepId>(stepDefs[0].id);
-  const [queue, setQueue] = useState<DraftQueueItem[]>([]);
+  const [queue, setQueue] = useState<DraftQueueItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const rawQueue = window.localStorage.getItem(queueKey);
+      if (!rawQueue) return [];
+      const restored = JSON.parse(rawQueue) as DraftQueueItem[];
+      return Array.isArray(restored) ? restored : [];
+    } catch {
+      return [];
+    }
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | CeibaInventoryStatusLabel>("all");
   const [communeFilter, setCommuneFilter] = useState("all");
@@ -99,9 +138,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
   const canReview = has(actor.permissions, "inventory.record.review");
   const canSubmit = has(actor.permissions, "inventory.record.submit");
   const workspaceTitle = view === "registre" ? "Registre des fiches" : "Inventaire";
-
-  const queueKey = `inventory-ceiba-queue-${actor.login}`;
-  const draftKey = `inventory-ceiba-draft-${actor.login}`;
 
   const sidebarItems = useMemo(() => {
     const items: Array<{ key: string; label: string; href: string }> = [];
@@ -172,7 +208,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
   const pageRows = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
-    setOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
     window.addEventListener("online", onOnline);
@@ -182,26 +217,6 @@ export default function UserInventoryWorkspace({ actor, dashboard, dailyProducti
       window.removeEventListener("offline", onOffline);
     };
   }, []);
-
-  useEffect(() => {
-    try {
-      const rawDraft = localStorage.getItem(draftKey);
-      if (rawDraft) {
-        setForm({ ...defaultForm, ...(JSON.parse(rawDraft) as Partial<CeibaInventoryInput>) });
-        setBanner("Brouillon restaure sur cet appareil.");
-      }
-      const rawQueue = localStorage.getItem(queueKey);
-      if (rawQueue) {
-        const restored = JSON.parse(rawQueue) as DraftQueueItem[];
-        setQueue(restored);
-        if (restored.some((item) => item.status === "queued" || item.status === "failed")) {
-          setSyncState("queued");
-        }
-      }
-    } catch {
-      setBanner("Impossible de restaurer certaines donnees locales.");
-    }
-  }, [draftKey, queueKey]);
 
   useEffect(() => {
     localStorage.setItem(draftKey, JSON.stringify(form));

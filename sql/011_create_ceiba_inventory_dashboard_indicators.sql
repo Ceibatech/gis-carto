@@ -37,11 +37,11 @@ SELECT
   LOWER(COALESCE(f.created_by, 'inconnu')) AS agent_login,
   COALESCE(u.full_name, f.created_by, 'Inconnu') AS agent_name,
   DATE(f.created_at) AS production_day,
-  SUM(CASE WHEN NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN 1 ELSE 0 END) AS cartons_count,
+  COUNT(DISTINCT CASE WHEN NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN f.carton_id END) AS cartons_count,
   COUNT(*) AS dossiers_count,
-  SUM(CASE WHEN f.carton_damaged = 1 AND NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN 1 ELSE 0 END) AS damaged_cartons_count,
+  COUNT(DISTINCT CASE WHEN f.carton_damaged = 1 AND NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN f.carton_id END) AS damaged_cartons_count,
   SUM(CASE WHEN f.dossier_damaged = 1 THEN 1 ELSE 0 END) AS damaged_dossiers_count,
-  SUM(CASE WHEN NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN 1 ELSE 0 END) + COUNT(*) AS total_points
+  COUNT(DISTINCT CASE WHEN NULLIF(TRIM(f.carton_id), '') IS NOT NULL THEN f.carton_id END) + COUNT(*) AS total_points
 FROM ceiba_inventory_forms f
 LEFT JOIN ceiba_inventory_users u ON LOWER(u.login) = LOWER(f.created_by)
 GROUP BY DATE(f.created_at), LOWER(COALESCE(f.created_by, 'inconnu')), COALESCE(u.full_name, f.created_by, 'Inconnu')
