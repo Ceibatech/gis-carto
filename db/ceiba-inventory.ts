@@ -547,6 +547,7 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     id,
     box_label,
     carton_id,
+    box_reference,
     barcode,
     guichet_number,
     ddu_number,
@@ -574,11 +575,12 @@ export async function createCeibaInventoryRecord(input: CeibaInventoryInput, cre
     status,
     notes,
     created_by
-  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+  ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     [
       randomUUID(),
       cleanText(input.boxLabel) || null,
       cleanText(input.cartonId) || null,
+      buildCeibaBoxReference(createdBy ?? "USER", input.cartonId),
       cleanText(input.barcode) || null,
       cleanText(input.guichetNumber) || null,
       cleanText(input.dduNumber) || null,

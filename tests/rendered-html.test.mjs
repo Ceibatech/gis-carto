@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildCeibaProductionMetrics } from "../lib/ceiba-inventory-reports.js";
+import { buildCeibaBoxReference, buildCeibaProductionMetrics } from "../lib/ceiba-inventory-reports.js";
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -37,6 +37,12 @@ test("server-renders GeoArchives login shell", async () => {
   assert.match(html, /Pilotage ex\u00e9cutif/);
   assert.match(html, /Registre des sites/);
   assert.doesNotMatch(html, /DATABASE_URL est manquant|Configuration requise|db:seed|seed/i);
+});
+
+test("buildCeibaBoxReference creates a unique user-scoped carton reference", () => {
+  assert.equal(buildCeibaBoxReference("moussa", "CT-1042"), "MOUSSA-CT-1042");
+  assert.equal(buildCeibaBoxReference("  Moussa  ", "  ct-1042  "), "MOUSSA-CT-1042");
+  assert.equal(buildCeibaBoxReference("moussa", ""), "MOUSSA-BOX");
 });
 
 test("buildCeibaProductionMetrics uses real production quantities by agent", () => {
