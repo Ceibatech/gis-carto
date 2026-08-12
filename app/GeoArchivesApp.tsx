@@ -1178,6 +1178,7 @@ export default function GeoArchivesApp({ initialData, initialSession }: { initia
             <UserInventoryWorkspace actor={inventoryActor} dashboard={inventoryDashboard} dailyProduction={dailyProduction} view="dashboard" />
           </section>
         )}
+
       </main>
     );
   }

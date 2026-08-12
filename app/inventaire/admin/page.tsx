@@ -26,8 +26,8 @@ export default async function InventaireAdminPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const requested = params.section;
-  const validSections = new Set(["overview", "users", "roles", "audit", "reporting", "settings"]);
-  const section = validSections.has(requested || "") ? requested as "overview" | "users" | "roles" | "audit" | "reporting" | "settings" : "overview";
+  const validSections = new Set(["dashboard", "overview", "users", "roles", "audit", "reporting", "settings"]);
+  const section = validSections.has(requested || "") ? (requested as "dashboard" | "overview" | "users" | "roles" | "audit" | "reporting" | "settings") : "dashboard";
 
   const [dashboard, users, operatorPerformance, reportDispatches, dailyProduction] = await Promise.all([
     getCeibaInventoryDashboard(),

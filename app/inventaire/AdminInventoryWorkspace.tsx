@@ -25,7 +25,7 @@ type Props = {
   reportDispatches: CeibaInventoryReportDispatch[];
   tableReady: boolean;
   tableMessage: string | null;
-  section: "overview" | "users" | "roles" | "audit" | "reporting" | "settings";
+  section: "dashboard" | "overview" | "users" | "roles" | "audit" | "reporting" | "settings";
 };
 
 const roleOptions: CeibaInventoryRole[] = ["admin", "supervisor", "operator"];
@@ -188,7 +188,7 @@ export default function AdminInventoryWorkspace({
   }, [dailyProduction, filteredProduction]);
 
   const nav = [
-    { key: "overview", label: "Vue d'ensemble", href: "/inventaire/admin" },
+    { key: "dashboard", label: "Dashboard", href: "/inventaire/admin?section=dashboard" },
     { key: "users", label: "Utilisateurs", href: "/inventaire/admin?section=users" },
     { key: "roles", label: "Roles et acces", href: "/inventaire/admin?section=roles" },
     { key: "audit", label: "Journal d'activite", href: "/inventaire/admin?section=audit" },
@@ -310,7 +310,7 @@ export default function AdminInventoryWorkspace({
 
         {message && <div className="inventory-banner">{message}</div>}
 
-        {section === "overview" && (
+        {(section === "dashboard" || section === "overview") && (
           <>
             <section className="ceiba-panel inventory-print-hide">
               <div className="ceiba-filter-row">
